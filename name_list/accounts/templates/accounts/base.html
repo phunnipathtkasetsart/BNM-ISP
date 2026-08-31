@@ -1,0 +1,25 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}KU Student Portal{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'accounts/css/style.css' %}">
+</head>
+<body>
+  <header class="header">
+    <span class="logo">KU</span>
+    <a href="#" class="help-link">Help</a>
+  </header>
+
+  <div class="mobile-brand">
+    <span class="badge">KU</span>
+    <h1>Student Portal</h1>
+  </div>
+
+  <main class="page-wrap">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

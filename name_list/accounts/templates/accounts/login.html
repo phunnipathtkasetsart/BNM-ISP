@@ -1,0 +1,79 @@
+{% extends "accounts/base.html" %}
+{% block title %}Login - KU Student Portal{% endblock %}
+
+{% block content %}
+  <aside class="announcements">
+    <h2>Announcements</h2>
+    <h3>Latest Announcements</h3>
+    <div class="announcement-item">
+      <p>Portal Access Issues Resolved</p>
+      <span>(Sept 15)</span>
+    </div>
+    <div class="announcement-item">
+      <p>Register for Fall Sports Teams</p>
+      <span>(Sept 12)</span>
+    </div>
+    <div class="announcement-item">
+      <p>KU Library Extended Hours</p>
+      <span>(Sept 10)</span>
+    </div>
+  </aside>
+
+  <section class="auth-card">
+    <h1>KU Student Portal</h1>
+
+    <nav class="tabs">
+      <a href="{% url 'accounts:login' %}" class="active">Login</a>
+      <a href="{% url 'accounts:register' %}">Register</a>
+    </nav>
+
+    <p class="section-label">Login</p>
+
+    {% if error %}
+      <div class="top-error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="field">
+        {{ form.nisit_id }}
+        {% if form.nisit_id.errors %}
+          <div class="field-error">{{ form.nisit_id.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="field password-field">
+        {{ form.password }}
+        <button type="button" class="toggle-show" data-toggle-for="{{ form.password.id_for_label }}">Show</button>
+        {% if form.password.errors %}
+          <div class="field-error">{{ form.password.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="row-between">
+        <a href="#">Forgot Password?</a>
+      </div>
+
+      <button type="submit" class="btn-primary">Sign In</button>
+    </form>
+
+    <div class="divider">Or sign in with</div>
+
+    <button type="button" class="btn-google" disabled title="Coming soon">
+      <span>G</span> Google OAuth2
+    </button>
+  </section>
+
+  <script>
+    document.querySelectorAll(".toggle-show").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var input = document.getElementById(btn.dataset.toggleFor);
+        if (!input) return;
+        var isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        btn.textContent = isPassword ? "Hide" : "Show";
+      });
+    });
+  </script>
+{% endblock %}

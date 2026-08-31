@@ -1,0 +1,16 @@
+{% extends "accounts/base.html" %}
+{% block title %}Dashboard - KU Student Portal{% endblock %}
+
+{% block content %}
+  <section class="auth-card">
+    <h1>Welcome, {{ request.user.get_full_name }}</h1>
+    <p style="color: var(--text-muted); font-size: 14px;">
+      Nisit ID: {{ request.user.nisit_id }}<br>
+      Department: {{ request.user.get_department_display }}<br>
+      Email: {{ request.user.email }}
+    </p>
+    <a href="{% url 'accounts:logout' %}">
+      <button type="button" class="btn-primary">Log out</button>
+    </a>
+  </section>
+{% endblock %}

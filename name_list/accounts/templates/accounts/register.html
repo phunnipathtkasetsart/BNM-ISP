@@ -1,0 +1,84 @@
+{% extends "accounts/base.html" %}
+{% block title %}Register - KU Student Portal{% endblock %}
+
+{% block content %}
+  <section class="auth-card register">
+    <h1>Register</h1>
+
+    <nav class="tabs">
+      <a href="{% url 'accounts:login' %}">Login</a>
+      <a href="{% url 'accounts:register' %}" class="active">Register</a>
+    </nav>
+
+    <p class="section-label">Create an Account</p>
+
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      <div class="field-row">
+        <div class="field">
+          {{ form.first_name }}
+          {% if form.first_name.errors %}
+            <div class="field-error">{{ form.first_name.errors.0 }}</div>
+          {% endif %}
+        </div>
+        <div class="field">
+          {{ form.last_name }}
+          {% if form.last_name.errors %}
+            <div class="field-error">{{ form.last_name.errors.0 }}</div>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="field">
+        {{ form.nisit_id }}
+        {% if form.nisit_id.errors %}
+          <div class="field-error">{{ form.nisit_id.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="department-group">
+        <span class="label">Department</span>
+        {% for radio in form.department %}
+          <label class="department-option">
+            {{ radio.tag }} {{ radio.choice_label }}
+          </label>
+        {% endfor %}
+        {% if form.department.errors %}
+          <div class="field-error">{{ form.department.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="field">
+        {{ form.email }}
+        <div class="field-hint">KU Email (@ku.th) - example: 6510500000@ku.th</div>
+        {% if form.email.errors %}
+          <div class="field-error">{{ form.email.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <div class="field password-field">
+        {{ form.password1 }}
+        <button type="button" class="toggle-show" data-toggle-for="{{ form.password1.id_for_label }}">Show</button>
+        <div class="field-hint">At least 8 characters.</div>
+        {% if form.password1.errors %}
+          <div class="field-error">{{ form.password1.errors.0 }}</div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn-primary">Register</button>
+    </form>
+  </section>
+
+  <script>
+    document.querySelectorAll(".toggle-show").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var input = document.getElementById(btn.dataset.toggleFor);
+        if (!input) return;
+        var isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        btn.textContent = isPassword ? "Hide" : "Show";
+      });
+    });
+  </script>
+{% endblock %}
