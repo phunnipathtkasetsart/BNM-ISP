@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'student_info',
     'accounts',
 ]
 
@@ -79,6 +78,7 @@ WSGI_APPLICATION = 'name_list.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+# 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
