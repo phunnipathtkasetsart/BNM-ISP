@@ -259,6 +259,8 @@ body{
 /* ---- buttons ---- */
 .btn{
   position:relative;
+  overflow:hidden;                /* clips the hover wedge to the radius */
+  isolation:isolate;              /* see the note on the wedge below */
   width:100%;
   display:inline-flex;align-items:center;justify-content:center;gap:calc(10 * var(--u));
   font-family:var(--font-ui);
@@ -275,6 +277,40 @@ body{
 .btn:active{transform:translateY(1px)}
 .btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:3px}
 .btn[disabled]{cursor:not-allowed;opacity:.72}
+
+/* --- the hover wedge ---
+   The bottom ribbon, reaching into the button. Two wedges enter from the
+   right and stay while the pointer is inside; the pale one leads and the
+   stronger one follows a beat later, so they read as one shape opening
+   rather than two blocks arriving. Each polygon reaches further left at
+   the bottom than at the top, so the diagonal leans back and the mass
+   sits low — the same pivot as .ribbon--bottom.
+
+   z-index:-1 rather than a positive index, with isolation:isolate above:
+   negative-index children paint after the button's own background but
+   before its inline content, so the label stays on top without needing a
+   wrapper element. That matters because some buttons are plain text
+   ("Log out", "Back to Sign In") and some wrap their label in a span. */
+.btn::before,.btn::after{
+  content:"";
+  position:absolute;inset:calc(-2 * var(--u));z-index:-1;
+  pointer-events:none;
+  transform:translateX(100%);
+  transition:transform .42s var(--ease);
+}
+.btn::before{                                    /* pale, leads */
+  background:rgba(169,205,187,.20);
+  clip-path:polygon(70% 0,100% 0,100% 100%,48% 100%);
+}
+.btn::after{                                     /* stronger, follows */
+  background:rgba(169,205,187,.34);
+  clip-path:polygon(84% 0,100% 0,100% 100%,62% 100%);
+}
+.btn:hover::before,.btn:focus-visible::before{transform:translateX(0)}
+.btn:hover::after,.btn:focus-visible::after{transform:translateX(0);transition-delay:.07s}
+/* Nothing to promise on a button that cannot be pressed. */
+.btn[disabled]::before,.btn[disabled]::after,
+.btn.is-busy::before,.btn.is-busy::after{display:none}
 
 .btn.is-busy{pointer-events:none}
 .btn .spin{
