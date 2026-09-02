@@ -1,0 +1,10 @@
+{% comment %} The panel behind "Having Problems?". A native <dialog> so Escape, focus
+   trapping and the backdrop come for free. {% endcomment %}
+<dialog id="helpSheet" class="sheet" aria-labelledby="helpSheetTitle">
+  <div class="sheet__head">
+    <h2 id="helpSheetTitle">Having Problems?</h2>
+    <button type="button" class="sheet__x" data-close-sheet aria-label="Close">&times;</button>
+  </div>
+  <a class="sheet__item" href="{% url 'accounts:forgot_password' %}">Forgot password?</a>
+  <a class="sheet__item" href="{% url 'accounts:faq' %}">FAQ</a>
+</dialog>

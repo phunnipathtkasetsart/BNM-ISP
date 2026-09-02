@@ -1,16 +1,27 @@
 {% extends "accounts/base.html" %}
-{% block title %}Dashboard - KU Student Portal{% endblock %}
+{% block title %}Dashboard — KU Student Portal{% endblock %}
 
 {% block content %}
-  <section class="auth-card">
-    <h1>Welcome, {{ request.user.get_full_name }}</h1>
-    <p style="color: var(--text-muted); font-size: 14px;">
-      Nisit ID: {{ request.user.nisit_id }}<br>
-      Department: {{ request.user.get_department_display }}<br>
-      Email: {{ request.user.email }}
-    </p>
-    <a href="{% url 'accounts:logout' %}">
-      <button type="button" class="btn-primary">Log out</button>
-    </a>
-  </section>
+<section class="card">
+  {% include "accounts/_ribbons.html" %}
+
+  <div class="card__inner">
+    <div class="card__head">{% include "accounts/_brand.html" %}</div>
+
+    <div class="card__body">
+      <h1>Welcome, {{ request.user.first_name }}</h1>
+
+      <p class="welcome">
+        Nisit ID <strong>{{ request.user.nisit_id }}</strong><br>
+        Department <strong>{{ request.user.get_department_display }}</strong><br>
+        Email <strong>{{ request.user.email }}</strong>
+      </p>
+
+      <form method="post" action="{% url 'accounts:logout' %}">
+        {% csrf_token %}
+        <button type="submit" class="btn btn--primary">Log out</button>
+      </form>
+    </div>
+  </div>
+</section>
 {% endblock %}

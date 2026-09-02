@@ -1,0 +1,6 @@
+{% load static %}
+{% comment %} The KU mark. The file is trimmed to its content box, so the CSS height
+   below is the height of the visible mark. {% endcomment %}
+<img class="brand" src="{% static 'accounts/img/ku-logo.png' %}"
+     alt="KU Kasetsart University" onerror="this.remove()">
+<span class="brand__text" aria-hidden="true">KU</span>

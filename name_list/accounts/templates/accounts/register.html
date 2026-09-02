@@ -1,84 +1,82 @@
 {% extends "accounts/base.html" %}
-{% block title %}Register - KU Student Portal{% endblock %}
+{% block title %}Register — KU Student Portal{% endblock %}
 
 {% block content %}
-  <section class="auth-card register">
-    <h1>Register</h1>
+<section class="card">
+  {% include "accounts/_ribbons.html" %}
 
-    <nav class="tabs">
-      <a href="{% url 'accounts:login' %}">Login</a>
-      <a href="{% url 'accounts:register' %}" class="active">Register</a>
-    </nav>
+  <div class="card__inner">
+    <div class="card__head">{% include "accounts/_brand.html" %}</div>
 
-    <p class="section-label">Create an Account</p>
+    <div class="card__body">
+      <h1>Register</h1>
 
-    <form method="post" novalidate>
-      {% csrf_token %}
+      <form method="post" novalidate data-validate>
+        {% csrf_token %}
 
-      <div class="field-row">
-        <div class="field">
-          {{ form.first_name }}
-          {% if form.first_name.errors %}
-            <div class="field-error">{{ form.first_name.errors.0 }}</div>
-          {% endif %}
+        <div class="field-row">
+          <div class="field" data-rule="required">
+            <label for="{{ form.first_name.id_for_label }}">First name</label>
+            <div class="control">{{ form.first_name }}</div>
+            <p class="msg"></p>
+            {% if form.first_name.errors %}<div class="alert">{{ form.first_name.errors.0 }}</div>{% endif %}
+          </div>
+          <div class="field" data-rule="required">
+            <label for="{{ form.last_name.id_for_label }}">Last name</label>
+            <div class="control">{{ form.last_name }}</div>
+            <p class="msg"></p>
+            {% if form.last_name.errors %}<div class="alert">{{ form.last_name.errors.0 }}</div>{% endif %}
+          </div>
         </div>
-        <div class="field">
-          {{ form.last_name }}
-          {% if form.last_name.errors %}
-            <div class="field-error">{{ form.last_name.errors.0 }}</div>
-          {% endif %}
+
+        <div class="field" data-rule="nisit">
+          <label for="{{ form.nisit_id.id_for_label }}">Nisit number</label>
+          <div class="control">{{ form.nisit_id }}</div>
+          <p class="msg"></p>
+          {% if form.nisit_id.errors %}<div class="alert">{{ form.nisit_id.errors.0 }}</div>{% endif %}
         </div>
-      </div>
 
-      <div class="field">
-        {{ form.nisit_id }}
-        {% if form.nisit_id.errors %}
-          <div class="field-error">{{ form.nisit_id.errors.0 }}</div>
-        {% endif %}
-      </div>
+        <div class="dept">
+          <span class="dept__label">Department</span>
+          {% for radio in form.department %}
+            <label class="dept__option">{{ radio.tag }} {{ radio.choice_label }}</label>
+          {% endfor %}
+          {% if form.department.errors %}<div class="alert">{{ form.department.errors.0 }}</div>{% endif %}
+        </div>
 
-      <div class="department-group">
-        <span class="label">Department</span>
-        {% for radio in form.department %}
-          <label class="department-option">
-            {{ radio.tag }} {{ radio.choice_label }}
-          </label>
-        {% endfor %}
-        {% if form.department.errors %}
-          <div class="field-error">{{ form.department.errors.0 }}</div>
-        {% endif %}
-      </div>
+        <div class="field" data-rule="kuemail">
+          <label for="{{ form.email.id_for_label }}">KU email</label>
+          <div class="control">{{ form.email }}</div>
+          <p class="msg"></p>
+          {% if form.email.errors %}<div class="alert">{{ form.email.errors.0 }}</div>{% endif %}
+        </div>
 
-      <div class="field">
-        {{ form.email }}
-        <div class="field-hint">KU Email (@ku.th) - example: 6510500000@ku.th</div>
-        {% if form.email.errors %}
-          <div class="field-error">{{ form.email.errors.0 }}</div>
-        {% endif %}
-      </div>
+        <div class="field" data-rule="password8">
+          <label for="{{ form.password1.id_for_label }}">Password</label>
+          <div class="control control--pw">
+            {{ form.password1 }}
+            <button type="button" class="reveal" data-for="{{ form.password1.id_for_label }}"
+                    aria-label="Show password" aria-pressed="false">Show</button>
+          </div>
+          <div class="meter" data-for="{{ form.password1.id_for_label }}" data-score="0" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <p class="msg"></p>
+          {% if form.password1.errors %}<div class="alert">{{ form.password1.errors.0 }}</div>{% endif %}
+        </div>
 
-      <div class="field password-field">
-        {{ form.password1 }}
-        <button type="button" class="toggle-show" data-toggle-for="{{ form.password1.id_for_label }}">Show</button>
-        <div class="field-hint">At least 8 characters.</div>
-        {% if form.password1.errors %}
-          <div class="field-error">{{ form.password1.errors.0 }}</div>
-        {% endif %}
-      </div>
+        <button type="submit" class="btn btn--primary">
+          <span class="spin" aria-hidden="true"></span>
+          <span>Register</span>
+        </button>
 
-      <button type="submit" class="btn-primary">Register</button>
-    </form>
-  </section>
+        <div class="linkrow linkrow--after">
+          Already have an account?&nbsp;<a href="{% url 'accounts:login' %}">Sign in</a>
+        </div>
+      </form>
 
-  <script>
-    document.querySelectorAll(".toggle-show").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var input = document.getElementById(btn.dataset.toggleFor);
-        if (!input) return;
-        var isPassword = input.type === "password";
-        input.type = isPassword ? "text" : "password";
-        btn.textContent = isPassword ? "Hide" : "Show";
-      });
-    });
-  </script>
+      {% include "accounts/_oauth.html" %}
+    </div>
+  </div>
+</section>
 {% endblock %}

@@ -1,79 +1,56 @@
 {% extends "accounts/base.html" %}
-{% block title %}Login - KU Student Portal{% endblock %}
+{% block title %}Sign In — KU Student Portal{% endblock %}
 
 {% block content %}
-  <aside class="announcements">
-    <h2>Announcements</h2>
-    <h3>Latest Announcements</h3>
-    <div class="announcement-item">
-      <p>Portal Access Issues Resolved</p>
-      <span>(Sept 15)</span>
+<section class="card">
+  {% include "accounts/_ribbons.html" %}
+
+  <div class="card__inner">
+    <div class="card__head">{% include "accounts/_brand.html" %}</div>
+
+    <div class="card__body">
+      <h1>Account Sign In</h1>
+
+      {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+
+      <form method="post" novalidate data-validate>
+        {% csrf_token %}
+
+        <div class="field" data-rule="nisit">
+          <label for="{{ form.nisit_id.id_for_label }}">Nisit ID</label>
+          <div class="control">{{ form.nisit_id }}</div>
+          <p class="msg"></p>
+          {% if form.nisit_id.errors %}<div class="alert">{{ form.nisit_id.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="field" data-rule="required">
+          <label for="{{ form.password.id_for_label }}">Password</label>
+          <div class="control control--pw">
+            {{ form.password }}
+            <button type="button" class="reveal" data-for="{{ form.password.id_for_label }}"
+                    aria-label="Show password" aria-pressed="false">Show</button>
+          </div>
+          <p class="msg"></p>
+          {% if form.password.errors %}<div class="alert">{{ form.password.errors.0 }}</div>{% endif %}
+        </div>
+
+        <div class="linkrow linkrow--help">
+          <button type="button" class="linkbtn" data-open-sheet="helpSheet">Having Problems?</button>
+        </div>
+
+        <button type="submit" class="btn btn--primary">
+          <span class="spin" aria-hidden="true"></span>
+          <span>Sign In</span>
+        </button>
+
+        <div class="linkrow linkrow--after">
+          Don't have an account?&nbsp;<a href="{% url 'accounts:register' %}">Create one!</a>
+        </div>
+      </form>
+
+      {% include "accounts/_oauth.html" %}
+      {% include "accounts/_help_sheet.html" %}
     </div>
-    <div class="announcement-item">
-      <p>Register for Fall Sports Teams</p>
-      <span>(Sept 12)</span>
-    </div>
-    <div class="announcement-item">
-      <p>KU Library Extended Hours</p>
-      <span>(Sept 10)</span>
-    </div>
-  </aside>
-
-  <section class="auth-card">
-    <h1>KU Student Portal</h1>
-
-    <nav class="tabs">
-      <a href="{% url 'accounts:login' %}" class="active">Login</a>
-      <a href="{% url 'accounts:register' %}">Register</a>
-    </nav>
-
-    <p class="section-label">Login</p>
-
-    {% if error %}
-      <div class="top-error">{{ error }}</div>
-    {% endif %}
-
-    <form method="post" novalidate>
-      {% csrf_token %}
-
-      <div class="field">
-        {{ form.nisit_id }}
-        {% if form.nisit_id.errors %}
-          <div class="field-error">{{ form.nisit_id.errors.0 }}</div>
-        {% endif %}
-      </div>
-
-      <div class="field password-field">
-        {{ form.password }}
-        <button type="button" class="toggle-show" data-toggle-for="{{ form.password.id_for_label }}">Show</button>
-        {% if form.password.errors %}
-          <div class="field-error">{{ form.password.errors.0 }}</div>
-        {% endif %}
-      </div>
-
-      <div class="row-between">
-        <a href="#">Forgot Password?</a>
-      </div>
-
-      <button type="submit" class="btn-primary">Sign In</button>
-    </form>
-
-    <div class="divider">Or sign in with</div>
-
-    <button type="button" class="btn-google" disabled title="Coming soon">
-      <span>G</span> Google OAuth2
-    </button>
-  </section>
-
-  <script>
-    document.querySelectorAll(".toggle-show").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        var input = document.getElementById(btn.dataset.toggleFor);
-        if (!input) return;
-        var isPassword = input.type === "password";
-        input.type = isPassword ? "text" : "password";
-        btn.textContent = isPassword ? "Hide" : "Show";
-      });
-    });
-  </script>
+  </div>
+</section>
 {% endblock %}
