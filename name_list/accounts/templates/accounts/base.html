@@ -6,6 +6,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2E5248">
 <title>{% block title %}KU Student Portal{% endblock %}</title>
+{% comment %} The KU mark doubles as the tab icon. Without these the browser
+   asks for /favicon.ico on every page, gets a 404 from Django, and shows the
+   blank-page glyph in the tab. apple-touch-icon is what iOS uses when someone
+   adds the portal to their home screen. {% endcomment %}
+<link rel="icon" href="{% static 'accounts/img/ku-logo.png' %}" type="image/png">
+<link rel="apple-touch-icon" href="{% static 'accounts/img/ku-logo.png' %}">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
