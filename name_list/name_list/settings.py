@@ -81,8 +81,15 @@ WSGI_APPLICATION = 'name_list.wsgi.application'
 # 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        'HOST': 'db',  # Service name in your docker-compose.yml
+        'PORT': '5432',
+        'OPTIONS': {
+            'options': '-c search_path=ISP_DJANGO_2026,public'  # Tells Django to look in your custom schema
+        }
     }
 }
 

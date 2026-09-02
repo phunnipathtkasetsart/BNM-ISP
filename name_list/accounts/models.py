@@ -5,14 +5,11 @@ from django.contrib.auth.models import PermissionsMixin
 from django.core.validators import RegexValidator
 from django.db import models
 
-
 nisit_id_validator = RegexValidator(
     regex=r"^\d{10}$",
     message="Nisit ID must be exactly 10 digits, numbers only.",
 )
 
-# Anything before the @, then exactly ku.th. Note this rejects sub-domains
-# such as name@eng.ku.th, which is what "must be a KU email" means here.
 ku_email_validator = RegexValidator(
     regex=r"^[^@\s]+@ku\.th$",
     message="Enter your KU email — it must end with @ku.th.",
@@ -47,25 +44,46 @@ class User(AbstractBaseUser, PermissionsMixin):
         SKE = "ske", "Software & Knowledge Engineering"
         CPE = "cpe", "Computer Engineering"
 
-    first_name = models.CharField(max_length=150)
-    last_name = models.CharField(max_length=150)
+    # Primary key mapped to PostgreSQL column 'userID'
     nisit_id = models.CharField(
         "Nisit ID",
         max_length=10,
         unique=True,
+        db_column="userID",
+        primary_key=True,
         validators=[nisit_id_validator],
     )
-    department = models.CharField(max_length=10, choices=Department.choices)
-    email = models.EmailField("KU email", unique=True, validators=[ku_email_validator])
+    first_name = models.CharField(max_length=150, db_column="userFirstName")
+    last_name = models.CharField(max_length=150, db_column="userLastName")
+    email = models.EmailField(
+        "KU email", 
+        unique=True, 
+        db_column="userEmail", 
+        validators=[ku_email_validator]
+    )
+    department = models.CharField(
+        max_length=30, 
+        choices=Department.choices, 
+        db_column="userDepartment"
+    )
+    
+    password = models.CharField(max_length=128, db_column="userPassword")
 
     is_active = models.BooleanField(default=True)
-    is_staff = models.BooleanField(default=False)
-    date_joined = models.DateTimeField(auto_now_add=True)
+    is_superuser = models.BooleanField(default=False, db_column="isDepartment")
+    is_staff = models.BooleanField(default=False, db_column="isLecturer")
+    date_joined = models.DateTimeField(auto_now_add=True, db_column="createDate")
+
+    last_login = models.DateTimeField(null=True, blank=True, db_column="last_login")
 
     objects = UserManager()
 
     USERNAME_FIELD = "nisit_id"
     REQUIRED_FIELDS = ["email", "first_name", "last_name", "department"]
+
+    class Meta:
+        db_table = 'ISP_DJANGO_2026"."Users'
+        managed = False
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.nisit_id})"
@@ -75,3 +93,11 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     def get_short_name(self):
         return self.first_name
+
+    @property
+    def is_department(self):
+        return self.is_superuser
+
+    @is_department.setter
+    def is_department(self, value):
+        self.is_superuser = value
