@@ -1,13 +1,46 @@
 from django import forms
 
-from .models import User
+from .models import User, ku_email_validator, nisit_id_validator
+
+# Shared widget attributes. The browser-level constraints (maxlength, pattern,
+# inputmode) are a convenience — they stop bad input being typed and bring up
+# the right keyboard on a phone. The real enforcement is the validators, which
+# run on the server whatever the browser does.
+NISIT_ATTRS = {
+    "placeholder": "Nisit ID",
+    "inputmode": "numeric",
+    "autocomplete": "off",
+    "maxlength": "10",
+    "minlength": "10",
+    "pattern": "[0-9]{10}",
+    "title": "Exactly 10 digits, numbers only.",
+}
+
+KU_EMAIL_ATTRS = {
+    "placeholder": "KU Email (@ku.th)",
+    "inputmode": "email",
+    "autocomplete": "email",
+    "autocapitalize": "off",
+    "spellcheck": "false",
+    "pattern": r"[^@\s]+@ku\.th",
+    "title": "Your KU address, ending in @ku.th.",
+}
+
+
+def normalise_ku_email(email):
+    """Lower-case it and confirm it is a @ku.th address."""
+    email = (email or "").strip().lower()
+    ku_email_validator(email)
+    return email
 
 
 class LoginForm(forms.Form):
     nisit_id = forms.CharField(
         label="Nisit ID",
+        min_length=10,
         max_length=10,
-        widget=forms.TextInput(attrs={"placeholder": "Nisit ID", "autofocus": True}),
+        validators=[nisit_id_validator],
+        widget=forms.TextInput(attrs={**NISIT_ATTRS, "autofocus": True}),
     )
     password = forms.CharField(
         label="Password",
@@ -29,18 +62,23 @@ class RegisterForm(forms.ModelForm):
             "first_name": forms.TextInput(attrs={"placeholder": "First Name"}),
             "last_name": forms.TextInput(attrs={"placeholder": "Last Name"}),
             "nisit_id": forms.TextInput(
-                attrs={"placeholder": "Nisit Number (Student ID) (max 10 digits)"}
+                attrs={
+                    **NISIT_ATTRS,
+                    "placeholder": "Nisit Number (Student ID) (10 digits)",
+                }
             ),
             "department": forms.RadioSelect,
-            "email": forms.EmailInput(attrs={"placeholder": "KU Email (@ku.th)"}),
+            "email": forms.EmailInput(attrs=KU_EMAIL_ATTRS),
         }
         labels = {"email": "KU Email"}
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # drop Django's blank "---------" option from the radio group
+        self.fields["department"].choices = User.Department.choices
+
     def clean_email(self):
-        email = self.cleaned_data.get("email", "")
-        if not email.lower().endswith("@ku.th"):
-            raise forms.ValidationError("Please use your KU email (must end with @ku.th).")
-        return email
+        return normalise_ku_email(self.cleaned_data.get("email"))
 
     def clean_password1(self):
         password = self.cleaned_data.get("password1", "")
@@ -54,3 +92,13 @@ class RegisterForm(forms.ModelForm):
         if commit:
             user.save()
         return user
+
+
+class ForgotPasswordForm(forms.Form):
+    email = forms.EmailField(
+        label="KU Email",
+        widget=forms.EmailInput(attrs={**KU_EMAIL_ATTRS, "autofocus": True}),
+    )
+
+    def clean_email(self):
+        return normalise_ku_email(self.cleaned_data.get("email"))

@@ -1,3 +1,5 @@
+import re
+
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.core.validators import RegexValidator
@@ -5,8 +7,16 @@ from django.db import models
 
 
 nisit_id_validator = RegexValidator(
-    regex=r"^\d{1,10}$",
-    message="Nisit ID must be numeric and at most 10 digits.",
+    regex=r"^\d{10}$",
+    message="Nisit ID must be exactly 10 digits, numbers only.",
+)
+
+# Anything before the @, then exactly ku.th. Note this rejects sub-domains
+# such as name@eng.ku.th, which is what "must be a KU email" means here.
+ku_email_validator = RegexValidator(
+    regex=r"^[^@\s]+@ku\.th$",
+    message="Enter your KU email — it must end with @ku.th.",
+    flags=re.IGNORECASE,
 )
 
 
@@ -46,7 +56,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         validators=[nisit_id_validator],
     )
     department = models.CharField(max_length=10, choices=Department.choices)
-    email = models.EmailField("KU email", unique=True)
+    email = models.EmailField("KU email", unique=True, validators=[ku_email_validator])
 
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
