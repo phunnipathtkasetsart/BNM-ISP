@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Hover-effect lab. Not part of the site, and not linked from anything.
+     Three candidate treatments for the "two diagonal lines" hover, all cut
+     from the same wedge motif as the card ribbons. Pick one and it gets
+     folded into name_list/accounts/static/accounts/css/style.css. -->
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hover lab — KU Student Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ku-green-900:#2E5248;
+  --ku-green-800:#2C5449;
+  --ku-sage:#6FA890;
+  --ku-sage-soft:#A9CDBB;
+  --ku-mint:#DEEDE7;
+  --card:#F0F2EF;
+  --field:#F8F9F7;
+  --ink:#22303A;
+  --ink-soft:#3F5158;
+  --ink-muted:#7B8A90;
+  --hairline:#DFE4DF;
+  --field-line:#E4E8E3;
+  --r-field:8px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --font-display:"Plus Jakarta Sans",system-ui,sans-serif;
+  --font-ui:"Public Sans",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;padding:40px 24px 90px;
+  background:var(--ku-mint);
+  font-family:var(--font-ui);color:var(--ink);
+}
+.wrap{max-width:940px;margin:0 auto}
+h1{font-family:var(--font-display);font-size:27px;margin:0 0 6px}
+.lede{color:var(--ink-soft);margin:0 0 32px;max-width:62ch;line-height:1.55}
+h2{font-family:var(--font-display);font-size:17px;margin:0 0 4px}
+.note{color:var(--ink-muted);font-size:13px;margin:0 0 20px;line-height:1.55;max-width:64ch}
+section{background:var(--card);border:1px solid var(--hairline);border-radius:14px;padding:24px 26px 28px;margin-bottom:22px}
+.demo{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.stack{display:flex;flex-direction:column;gap:12px;width:300px}
+kbd{font:600 11px var(--font-ui);background:#fff;border:1px solid var(--hairline);border-radius:5px;padding:2px 6px;color:var(--ink-soft)}
+code{font:600 12px ui-monospace,Menlo,Consolas,monospace;background:#fff;border:1px solid var(--hairline);border-radius:4px;padding:1px 5px}
+
+/* ---- the components, matching the real stylesheet ---- */
+.btn{
+  position:relative;overflow:hidden;isolation:isolate;
+  width:100%;display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--font-ui);font-size:15.5px;font-weight:700;
+  border-radius:var(--r-field);padding:15px;cursor:pointer;
+  border:1px solid transparent;text-decoration:none;
+  transition:background .16s var(--ease),box-shadow .16s var(--ease);
+}
+.btn span{position:relative;z-index:2}
+.btn--primary{background:var(--ku-green-800);color:#fff}
+.btn--ghost{background:#fff;color:var(--ku-green-800);border-color:var(--field-line)}
+.control{
+  position:relative;overflow:hidden;isolation:isolate;
+  background:var(--field);border:1px solid var(--field-line);
+  border-radius:var(--r-field);
+}
+.control input{
+  position:relative;z-index:2;width:100%;background:none;border:0;outline:0;
+  font-family:var(--font-ui);font-size:15px;color:var(--ink);padding:14px 15px;
+}
+.control input::placeholder{color:var(--ink-muted)}
+.tile{
+  position:relative;overflow:hidden;isolation:isolate;
+  background:#fff;border:1px solid var(--hairline);border-radius:12px;
+  padding:20px;width:250px;cursor:pointer;
+}
+.tile > *{position:relative;z-index:2}
+.tile h3{font-family:var(--font-display);font-size:15px;margin:0 0 4px}
+.tile p{margin:0;font-size:13px;color:var(--ink-muted);line-height:1.5}
+
+/* Sliver colours per surface. A dark surface gets a pale sliver, a light
+   surface gets a sage one, so one set of rules reads correctly on both. */
+.btn--primary{--sw-back:rgba(169,205,187,.20);--sw-front:rgba(169,205,187,.34)}
+.btn--ghost,.control,.tile{--sw-back:rgba(111,168,144,.13);--sw-front:rgba(111,168,144,.22)}
+
+/* ==========================================================
+   A - SWEEP.  Two slivers travel across the box and leave.
+   They are deliberately NOT parallel: the front sliver is
+   steeper, so the pair opens apart as it crosses - the same
+   trick the card ribbons use.
+   ========================================================== */
+.fx-sweep::before,.fx-sweep::after{
+  content:"";position:absolute;inset:-2px;z-index:1;pointer-events:none;
+  transform:translateX(-140%);
+  transition:transform .62s var(--ease);
+}
+.fx-sweep::before{background:var(--sw-back); clip-path:polygon(6% 0,20% 0,44% 100%,26% 100%)}
+.fx-sweep::after {background:var(--sw-front);clip-path:polygon(26% 0,35% 0,57% 100%,45% 100%)}
+.fx-sweep:hover::before,.fx-sweep:focus-within::before{transform:translateX(150%)}
+.fx-sweep:hover::after, .fx-sweep:focus-within::after {transform:translateX(150%);transition-delay:.05s}
+
+/* ==========================================================
+   B - WEDGE.  The ribbon slides in from the left and STAYS
+   while hovered, then retreats. Closest to the card corners.
+   ========================================================== */
+.fx-wedge::before,.fx-wedge::after{
+  content:"";position:absolute;inset:-2px;z-index:1;pointer-events:none;
+  transform:translateX(-100%);
+  transition:transform .42s var(--ease);
+}
+.fx-wedge::before{background:var(--sw-back); clip-path:polygon(0 0,52% 0,30% 100%,0 100%)}
+.fx-wedge::after {background:var(--sw-front);clip-path:polygon(0 0,38% 0,16% 100%,0 100%)}
+.fx-wedge:hover::before,.fx-wedge:focus-within::before{transform:translateX(0)}
+.fx-wedge:hover::after, .fx-wedge:focus-within::after {transform:translateX(0);transition-delay:.07s}
+
+/* ==========================================================
+   C - EDGE.  Two hairlines draw in along the bottom, one
+   trailing the other. The quietest of the three.
+   ========================================================== */
+.fx-edge::before,.fx-edge::after{
+  content:"";position:absolute;left:0;right:0;z-index:1;pointer-events:none;
+  height:2px;transform:scaleX(0);transform-origin:left;
+  transition:transform .40s var(--ease);
+}
+.fx-edge::before{bottom:0;background:var(--ku-sage)}
+.fx-edge::after {bottom:2px;background:var(--sw-back)}
+.fx-edge:hover::before,.fx-edge:focus-within::before{transform:scaleX(1)}
+.fx-edge:hover::after, .fx-edge:focus-within::after {transform:scaleX(1);transition-delay:.06s}
+
+@media (prefers-reduced-motion:reduce){
+  .fx-sweep::before,.fx-sweep::after,
+  .fx-wedge::before,.fx-wedge::after,
+  .fx-edge::before,.fx-edge::after{transition-duration:.01ms}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>Hover lab</h1>
+  <p class="lede">Three ways to do the two-line hover, all cut from the same
+  wedge motif as the card ribbons. Hover each control. The fields also respond
+  to keyboard focus &mdash; press <kbd>Tab</kbd> to check that path, since a
+  hover-only effect leaves keyboard users with nothing.</p>
+
+  <section>
+    <h2>A &mdash; Sweep</h2>
+    <p class="note">Two slivers cross the box and exit. They are deliberately
+    not parallel: the front sliver is steeper, so the pair opens apart as it
+    travels. Most noticeable of the three &mdash; it reads as a highlight
+    passing over the control.</p>
+    <div class="demo">
+      <div class="stack">
+        <div class="control fx-sweep"><input placeholder="Nisit ID"></div>
+        <a class="btn btn--primary fx-sweep"><span>Sign In</span></a>
+        <a class="btn btn--ghost fx-sweep"><span>Create account</span></a>
+      </div>
+      <div class="tile fx-sweep"><h3>Card tile</h3><p>Works on any box that
+      can take <code>overflow:hidden</code>.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>B &mdash; Wedge</h2>
+    <p class="note">The ribbon slides in from the left and stays for as long
+    as the pointer is inside, then retreats. This is the closest match to the
+    card&rsquo;s own corners &mdash; it looks like the ribbon reaching into
+    the control.</p>
+    <div class="demo">
+      <div class="stack">
+        <div class="control fx-wedge"><input placeholder="Nisit ID"></div>
+        <a class="btn btn--primary fx-wedge"><span>Sign In</span></a>
+        <a class="btn btn--ghost fx-wedge"><span>Create account</span></a>
+      </div>
+      <div class="tile fx-wedge"><h3>Card tile</h3><p>Holds its position
+      while you stay on it.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>C &mdash; Edge</h2>
+    <p class="note">Two hairlines draw in along the bottom, one trailing the
+    other. Quietest option, and the least likely to fight with the text
+    sitting on top of it.</p>
+    <div class="demo">
+      <div class="stack">
+        <div class="control fx-edge"><input placeholder="Nisit ID"></div>
+        <a class="btn btn--primary fx-edge"><span>Sign In</span></a>
+        <a class="btn btn--ghost fx-edge"><span>Create account</span></a>
+      </div>
+      <div class="tile fx-edge"><h3>Card tile</h3><p>Barely there, but you
+      feel it.</p></div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
