@@ -5,7 +5,8 @@ ENV/
 
 # Database & Secrets
 .env
-db.sqlite3
+.env.*
+*.sqlite3
 
 # Python Cache & IDE
 __pycache__/
