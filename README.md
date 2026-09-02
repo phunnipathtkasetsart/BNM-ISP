@@ -4,7 +4,10 @@
 ### Prerequisites
 1. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/).
 2. Install [Git](https://git-scm.com/).
-
+3. Install requirements.txt
+```bash
+pip install -r requirements.txt
+```
 # BNM-ISP Django Project
 
 This project uses **Docker** and **Docker Compose** to ensure every team member runs the exact same environment, Python dependencies, and database setup without manual configuration.
