@@ -1,0 +1,60 @@
+{% extends "accounts/base.html" %}
+{% block title %}FAQ — KU Student Portal{% endblock %}
+
+{% block content %}
+<section class="card card--wide">
+  {% include "accounts/_ribbons.html" %}
+
+  <div class="card__inner">
+    <div class="card__head">{% include "accounts/_brand.html" %}</div>
+
+    <div class="card__body">
+      <h1>FAQ</h1>
+
+      <div class="faq">
+        <div class="faq__item">
+          <button type="button" class="faq__q" aria-expanded="false">What is my Nisit ID?</button>
+          <div class="faq__a"><div><p>
+            It is your student number — up to 10 digits, no letters. It is the same
+            number printed on your student card.
+          </p></div></div>
+        </div>
+
+        <div class="faq__item">
+          <button type="button" class="faq__q" aria-expanded="false">Which email should I register with?</button>
+          <div class="faq__a"><div><p>
+            Your university address, ending in <strong>@ku.th</strong>. Personal
+            addresses are not accepted.
+          </p></div></div>
+        </div>
+
+        <div class="faq__item">
+          <button type="button" class="faq__q" aria-expanded="false">I forgot my password.</button>
+          <div class="faq__a"><div><p>
+            Start from <a href="{% url 'accounts:forgot_password' %}">Forgot password</a>.
+            If you cannot get in from there, contact the IT help desk.
+          </p></div></div>
+        </div>
+
+        <div class="faq__item">
+          <button type="button" class="faq__q" aria-expanded="false">My sign in is rejected.</button>
+          <div class="faq__a"><div><p>
+            Check the Nisit ID is digits only and that Caps Lock is off — use
+            <strong>Show</strong> next to the password box to check what you typed.
+          </p></div></div>
+        </div>
+
+        <div class="faq__item">
+          <button type="button" class="faq__q" aria-expanded="false">Can I sign in with Google?</button>
+          <div class="faq__a"><div><p>
+            Not yet. The button is there for when Google sign-in is switched on;
+            for now use your Nisit ID and password.
+          </p></div></div>
+        </div>
+      </div>
+
+      <a class="btn btn--primary" href="{% url 'accounts:login' %}">Back to Sign In</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

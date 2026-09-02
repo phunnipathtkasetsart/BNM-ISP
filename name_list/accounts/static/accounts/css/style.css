@@ -1,355 +1,518 @@
-:root {
-  --teal-dark: #0D5C53;
-  --teal-mid: #48A999;
-  --teal-light: #82C4B7;
-  --bg-light: #D8ECE8;
-  --bg-lighter: #E6F4F1;
-  --accent-red: #E04E4E;
-  --surface: #FFFFFF;
-  --text-dark: #2C3E50;
-  --text-muted: #6C7A89;
-  --border: #D3E0DD;
-  --field-bg: #F6FAF9;
+/* ====================================================================
+   KU Student Portal — one centred card over a washed-out campus photo.
+
+   Sizes are written in --u, "one pixel of the design", so the whole page
+   is the same picture at any window size and never needs scrolling on a
+   desktop. See the note on --u below.
+   ==================================================================== */
+
+:root{
+  /* ---- palette ---- */
+  --ku-green-900:#2E5248;   /* top bar */
+  --ku-green-800:#2C5449;   /* primary button, links */
+  --ku-sage:#6FA890;        /* ribbon, card head */
+  --ku-sage-soft:#A9CDBB;   /* the lighter half of each ribbon */
+  --ku-mint:#DEEDE7;        /* page ground, behind the photo */
+
+  --card:#F0F2EF;           /* card surface */
+  --field:#F8F9F7;
+  --ink:#22303A;
+  --ink-soft:#3F5158;
+  --ink-muted:#7B8A90;
+  --hairline:#DFE4DF;
+  --field-line:#E4E8E3;
+  --danger:#9B3131;
+  --danger-line:#E2A2A2;
+  --danger-bg:#FCEDED;
+  --ok:#2C7A5B;
+
+  /* One design pixel. The page is a single centred card, so its size is
+     driven by window HEIGHT alone — that is the only axis that can force
+     scrolling. There is deliberately no width term: on a narrow-but-tall
+     window there is plenty of room, and scaling on width there just made
+     the type small for no reason. The floor keeps text readable on short
+     windows (Register then scrolls, which is the right trade); the cap
+     stops the card ballooning on a very tall display. */
+  --u:clamp(0.95px, 0.099vh, 1.25px);
+
+  --card-w:calc(440 * var(--u));
+  --r-card:calc(14 * var(--u));
+  --r-field:calc(8 * var(--u));
+  --ease:cubic-bezier(.22,.61,.36,1);
+
+  --font-display:"Plus Jakarta Sans", system-ui, sans-serif;
+  --font-ui:"Public Sans", system-ui, -apple-system, sans-serif;
 }
 
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg-light);
-  color: var(--text-dark);
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--font-ui);
+  color:var(--ink);
+  background:var(--ku-mint);
+  min-height:100svh;
+  display:flex;
+  flex-direction:column;
+  position:relative;
 }
 
-.header {
-  background: var(--teal-dark);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 32px;
+/* skip link, for keyboard users */
+.skip{
+  position:absolute;left:calc(40 * var(--u));top:calc(-200 * var(--u));
+  z-index:20;background:#fff;color:var(--ku-green-800);
+  padding:calc(10 * var(--u)) calc(16 * var(--u));
+  border-radius:var(--r-field);font-weight:700;font-size:calc(15 * var(--u));
+  text-decoration:none;transition:top .18s var(--ease);
+}
+.skip:focus{top:calc(14 * var(--u))}
+
+/* ============ BACKGROUND ============
+   The campus photo sits at 20% opacity over the mint ground. Drop the
+   file in as accounts/static/accounts/img/ku-campus.jpg and it appears —
+   until then the page is simply flat mint, which is also fine. */
+.bg{position:fixed;inset:0;z-index:0;background:var(--ku-mint);overflow:hidden}
+.bg-photo{
+  position:absolute;inset:0;
+  background-size:cover;
+  background-position:center;
+  opacity:.20;
 }
 
-.header .logo {
-  font-weight: 700;
-  font-size: 20px;
-  letter-spacing: 0.5px;
-  text-decoration: underline;
-  text-decoration-color: var(--teal-light);
-  text-underline-offset: 6px;
+/* ============ TOP BAR ============ */
+.topbar{
+  position:relative;z-index:5;
+  background:var(--ku-green-900);
+  color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:calc(20 * var(--u));
+  padding:calc(26 * var(--u)) calc(40 * var(--u));
+}
+.topbar__logo{
+  font-family:var(--font-display);
+  font-weight:800;font-size:calc(25 * var(--u));letter-spacing:.04em;
+  border-bottom:calc(3 * var(--u)) solid var(--ku-sage);
+  padding-bottom:calc(3 * var(--u));line-height:1;
+  text-decoration:none;color:#fff;
+}
+.topbar__help{
+  color:#EAF3F0;text-decoration:none;
+  font-size:calc(16 * var(--u));font-weight:500;
+  padding:calc(6 * var(--u)) calc(4 * var(--u));border-radius:calc(6 * var(--u));
+}
+.topbar__help:hover{text-decoration:underline}
+.topbar__help:focus-visible,.topbar__logo:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
+/* ============ STAGE ============ */
+.stage{
+  position:relative;z-index:4;
+  flex:1;
+  display:grid;
+  place-items:center;                     /* the card sits dead centre */
+  padding:calc(28 * var(--u)) calc(24 * var(--u));
 }
 
-.header .help-link {
-  color: #fff;
-  font-size: 14px;
-  text-decoration: none;
-  opacity: 0.9;
+/* ============ CARD ============ */
+.card{
+  position:relative;
+  width:var(--card-w);
+  max-width:100%;
+  background:var(--card);
+  border-radius:var(--r-card);
+  overflow:hidden;
+  box-shadow:0 calc(10 * var(--u)) calc(34 * var(--u)) rgba(28,60,50,.16);
+  isolation:isolate;
+  animation:rise .5s var(--ease) both;
+}
+@keyframes rise{
+  from{opacity:0;transform:translateY(calc(12 * var(--u)))}
+  to{opacity:1;transform:none}
 }
 
-.page-wrap {
-  max-width: 1140px;
-  margin: 0 auto;
-  padding: 40px 32px;
-  display: flex;
-  gap: 32px;
-  align-items: flex-start;
-  justify-content: center;
+/* --- the signature ribbons ---
+   Each ribbon is two stacked wedges: a pale sage behind a stronger sage.
+   The two edges are NOT parallel — they meet at a single point, the
+   sharp corner of the dark edge, and fan apart towards the far side, so
+   the pale one reads as a sliver pivoting out from under the dark one.
+   Top ribbon pivots at the right; bottom ribbon pivots at the left.
+   The polygons are in %, so they scale with the card for free. */
+.ribbon{position:absolute;left:0;right:0;z-index:0;pointer-events:none}
+.ribbon .band{position:absolute;inset:0}
+
+.ribbon--top{top:0;height:calc(118 * var(--u))}
+.ribbon--top .band--back{                  /* pale, fans out to the left */
+  background:var(--ku-sage-soft);
+  clip-path:polygon(0 0,100% 0,100% 48%,0 84%);
+}
+.ribbon--top .band--front{                 /* dark, pivot at 100% 48% */
+  background:var(--ku-sage);
+  clip-path:polygon(0 0,100% 0,100% 48%,0 72%);
 }
 
-/* Announcements panel (desktop only) */
-.announcements {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 24px;
-  width: 280px;
-  flex-shrink: 0;
+.ribbon--bottom{bottom:0;height:calc(78 * var(--u))}
+.ribbon--bottom .band--back{               /* pale, fans out to the right */
+  background:var(--ku-sage-soft);
+  clip-path:polygon(0 78%,100% 20%,100% 100%,0 100%);
+}
+.ribbon--bottom .band--front{              /* dark, pivot at 0 78% */
+  background:var(--ku-sage);
+  clip-path:polygon(0 78%,100% 48%,100% 100%,0 100%);
 }
 
-.announcements h2 {
-  font-size: 18px;
-  margin: 0 0 16px;
+.card__inner{position:relative;z-index:1}
+
+/* ---- head: the KU mark, sitting on the sage ---- */
+.card__head{
+  height:calc(104 * var(--u));
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(10 * var(--u)) calc(34 * var(--u)) 0;
+}
+/* Drop the mark in as accounts/static/accounts/img/ku-logo.png. Until it
+   exists the alt text stands in, so nothing looks broken. */
+.brand{
+  height:calc(78 * var(--u));width:auto;max-width:72%;
+  object-fit:contain;display:block;
+}
+/* stand-in until the artwork exists; hidden the moment the image loads */
+.brand__text{
+  font-family:var(--font-display);font-weight:800;
+  font-size:calc(30 * var(--u));letter-spacing:.03em;line-height:1;
+  color:#1F3A32;
+  border-bottom:calc(4 * var(--u)) solid #C9D64B;
+  padding-bottom:calc(4 * var(--u));
+}
+.brand + .brand__text{display:none}
+
+.card__body{padding:calc(4 * var(--u)) calc(34 * var(--u)) calc(84 * var(--u))}
+
+.card__body h1{
+  margin:0 0 calc(24 * var(--u));
+  text-align:center;
+  font-family:var(--font-display);
+  font-size:calc(21 * var(--u));font-weight:700;letter-spacing:-.01em;
+  color:var(--ink);
 }
 
-.announcements h3 {
-  font-size: 13px;
-  font-weight: 600;
-  margin: 0 0 16px;
+/* ---- fields ---- */
+.field{margin-bottom:calc(15 * var(--u))}
+/* the design uses placeholders; a screen reader still needs the name */
+.field label{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;
+}
+.control{position:relative;display:flex;align-items:center}
+.control input{
+  width:100%;
+  font-family:var(--font-ui);
+  font-size:calc(15 * var(--u));
+  color:var(--ink);
+  background:var(--field);
+  border:1px solid var(--field-line);
+  border-radius:var(--r-field);
+  padding:calc(14 * var(--u)) calc(16 * var(--u));
+  transition:border-color .16s var(--ease),background .16s var(--ease),box-shadow .16s var(--ease);
+}
+.control input::placeholder{color:#909D9C}
+.control input:hover{border-color:#D6DDD6}
+.control input:focus{
+  outline:none;
+  border-color:var(--ku-sage);
+  background:#fff;
+  box-shadow:0 0 0 calc(3 * var(--u)) rgba(111,168,144,.26);
+}
+.control--pw input{padding-right:calc(64 * var(--u))}
+
+.field.is-invalid .control input{border-color:var(--danger-line);background:#FFF7F7}
+.field.is-invalid .control input:focus{box-shadow:0 0 0 calc(3 * var(--u)) rgba(226,162,162,.35)}
+.field.is-valid .control input{border-color:#C3DDCE}
+.msg{
+  display:none;
+  margin:calc(6 * var(--u)) 0 0;
+  font-size:calc(12.5 * var(--u));color:var(--danger);
+}
+.field.is-invalid .msg{display:block}
+
+.reveal{
+  position:absolute;right:calc(14 * var(--u));
+  background:none;border:0;padding:calc(5 * var(--u));
+  font-family:var(--font-ui);font-size:calc(13.5 * var(--u));font-weight:500;
+  color:var(--ink-muted);cursor:pointer;
+  border-radius:calc(6 * var(--u));
+  transition:color .16s var(--ease);
+}
+.reveal:hover{color:var(--ku-green-800)}
+.reveal:focus-visible{outline:2px solid var(--ku-sage);outline-offset:2px}
+
+/* ---- the small right-aligned link rows ---- */
+.linkrow{
+  display:flex;justify-content:flex-end;
+  margin:calc(9 * var(--u)) 0 calc(20 * var(--u));
+  font-size:calc(12.5 * var(--u));color:var(--ink-soft);
+  gap:calc(4 * var(--u));
+}
+.linkrow a{color:var(--ku-green-800);text-decoration:none;font-weight:600}
+.linkrow a:hover{text-decoration:underline}
+.linkrow a:focus-visible{outline:2px solid var(--ku-sage);outline-offset:2px;border-radius:calc(4 * var(--u))}
+.linkrow--after{margin:calc(13 * var(--u)) 0 0}
+.linkrow--help a{color:var(--ink-soft);font-weight:500}
+
+/* ---- buttons ---- */
+.btn{
+  position:relative;
+  width:100%;
+  display:inline-flex;align-items:center;justify-content:center;gap:calc(10 * var(--u));
+  font-family:var(--font-ui);
+  font-size:calc(15.5 * var(--u));font-weight:700;
+  border-radius:var(--r-field);
+  padding:calc(15 * var(--u));
+  cursor:pointer;
+  border:1px solid transparent;
+  text-decoration:none;          /* it is sometimes an <a> */
+  transition:background .16s var(--ease),transform .12s var(--ease),box-shadow .16s var(--ease);
+}
+.btn--primary{background:var(--ku-green-800);color:#fff}
+.btn--primary:hover{background:#24463C;box-shadow:0 calc(4 * var(--u)) calc(14 * var(--u)) rgba(28,60,50,.22)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:3px}
+.btn[disabled]{cursor:not-allowed;opacity:.72}
+
+.btn.is-busy{pointer-events:none}
+.btn .spin{
+  width:calc(15 * var(--u));height:calc(15 * var(--u));
+  border:calc(2 * var(--u)) solid rgba(255,255,255,.45);
+  border-top-color:#fff;border-radius:50%;
+  display:none;animation:spin .7s linear infinite;
+}
+.btn.is-busy .spin{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.or{
+  display:flex;align-items:center;gap:calc(14 * var(--u));
+  margin:calc(20 * var(--u)) 0 calc(16 * var(--u));
+  color:var(--ink-muted);font-size:calc(12.5 * var(--u));
+}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--hairline)}
+
+/* ---- the round Google button ---- */
+.oauth{display:flex;justify-content:center}
+.oauth__btn{
+  width:calc(38 * var(--u));height:calc(38 * var(--u));
+  display:grid;place-items:center;
+  background:#fff;
+  border:1px solid var(--hairline);
+  border-radius:50%;
+  cursor:pointer;padding:0;
+  box-shadow:0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(28,60,50,.10);
+  transition:box-shadow .16s var(--ease),transform .12s var(--ease);
+}
+.oauth__btn:hover{box-shadow:0 calc(4 * var(--u)) calc(12 * var(--u)) rgba(28,60,50,.16)}
+.oauth__btn:active{transform:translateY(1px)}
+.oauth__btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:3px}
+/* Drop the official mark in as accounts/static/accounts/img/google.svg.
+   Until then the letter below stands in. */
+.oauth__btn img{width:calc(19 * var(--u));height:calc(19 * var(--u));display:block}
+/* the letter is only a stand-in: if the real mark loads, hide it */
+.oauth__btn img + .glyph{display:none}
+.oauth__btn .glyph{
+  font-family:var(--font-display);font-weight:800;
+  font-size:calc(19 * var(--u));line-height:1;color:#4285F4;
 }
 
-.announcement-item {
-  margin-bottom: 18px;
+.alert{
+  background:var(--danger-bg);border:1px solid var(--danger-line);color:var(--danger);
+  border-radius:calc(8 * var(--u));
+  padding:calc(10 * var(--u)) calc(14 * var(--u));
+  font-size:calc(13 * var(--u));
+  margin-bottom:calc(14 * var(--u));
 }
 
-.announcement-item p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.4;
+/* ============ REGISTER BITS ============ */
+.field-row{display:flex;gap:calc(12 * var(--u))}
+.field-row .field{flex:1;min-width:0}
+
+.hint{font-size:calc(12 * var(--u));color:var(--ink-muted);margin:calc(5 * var(--u)) 0 0}
+
+.dept{margin:0 0 calc(13 * var(--u))}
+.dept__label{
+  display:block;margin-bottom:calc(6 * var(--u));
+  font-size:calc(13 * var(--u));font-weight:700;color:var(--ink);
+}
+.dept__option{
+  display:flex;align-items:center;gap:calc(8 * var(--u));
+  font-size:calc(13.5 * var(--u));color:var(--ink-soft);font-weight:600;
+  padding:calc(4 * var(--u)) calc(6 * var(--u));
+  border-radius:calc(6 * var(--u));
+  cursor:pointer;
+  transition:background .14s var(--ease);
+}
+.dept__option:hover{background:#E7EBE6}
+.dept__option input{
+  accent-color:var(--ku-green-800);
+  width:calc(14 * var(--u));height:calc(14 * var(--u));flex:none;
 }
 
-.announcement-item span {
-  color: var(--text-muted);
-  font-size: 11px;
+/* stays out of the way until there is something to measure, so the
+   resting form matches the design */
+.meter{display:flex;gap:calc(5 * var(--u));margin-top:calc(9 * var(--u))}
+.meter[data-score="0"]{display:none}
+.meter span{
+  flex:1;height:calc(3.5 * var(--u));border-radius:calc(3 * var(--u));
+  background:var(--hairline);transition:background .2s var(--ease);
+}
+.meter[data-score="1"] span:nth-child(-n+1){background:#D98A8A}
+.meter[data-score="2"] span:nth-child(-n+2){background:#E0B473}
+.meter[data-score="3"] span:nth-child(-n+3){background:#93C0A6}
+.meter[data-score="4"] span{background:var(--ok)}
+
+/* ============ DASHBOARD ============ */
+.welcome{
+  font-size:calc(14.5 * var(--u));line-height:1.75;
+  color:var(--ink-soft);margin:0 0 calc(20 * var(--u));text-align:center;
+}
+.welcome strong{color:var(--ink);font-weight:600}
+
+
+/* ============ "HAVING PROBLEMS?" SHEET ============ */
+.linkbtn{
+  background:none;border:0;padding:0;
+  font-family:var(--font-ui);font-size:inherit;
+  color:var(--ink-soft);font-weight:500;
+  cursor:pointer;text-decoration:none;
+}
+.linkbtn:hover{text-decoration:underline;color:var(--ku-green-800)}
+.linkbtn:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px;border-radius:calc(4 * var(--u))}
+
+.sheet{
+  border:0;padding:calc(18 * var(--u));
+  width:calc(300 * var(--u));max-width:calc(100vw - 32px);
+  background:#DCE3E0;
+  border-radius:calc(14 * var(--u));
+  box-shadow:0 calc(16 * var(--u)) calc(44 * var(--u)) rgba(28,60,50,.28);
+  color:var(--ink);
+}
+.sheet::backdrop{background:rgba(24,40,36,.42)}
+
+/* tween up on open. Keyframes rather than @starting-style so this works in
+   every browser that supports <dialog>; the reduced-motion rule at the foot
+   of this file turns it off for anyone who asks. */
+.sheet[open]{animation:sheetIn .24s var(--ease) both}
+.sheet[open]::backdrop{animation:backdropIn .24s var(--ease) both}
+@keyframes sheetIn{
+  from{opacity:0;transform:translateY(calc(18 * var(--u))) scale(.96)}
+  to{opacity:1;transform:none}
+}
+@keyframes backdropIn{from{opacity:0}to{opacity:1}}
+.sheet__head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:calc(12 * var(--u));margin-bottom:calc(14 * var(--u));
+}
+.sheet__head h2{
+  margin:0;
+  font-family:var(--font-display);
+  font-size:calc(18 * var(--u));font-weight:800;
+  color:#4A5C68;
+}
+.sheet__x{
+  background:none;border:0;padding:0 calc(2 * var(--u));
+  font-size:calc(20 * var(--u));line-height:1;
+  color:#6B7B85;cursor:pointer;
+}
+.sheet__x:hover{color:var(--ink)}
+.sheet__x:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px;border-radius:calc(4 * var(--u))}
+.sheet__item{
+  display:block;
+  background:#fff;
+  border:1px solid #D3DAD7;
+  border-radius:calc(9 * var(--u));
+  padding:calc(13 * var(--u)) calc(16 * var(--u));
+  margin-bottom:calc(10 * var(--u));
+  color:#5A6B74;text-decoration:none;
+  font-size:calc(14.5 * var(--u));font-weight:500;
+  transition:background .14s var(--ease),border-color .14s var(--ease),color .14s var(--ease);
+}
+.sheet__item:last-child{margin-bottom:0}
+.sheet__item:hover{background:#F4F7F5;border-color:var(--ku-sage);color:var(--ku-green-800)}
+.sheet__item:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+
+/* ============ FORGOT PASSWORD / FAQ ============ */
+.lede{
+  margin:0 0 calc(18 * var(--u));
+  font-size:calc(13.5 * var(--u));line-height:1.6;
+  color:var(--ink-soft);text-align:center;
+}
+.card--wide{width:calc(500 * var(--u))}
+
+.faq{margin-bottom:calc(20 * var(--u))}
+.faq__item{border-bottom:1px solid var(--hairline)}
+.faq__item:last-child{border-bottom:0}
+.faq__q{
+  display:block;width:100%;text-align:left;
+  background:none;border:0;cursor:pointer;
+  padding:calc(12 * var(--u)) calc(24 * var(--u)) calc(12 * var(--u)) 0;
+  font-family:var(--font-ui);
+  font-size:calc(14 * var(--u));font-weight:700;color:var(--ink);
+  position:relative;
+}
+.faq__q::after{
+  content:"";position:absolute;right:calc(6 * var(--u));top:50%;
+  width:calc(7 * var(--u));height:calc(7 * var(--u));
+  border-right:calc(2 * var(--u)) solid var(--ink-muted);
+  border-bottom:calc(2 * var(--u)) solid var(--ink-muted);
+  transform:translateY(-70%) rotate(45deg);
+  transition:transform .22s var(--ease);
+}
+.faq__q[aria-expanded="true"]::after{transform:translateY(-30%) rotate(-135deg)}
+.faq__q:hover{color:var(--ku-green-800)}
+.faq__q:focus-visible{outline:2px solid var(--ku-sage);outline-offset:2px;border-radius:calc(4 * var(--u))}
+/* grid-rows 0fr -> 1fr animates from nothing to the answer's own height */
+.faq__a{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s var(--ease)}
+.faq__q[aria-expanded="true"] + .faq__a{grid-template-rows:1fr}
+.faq__a > div{overflow:hidden}
+.faq__a p{
+  margin:0 0 calc(12 * var(--u));
+  font-size:calc(13.5 * var(--u));line-height:1.6;color:var(--ink-soft);
+}
+.faq__a a{color:var(--ku-green-800);font-weight:600}
+
+/* ============ RESPONSIVE ============
+   The card is sized to sit inside the window, so Sign In never scrolls on
+   a desktop. Below 720px the card takes the width of the screen. */
+@media (max-width:720px){
+  :root{--u:1px}
+  /* Narrower than the screen and with real gutters, so it still reads as a
+     card rather than a full-bleed sheet, and the decorative padding comes
+     down so it is not stretched tall either. Type stays at 16px: shrinking
+     it to keep the desktop proportions would trade legibility for looks,
+     and iOS zooms the page on focus below 16px anyway. */
+  .card{width:100%;max-width:340px;border-radius:14px}
+  .card--wide{width:100%;max-width:400px}
+  .sheet{width:300px}
+  .topbar{padding:16px 20px}
+  .topbar__logo{font-size:20px;border-bottom-width:2px}
+  .topbar__help{font-size:14px}
+  .stage{padding:24px 20px 36px;align-items:start}
+  .card__head{height:88px}
+  .brand{height:62px}
+  .ribbon--top{height:100px}
+  .ribbon--bottom{height:60px}
+  .card__body{padding:4px 22px 54px}
+  .card__body h1{font-size:19px;margin-bottom:18px}
+  .field{margin-bottom:12px}
+  /* 16px keeps iOS from zooming the page on focus */
+  .control input{font-size:16px;padding:13px 15px}
+  .control--pw input{padding-right:70px}
+  .reveal{font-size:14px}
+  .btn{font-size:16px;padding:14px}
+  .linkrow,.hint,.msg,.or{font-size:13px}
+  .linkrow{margin:8px 0 16px}
+  .or{margin:16px 0 12px}
+  .field-row{flex-direction:column;gap:0}
 }
 
-/* Card */
-.auth-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-  width: 100%;
-  max-width: 420px;
-  padding: 32px 36px;
+@media (pointer:coarse){
+  .reveal{min-height:44px;display:flex;align-items:center}
 }
 
-.auth-card.register {
-  max-width: 480px;
-}
-
-.auth-card h1 {
-  font-size: 22px;
-  margin: 0 0 20px;
-}
-
-.tabs {
-  display: flex;
-  gap: 24px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 24px;
-}
-
-.tabs a {
-  text-decoration: none;
-  font-size: 15px;
-  color: var(--text-muted);
-  padding-bottom: 10px;
-  display: inline-block;
-}
-
-.tabs a.active {
-  color: var(--teal-dark);
-  font-weight: 600;
-  border-bottom: 2px solid var(--teal-dark);
-}
-
-.section-label {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0 0 16px;
-}
-
-.field {
-  margin-bottom: 14px;
-}
-
-.field-row {
-  display: flex;
-  gap: 12px;
-}
-
-.field-row .field {
-  flex: 1;
-}
-
-.field label {
-  display: none; /* placeholder-driven inputs, matching the design */
-}
-
-.field input[type="text"],
-.field input[type="email"],
-.field input[type="password"] {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--field-bg);
-  font-size: 14px;
-  color: var(--text-dark);
-}
-
-.field input:focus {
-  outline: none;
-  border-color: var(--teal-mid);
-  background: #fff;
-}
-
-.field-hint {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 4px;
-}
-
-.field-error {
-  font-size: 12px;
-  color: var(--accent-red);
-  margin-top: 4px;
-}
-
-.password-field {
-  position: relative;
-}
-
-.password-field .toggle-show {
-  position: absolute;
-  right: 14px;
-  top: 12px;
-  font-size: 12px;
-  color: var(--text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-}
-
-.row-between {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 18px;
-}
-
-.row-between a {
-  font-size: 12px;
-  color: var(--teal-dark);
-  text-decoration: none;
-}
-
-.department-group {
-  margin-bottom: 14px;
-}
-
-.department-group .label {
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  display: block;
-}
-
-.department-option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  margin-bottom: 6px;
-}
-
-.btn-primary {
-  width: 100%;
-  background: var(--teal-dark);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 14px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: 6px;
-}
-
-.btn-primary:hover {
-  background: #0a4b43;
-}
-
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 20px 0;
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.divider::before,
-.divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
-}
-
-.btn-google {
-  width: 100%;
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 13px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-dark);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.btn-google:hover {
-  background: var(--bg-lighter);
-}
-
-.top-error {
-  background: #FCEAEA;
-  color: var(--accent-red);
-  border: 1px solid var(--accent-red);
-  border-radius: 6px;
-  padding: 10px 14px;
-  font-size: 13px;
-  margin-bottom: 16px;
-}
-
-.mobile-brand {
-  display: none;
-}
-
-/* ---- Mobile layout ---- */
-@media (max-width: 900px) {
-  .page-wrap {
-    flex-direction: column;
-    align-items: center;
-    padding: 0 0 40px;
-  }
-
-  .announcements {
-    display: none;
-  }
-
-  .mobile-brand {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    background: var(--bg-lighter);
-    width: 100%;
-    padding: 32px 24px;
-  }
-
-  .mobile-brand .badge {
-    background: var(--teal-dark);
-    color: #fff;
-    font-weight: 700;
-    font-size: 12px;
-    padding: 6px 10px;
-    border-radius: 6px;
-    margin-bottom: 10px;
-  }
-
-  .mobile-brand h1 {
-    font-size: 22px;
-    margin: 0;
-  }
-
-  .auth-card {
-    max-width: 92%;
-    margin-top: -20px;
-    border-radius: 12px;
-  }
-
-  .auth-card.register {
-    max-width: 92%;
-  }
-
-  .field-row {
-    flex-direction: column;
-    gap: 0;
-  }
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
 }

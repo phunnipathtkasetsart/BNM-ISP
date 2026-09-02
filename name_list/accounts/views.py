@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from .forms import LoginForm, RegisterForm
+from .forms import ForgotPasswordForm, LoginForm, RegisterForm
 
 
 def login_view(request):
@@ -48,3 +48,29 @@ def dashboard_view(request):
 def logout_view(request):
     logout(request)
     return redirect("accounts:login")
+
+
+def forgot_password_view(request):
+    """The 'Forgot password?' page behind Having Problems?.
+
+    The form validates the address, but nothing is emailed yet: that needs an
+    email backend in settings.py (and, for real resets, Django's
+    PasswordResetConfirmView on the other end). Until then this confirms the
+    request without claiming a message was sent.
+    """
+    submitted = False
+    form = ForgotPasswordForm(request.POST or None)
+
+    if request.method == "POST" and form.is_valid():
+        submitted = True
+        form = ForgotPasswordForm()
+
+    return render(
+        request,
+        "accounts/forgot_password.html",
+        {"form": form, "submitted": submitted},
+    )
+
+
+def faq_view(request):
+    return render(request, "accounts/faq.html")
