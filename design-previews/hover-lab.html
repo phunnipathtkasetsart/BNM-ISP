@@ -46,6 +46,7 @@ section{background:var(--card);border:1px solid var(--hairline);border-radius:14
 .stack{display:flex;flex-direction:column;gap:12px;width:300px}
 kbd{font:600 11px var(--font-ui);background:#fff;border:1px solid var(--hairline);border-radius:5px;padding:2px 6px;color:var(--ink-soft)}
 code{font:600 12px ui-monospace,Menlo,Consolas,monospace;background:#fff;border:1px solid var(--hairline);border-radius:4px;padding:1px 5px}
+.tag{display:inline-block;vertical-align:2px;margin-left:8px;font:700 10.5px var(--font-ui);letter-spacing:.04em;text-transform:uppercase;color:#fff;background:var(--ku-sage);border-radius:20px;padding:3px 9px}
 
 /* ---- the components, matching the real stylesheet ---- */
 .btn{
@@ -100,18 +101,23 @@ code{font:600 12px ui-monospace,Menlo,Consolas,monospace;background:#fff;border:
 .fx-sweep:hover::after, .fx-sweep:focus-within::after {transform:translateX(150%);transition-delay:.05s}
 
 /* ==========================================================
-   B - WEDGE.  The ribbon slides in from the left and STAYS
-   while hovered, then retreats. Closest to the card corners.
+   B - WEDGE.  Enters from the RIGHT and stays while hovered,
+   then retreats. The wedge is widest along the BOTTOM edge:
+   each polygon reaches further left at 100% than at 0, so the
+   diagonal leans back and the mass sits low. This matches the
+   bottom ribbon on the card, which also pivots low and wide.
+   Buttons only - on a text field the wedge slides under what
+   you are typing, which is distracting.
    ========================================================== */
 .fx-wedge::before,.fx-wedge::after{
   content:"";position:absolute;inset:-2px;z-index:1;pointer-events:none;
-  transform:translateX(-100%);
+  transform:translateX(100%);
   transition:transform .42s var(--ease);
 }
-.fx-wedge::before{background:var(--sw-back); clip-path:polygon(0 0,52% 0,30% 100%,0 100%)}
-.fx-wedge::after {background:var(--sw-front);clip-path:polygon(0 0,38% 0,16% 100%,0 100%)}
-.fx-wedge:hover::before,.fx-wedge:focus-within::before{transform:translateX(0)}
-.fx-wedge:hover::after, .fx-wedge:focus-within::after {transform:translateX(0);transition-delay:.07s}
+.fx-wedge::before{background:var(--sw-back); clip-path:polygon(70% 0,100% 0,100% 100%,48% 100%)}
+.fx-wedge::after {background:var(--sw-front);clip-path:polygon(84% 0,100% 0,100% 100%,62% 100%)}
+.fx-wedge:hover::before,.fx-wedge:focus-visible::before{transform:translateX(0)}
+.fx-wedge:hover::after, .fx-wedge:focus-visible::after {transform:translateX(0);transition-delay:.07s}
 
 /* ==========================================================
    C - EDGE.  Two hairlines draw in along the bottom, one
@@ -161,19 +167,23 @@ code{font:600 12px ui-monospace,Menlo,Consolas,monospace;background:#fff;border:
   </section>
 
   <section>
-    <h2>B &mdash; Wedge</h2>
-    <p class="note">The ribbon slides in from the left and stays for as long
-    as the pointer is inside, then retreats. This is the closest match to the
-    card&rsquo;s own corners &mdash; it looks like the ribbon reaching into
-    the control.</p>
+    <h2>B &mdash; Wedge <span class="tag">chosen &mdash; buttons only</span></h2>
+    <p class="note">Enters from the <strong>right</strong> and stays for as
+    long as the pointer is inside, then retreats. The wedge is widest along
+    the <strong>bottom</strong> edge, so the diagonal leans back and the mass
+    sits low &mdash; the same way the bottom ribbon on the card pivots low and
+    wide.</p>
+    <p class="note">Applied to buttons only. The field and tile below are
+    deliberately left plain: a wedge sliding under text you are typing pulls
+    the eye away from the caret.</p>
     <div class="demo">
       <div class="stack">
-        <div class="control fx-wedge"><input placeholder="Nisit ID"></div>
         <a class="btn btn--primary fx-wedge"><span>Sign In</span></a>
         <a class="btn btn--ghost fx-wedge"><span>Create account</span></a>
+        <div class="control"><input placeholder="Nisit ID (no effect)"></div>
       </div>
-      <div class="tile fx-wedge"><h3>Card tile</h3><p>Holds its position
-      while you stay on it.</p></div>
+      <div class="tile"><h3>Card tile</h3><p>No effect &mdash; buttons
+      only.</p></div>
     </div>
   </section>
 
