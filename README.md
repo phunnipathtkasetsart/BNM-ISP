@@ -95,7 +95,7 @@ Once the initial onboarding is complete, use these commands for everyday develop
 ### Start the App
 
 ```bash
-docker compose up
+docker compose up -d
 ```
 
 ### Stop the App
@@ -103,7 +103,7 @@ docker compose up
 Press `Ctrl + C` in the running terminal, or open a new terminal and run:
 
 ```bash
-docker compose down
+docker compose down -v
 ```
 
 ### Add New Python Packages
