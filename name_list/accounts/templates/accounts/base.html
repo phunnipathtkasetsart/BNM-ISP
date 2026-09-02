@@ -15,9 +15,9 @@
 
 <a class="skip" href="#main">Skip to content</a>
 
-{# Campus photo at 20% opacity over the mint ground. Drop the file in as
+{% comment %} Campus photo at 20% opacity over the mint ground. Drop the file in as
    accounts/static/accounts/img/ku-campus.jpg and it shows up here; until
-   then the page is flat mint and nothing looks broken. #}
+   then the page is flat mint and nothing looks broken. {% endcomment %}
 <div class="bg" aria-hidden="true">
   <div class="bg-photo" style="background-image:url('{% static "accounts/img/ku-campus.jpg" %}');"></div>
 </div>
