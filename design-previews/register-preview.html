@@ -1,0 +1,838 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- Static preview generated from the real templates + stylesheet. The forms
+     do not post anywhere, but the password toggle, the Nisit ID digit filter,
+     the inline validation, the "Having Problems?" sheet and the FAQ accordion
+     all work. Images are loaded straight out of the Django app by relative
+     path, so keep this file in design-previews/ next to name_list/.
+     Source of truth is name_list/accounts/templates/ - see README.md. -->
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#2E5248">
+<title>Register — KU Student Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ====================================================================
+   KU Student Portal — one centred card over a washed-out campus photo.
+
+   Sizes are written in --u, "one pixel of the design", so the whole page
+   is the same picture at any window size and never needs scrolling on a
+   desktop. See the note on --u below.
+   ==================================================================== */
+
+:root{
+  /* ---- palette ---- */
+  --ku-green-900:#2E5248;   /* top bar */
+  --ku-green-800:#2C5449;   /* primary button, links */
+  --ku-sage:#6FA890;        /* ribbon, card head */
+  --ku-sage-soft:#A9CDBB;   /* the lighter half of each ribbon */
+  --ku-mint:#DEEDE7;        /* page ground, behind the photo */
+
+  --card:#F0F2EF;           /* card surface */
+  --field:#F8F9F7;
+  --ink:#22303A;
+  --ink-soft:#3F5158;
+  --ink-muted:#7B8A90;
+  --hairline:#DFE4DF;
+  --field-line:#E4E8E3;
+  --danger:#9B3131;
+  --danger-line:#E2A2A2;
+  --danger-bg:#FCEDED;
+  --ok:#2C7A5B;
+
+  /* One design pixel. The page is a single centred card, so its size is
+     driven by window HEIGHT alone — that is the only axis that can force
+     scrolling. There is deliberately no width term: on a narrow-but-tall
+     window there is plenty of room, and scaling on width there just made
+     the type small for no reason. The floor keeps text readable on short
+     windows (Register then scrolls, which is the right trade); the cap
+     stops the card ballooning on a very tall display. */
+  --u:clamp(0.95px, 0.099vh, 1.25px);
+
+  --card-w:calc(440 * var(--u));
+  --r-card:calc(14 * var(--u));
+  --r-field:calc(8 * var(--u));
+  --ease:cubic-bezier(.22,.61,.36,1);
+
+  --font-display:"Plus Jakarta Sans", system-ui, sans-serif;
+  --font-ui:"Public Sans", system-ui, -apple-system, sans-serif;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--font-ui);
+  color:var(--ink);
+  background:var(--ku-mint);
+  min-height:100svh;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+}
+
+/* skip link, for keyboard users */
+.skip{
+  position:absolute;left:calc(40 * var(--u));top:calc(-200 * var(--u));
+  z-index:20;background:#fff;color:var(--ku-green-800);
+  padding:calc(10 * var(--u)) calc(16 * var(--u));
+  border-radius:var(--r-field);font-weight:700;font-size:calc(15 * var(--u));
+  text-decoration:none;transition:top .18s var(--ease);
+}
+.skip:focus{top:calc(14 * var(--u))}
+
+/* ============ BACKGROUND ============
+   The campus photo sits at 20% opacity over the mint ground. Drop the
+   file in as ../name_list/accounts/static/accounts/img/ku-campus.jpg and it appears —
+   until then the page is simply flat mint, which is also fine. */
+.bg{position:fixed;inset:0;z-index:0;background:var(--ku-mint);overflow:hidden}
+.bg-photo{
+  position:absolute;inset:0;
+  background-size:cover;
+  background-position:center;
+  opacity:.20;
+}
+
+/* ============ TOP BAR ============ */
+.topbar{
+  position:relative;z-index:5;
+  background:var(--ku-green-900);
+  color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:calc(20 * var(--u));
+  padding:calc(26 * var(--u)) calc(40 * var(--u));
+}
+.topbar__logo{
+  font-family:var(--font-display);
+  font-weight:800;font-size:calc(25 * var(--u));letter-spacing:.04em;
+  border-bottom:calc(3 * var(--u)) solid var(--ku-sage);
+  padding-bottom:calc(3 * var(--u));line-height:1;
+  text-decoration:none;color:#fff;
+}
+.topbar__help{
+  color:#EAF3F0;text-decoration:none;
+  font-size:calc(16 * var(--u));font-weight:500;
+  padding:calc(6 * var(--u)) calc(4 * var(--u));border-radius:calc(6 * var(--u));
+}
+.topbar__help:hover{text-decoration:underline}
+.topbar__help:focus-visible,.topbar__logo:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
+/* ============ STAGE ============ */
+.stage{
+  position:relative;z-index:4;
+  flex:1;
+  display:grid;
+  place-items:center;                     /* the card sits dead centre */
+  padding:calc(28 * var(--u)) calc(24 * var(--u));
+}
+
+/* ============ CARD ============ */
+.card{
+  position:relative;
+  width:var(--card-w);
+  max-width:100%;
+  background:var(--card);
+  border-radius:var(--r-card);
+  overflow:hidden;
+  box-shadow:0 calc(10 * var(--u)) calc(34 * var(--u)) rgba(28,60,50,.16);
+  isolation:isolate;
+  animation:rise .5s var(--ease) both;
+}
+@keyframes rise{
+  from{opacity:0;transform:translateY(calc(12 * var(--u)))}
+  to{opacity:1;transform:none}
+}
+
+/* --- the signature ribbons ---
+   Each ribbon is two stacked wedges: a pale sage behind a stronger sage.
+   The two edges are NOT parallel — they meet at a single point, the
+   sharp corner of the dark edge, and fan apart towards the far side, so
+   the pale one reads as a sliver pivoting out from under the dark one.
+   Top ribbon pivots at the right; bottom ribbon pivots at the left.
+   The polygons are in %, so they scale with the card for free. */
+.ribbon{position:absolute;left:0;right:0;z-index:0;pointer-events:none}
+.ribbon .band{position:absolute;inset:0}
+
+.ribbon--top{top:0;height:calc(118 * var(--u))}
+.ribbon--top .band--back{                  /* pale, fans out to the left */
+  background:var(--ku-sage-soft);
+  clip-path:polygon(0 0,100% 0,100% 48%,0 84%);
+}
+.ribbon--top .band--front{                 /* dark, pivot at 100% 48% */
+  background:var(--ku-sage);
+  clip-path:polygon(0 0,100% 0,100% 48%,0 72%);
+}
+
+.ribbon--bottom{bottom:0;height:calc(78 * var(--u))}
+.ribbon--bottom .band--back{               /* pale, fans out to the right */
+  background:var(--ku-sage-soft);
+  clip-path:polygon(0 78%,100% 20%,100% 100%,0 100%);
+}
+.ribbon--bottom .band--front{              /* dark, pivot at 0 78% */
+  background:var(--ku-sage);
+  clip-path:polygon(0 78%,100% 48%,100% 100%,0 100%);
+}
+
+.card__inner{position:relative;z-index:1}
+
+/* ---- head: the KU mark, sitting on the sage ---- */
+.card__head{
+  height:calc(104 * var(--u));
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(10 * var(--u)) calc(34 * var(--u)) 0;
+}
+/* Drop the mark in as ../name_list/accounts/static/accounts/img/ku-logo.png. Until it
+   exists the alt text stands in, so nothing looks broken. */
+.brand{
+  height:calc(78 * var(--u));width:auto;max-width:72%;
+  object-fit:contain;display:block;
+}
+/* stand-in until the artwork exists; hidden the moment the image loads */
+.brand__text{
+  font-family:var(--font-display);font-weight:800;
+  font-size:calc(30 * var(--u));letter-spacing:.03em;line-height:1;
+  color:#1F3A32;
+  border-bottom:calc(4 * var(--u)) solid #C9D64B;
+  padding-bottom:calc(4 * var(--u));
+}
+.brand + .brand__text{display:none}
+
+.card__body{padding:calc(4 * var(--u)) calc(34 * var(--u)) calc(84 * var(--u))}
+
+.card__body h1{
+  margin:0 0 calc(24 * var(--u));
+  text-align:center;
+  font-family:var(--font-display);
+  font-size:calc(21 * var(--u));font-weight:700;letter-spacing:-.01em;
+  color:var(--ink);
+}
+
+/* ---- fields ---- */
+.field{margin-bottom:calc(15 * var(--u))}
+/* the design uses placeholders; a screen reader still needs the name */
+.field label{
+  position:absolute;width:1px;height:1px;overflow:hidden;
+  clip:rect(0 0 0 0);white-space:nowrap;
+}
+.control{position:relative;display:flex;align-items:center}
+.control input{
+  width:100%;
+  font-family:var(--font-ui);
+  font-size:calc(15 * var(--u));
+  color:var(--ink);
+  background:var(--field);
+  border:1px solid var(--field-line);
+  border-radius:var(--r-field);
+  padding:calc(14 * var(--u)) calc(16 * var(--u));
+  transition:border-color .16s var(--ease),background .16s var(--ease),box-shadow .16s var(--ease);
+}
+.control input::placeholder{color:#909D9C}
+.control input:hover{border-color:#D6DDD6}
+.control input:focus{
+  outline:none;
+  border-color:var(--ku-sage);
+  background:#fff;
+  box-shadow:0 0 0 calc(3 * var(--u)) rgba(111,168,144,.26);
+}
+.control--pw input{padding-right:calc(64 * var(--u))}
+
+.field.is-invalid .control input{border-color:var(--danger-line);background:#FFF7F7}
+.field.is-invalid .control input:focus{box-shadow:0 0 0 calc(3 * var(--u)) rgba(226,162,162,.35)}
+.field.is-valid .control input{border-color:#C3DDCE}
+.msg{
+  display:none;
+  margin:calc(6 * var(--u)) 0 0;
+  font-size:calc(12.5 * var(--u));color:var(--danger);
+}
+.field.is-invalid .msg{display:block}
+
+.reveal{
+  position:absolute;right:calc(14 * var(--u));
+  background:none;border:0;padding:calc(5 * var(--u));
+  font-family:var(--font-ui);font-size:calc(13.5 * var(--u));font-weight:500;
+  color:var(--ink-muted);cursor:pointer;
+  border-radius:calc(6 * var(--u));
+  transition:color .16s var(--ease);
+}
+.reveal:hover{color:var(--ku-green-800)}
+.reveal:focus-visible{outline:2px solid var(--ku-sage);outline-offset:2px}
+
+/* ---- the small right-aligned link rows ---- */
+.linkrow{
+  display:flex;justify-content:flex-end;
+  margin:calc(9 * var(--u)) 0 calc(20 * var(--u));
+  font-size:calc(12.5 * var(--u));color:var(--ink-soft);
+  gap:calc(4 * var(--u));
+}
+.linkrow a{color:var(--ku-green-800);text-decoration:none;font-weight:600}
+.linkrow a:hover{text-decoration:underline}
+.linkrow a:focus-visible{outline:2px solid var(--ku-sage);outline-offset:2px;border-radius:calc(4 * var(--u))}
+.linkrow--after{margin:calc(13 * var(--u)) 0 0}
+.linkrow--help a{color:var(--ink-soft);font-weight:500}
+
+/* ---- buttons ---- */
+.btn{
+  position:relative;
+  width:100%;
+  display:inline-flex;align-items:center;justify-content:center;gap:calc(10 * var(--u));
+  font-family:var(--font-ui);
+  font-size:calc(15.5 * var(--u));font-weight:700;
+  border-radius:var(--r-field);
+  padding:calc(15 * var(--u));
+  cursor:pointer;
+  border:1px solid transparent;
+  text-decoration:none;          /* it is sometimes an <a> */
+  transition:background .16s var(--ease),transform .12s var(--ease),box-shadow .16s var(--ease);
+}
+.btn--primary{background:var(--ku-green-800);color:#fff}
+.btn--primary:hover{background:#24463C;box-shadow:0 calc(4 * var(--u)) calc(14 * var(--u)) rgba(28,60,50,.22)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:3px}
+.btn[disabled]{cursor:not-allowed;opacity:.72}
+
+.btn.is-busy{pointer-events:none}
+.btn .spin{
+  width:calc(15 * var(--u));height:calc(15 * var(--u));
+  border:calc(2 * var(--u)) solid rgba(255,255,255,.45);
+  border-top-color:#fff;border-radius:50%;
+  display:none;animation:spin .7s linear infinite;
+}
+.btn.is-busy .spin{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.or{
+  display:flex;align-items:center;gap:calc(14 * var(--u));
+  margin:calc(20 * var(--u)) 0 calc(16 * var(--u));
+  color:var(--ink-muted);font-size:calc(12.5 * var(--u));
+}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--hairline)}
+
+/* ---- the round Google button ---- */
+.oauth{display:flex;justify-content:center}
+.oauth__btn{
+  width:calc(38 * var(--u));height:calc(38 * var(--u));
+  display:grid;place-items:center;
+  background:#fff;
+  border:1px solid var(--hairline);
+  border-radius:50%;
+  cursor:pointer;padding:0;
+  box-shadow:0 calc(2 * var(--u)) calc(6 * var(--u)) rgba(28,60,50,.10);
+  transition:box-shadow .16s var(--ease),transform .12s var(--ease);
+}
+.oauth__btn:hover{box-shadow:0 calc(4 * var(--u)) calc(12 * var(--u)) rgba(28,60,50,.16)}
+.oauth__btn:active{transform:translateY(1px)}
+.oauth__btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:3px}
+/* Drop the official mark in as ../name_list/accounts/static/accounts/img/google.svg.
+   Until then the letter below stands in. */
+.oauth__btn img{width:calc(19 * var(--u));height:calc(19 * var(--u));display:block}
+/* the letter is only a stand-in: if the real mark loads, hide it */
+.oauth__btn img + .glyph{display:none}
+.oauth__btn .glyph{
+  font-family:var(--font-display);font-weight:800;
+  font-size:calc(19 * var(--u));line-height:1;color:#4285F4;
+}
+
+.alert{
+  background:var(--danger-bg);border:1px solid var(--danger-line);color:var(--danger);
+  border-radius:calc(8 * var(--u));
+  padding:calc(10 * var(--u)) calc(14 * var(--u));
+  font-size:calc(13 * var(--u));
+  margin-bottom:calc(14 * var(--u));
+}
+
+/* ============ REGISTER BITS ============ */
+.field-row{display:flex;gap:calc(12 * var(--u))}
+.field-row .field{flex:1;min-width:0}
+
+.hint{font-size:calc(12 * var(--u));color:var(--ink-muted);margin:calc(5 * var(--u)) 0 0}
+
+.dept{margin:0 0 calc(13 * var(--u))}
+.dept__label{
+  display:block;margin-bottom:calc(6 * var(--u));
+  font-size:calc(13 * var(--u));font-weight:700;color:var(--ink);
+}
+.dept__option{
+  display:flex;align-items:center;gap:calc(8 * var(--u));
+  font-size:calc(13.5 * var(--u));color:var(--ink-soft);font-weight:600;
+  padding:calc(4 * var(--u)) calc(6 * var(--u));
+  border-radius:calc(6 * var(--u));
+  cursor:pointer;
+  transition:background .14s var(--ease);
+}
+.dept__option:hover{background:#E7EBE6}
+.dept__option input{
+  accent-color:var(--ku-green-800);
+  width:calc(14 * var(--u));height:calc(14 * var(--u));flex:none;
+}
+
+/* stays out of the way until there is something to measure, so the
+   resting form matches the design */
+.meter{display:flex;gap:calc(5 * var(--u));margin-top:calc(9 * var(--u))}
+.meter[data-score="0"]{display:none}
+.meter span{
+  flex:1;height:calc(3.5 * var(--u));border-radius:calc(3 * var(--u));
+  background:var(--hairline);transition:background .2s var(--ease);
+}
+.meter[data-score="1"] span:nth-child(-n+1){background:#D98A8A}
+.meter[data-score="2"] span:nth-child(-n+2){background:#E0B473}
+.meter[data-score="3"] span:nth-child(-n+3){background:#93C0A6}
+.meter[data-score="4"] span{background:var(--ok)}
+
+/* ============ DASHBOARD ============ */
+.welcome{
+  font-size:calc(14.5 * var(--u));line-height:1.75;
+  color:var(--ink-soft);margin:0 0 calc(20 * var(--u));text-align:center;
+}
+.welcome strong{color:var(--ink);font-weight:600}
+
+
+/* ============ "HAVING PROBLEMS?" SHEET ============ */
+.linkbtn{
+  background:none;border:0;padding:0;
+  font-family:var(--font-ui);font-size:inherit;
+  color:var(--ink-soft);font-weight:500;
+  cursor:pointer;text-decoration:none;
+}
+.linkbtn:hover{text-decoration:underline;color:var(--ku-green-800)}
+.linkbtn:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px;border-radius:calc(4 * var(--u))}
+
+.sheet{
+  border:0;padding:calc(18 * var(--u));
+  width:calc(300 * var(--u));max-width:calc(100vw - 32px);
+  background:#DCE3E0;
+  border-radius:calc(14 * var(--u));
+  box-shadow:0 calc(16 * var(--u)) calc(44 * var(--u)) rgba(28,60,50,.28);
+  color:var(--ink);
+}
+.sheet::backdrop{background:rgba(24,40,36,.42)}
+
+/* tween up on open. Keyframes rather than @starting-style so this works in
+   every browser that supports <dialog>; the reduced-motion rule at the foot
+   of this file turns it off for anyone who asks. */
+.sheet[open]{animation:sheetIn .24s var(--ease) both}
+.sheet[open]::backdrop{animation:backdropIn .24s var(--ease) both}
+@keyframes sheetIn{
+  from{opacity:0;transform:translateY(calc(18 * var(--u))) scale(.96)}
+  to{opacity:1;transform:none}
+}
+@keyframes backdropIn{from{opacity:0}to{opacity:1}}
+.sheet__head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:calc(12 * var(--u));margin-bottom:calc(14 * var(--u));
+}
+.sheet__head h2{
+  margin:0;
+  font-family:var(--font-display);
+  font-size:calc(18 * var(--u));font-weight:800;
+  color:#4A5C68;
+}
+.sheet__x{
+  background:none;border:0;padding:0 calc(2 * var(--u));
+  font-size:calc(20 * var(--u));line-height:1;
+  color:#6B7B85;cursor:pointer;
+}
+.sheet__x:hover{color:var(--ink)}
+.sheet__x:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px;border-radius:calc(4 * var(--u))}
+.sheet__item{
+  display:block;
+  background:#fff;
+  border:1px solid #D3DAD7;
+  border-radius:calc(9 * var(--u));
+  padding:calc(13 * var(--u)) calc(16 * var(--u));
+  margin-bottom:calc(10 * var(--u));
+  color:#5A6B74;text-decoration:none;
+  font-size:calc(14.5 * var(--u));font-weight:500;
+  transition:background .14s var(--ease),border-color .14s var(--ease),color .14s var(--ease);
+}
+.sheet__item:last-child{margin-bottom:0}
+.sheet__item:hover{background:#F4F7F5;border-color:var(--ku-sage);color:var(--ku-green-800)}
+.sheet__item:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+
+/* ============ FORGOT PASSWORD / FAQ ============ */
+.lede{
+  margin:0 0 calc(18 * var(--u));
+  font-size:calc(13.5 * var(--u));line-height:1.6;
+  color:var(--ink-soft);text-align:center;
+}
+.card--wide{width:calc(500 * var(--u))}
+
+.faq{margin-bottom:calc(20 * var(--u))}
+.faq__item{border-bottom:1px solid var(--hairline)}
+.faq__item:last-child{border-bottom:0}
+.faq__q{
+  display:block;width:100%;text-align:left;
+  background:none;border:0;cursor:pointer;
+  padding:calc(12 * var(--u)) calc(24 * var(--u)) calc(12 * var(--u)) 0;
+  font-family:var(--font-ui);
+  font-size:calc(14 * var(--u));font-weight:700;color:var(--ink);
+  position:relative;
+}
+.faq__q::after{
+  content:"";position:absolute;right:calc(6 * var(--u));top:50%;
+  width:calc(7 * var(--u));height:calc(7 * var(--u));
+  border-right:calc(2 * var(--u)) solid var(--ink-muted);
+  border-bottom:calc(2 * var(--u)) solid var(--ink-muted);
+  transform:translateY(-70%) rotate(45deg);
+  transition:transform .22s var(--ease);
+}
+.faq__q[aria-expanded="true"]::after{transform:translateY(-30%) rotate(-135deg)}
+.faq__q:hover{color:var(--ku-green-800)}
+.faq__q:focus-visible{outline:2px solid var(--ku-sage);outline-offset:2px;border-radius:calc(4 * var(--u))}
+/* grid-rows 0fr -> 1fr animates from nothing to the answer's own height */
+.faq__a{display:grid;grid-template-rows:0fr;transition:grid-template-rows .28s var(--ease)}
+.faq__q[aria-expanded="true"] + .faq__a{grid-template-rows:1fr}
+.faq__a > div{overflow:hidden}
+.faq__a p{
+  margin:0 0 calc(12 * var(--u));
+  font-size:calc(13.5 * var(--u));line-height:1.6;color:var(--ink-soft);
+}
+.faq__a a{color:var(--ku-green-800);font-weight:600}
+
+/* ============ RESPONSIVE ============
+   The card is sized to sit inside the window, so Sign In never scrolls on
+   a desktop. Below 720px the card takes the width of the screen. */
+@media (max-width:720px){
+  :root{--u:1px}
+  /* Narrower than the screen and with real gutters, so it still reads as a
+     card rather than a full-bleed sheet, and the decorative padding comes
+     down so it is not stretched tall either. Type stays at 16px: shrinking
+     it to keep the desktop proportions would trade legibility for looks,
+     and iOS zooms the page on focus below 16px anyway. */
+  .card{width:100%;max-width:340px;border-radius:14px}
+  .card--wide{width:100%;max-width:400px}
+  .sheet{width:300px}
+  .topbar{padding:16px 20px}
+  .topbar__logo{font-size:20px;border-bottom-width:2px}
+  .topbar__help{font-size:14px}
+  .stage{padding:24px 20px 36px;align-items:start}
+  .card__head{height:88px}
+  .brand{height:62px}
+  .ribbon--top{height:100px}
+  .ribbon--bottom{height:60px}
+  .card__body{padding:4px 22px 54px}
+  .card__body h1{font-size:19px;margin-bottom:18px}
+  .field{margin-bottom:12px}
+  /* 16px keeps iOS from zooming the page on focus */
+  .control input{font-size:16px;padding:13px 15px}
+  .control--pw input{padding-right:70px}
+  .reveal{font-size:14px}
+  .btn{font-size:16px;padding:14px}
+  .linkrow,.hint,.msg,.or{font-size:13px}
+  .linkrow{margin:8px 0 16px}
+  .or{margin:16px 0 12px}
+  .field-row{flex-direction:column;gap:0}
+}
+
+@media (pointer:coarse){
+  .reveal{min-height:44px;display:flex;align-items:center}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+
+</style>
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+
+<div class="bg" aria-hidden="true">
+  <div class="bg-photo" style="background-image:url('../name_list/accounts/static/accounts/img/ku-campus.jpg');"></div>
+</div>
+
+<header class="topbar">
+  <a class="topbar__logo" href="login-preview.html">KU</a>
+  <a href="#" class="topbar__help">Help</a>
+</header>
+
+<main class="stage" id="main">
+  
+<section class="card">
+  
+<div class="ribbon ribbon--top" aria-hidden="true">
+  <span class="band band--back"></span>
+  <span class="band band--front"></span>
+</div>
+<div class="ribbon ribbon--bottom" aria-hidden="true">
+  <span class="band band--back"></span>
+  <span class="band band--front"></span>
+</div>
+
+
+  <div class="card__inner">
+    <div class="card__head">
+
+<img class="brand" src="../name_list/accounts/static/accounts/img/ku-logo.png"
+     alt="KU Kasetsart University" onerror="this.remove()">
+<span class="brand__text" aria-hidden="true">KU</span>
+</div>
+
+    <div class="card__body">
+      <h1>Register</h1>
+
+      <form method="post" novalidate data-validate>
+        
+
+        <div class="field-row">
+          <div class="field" data-rule="required">
+            <label for="id_first_name">First name</label>
+            <div class="control"><input type="text" name="first_name" placeholder="First Name" id="id_first_name"></div>
+            <p class="msg"></p>
+            
+          </div>
+          <div class="field" data-rule="required">
+            <label for="id_last_name">Last name</label>
+            <div class="control"><input type="text" name="last_name" placeholder="Last Name" id="id_last_name"></div>
+            <p class="msg"></p>
+            
+          </div>
+        </div>
+
+        <div class="field" data-rule="nisit">
+          <label for="id_nisit_id">Nisit number</label>
+          <div class="control"><input type="text" name="nisit_id" placeholder="Nisit ID" inputmode="numeric" autocomplete="off" maxlength="10" minlength="10" pattern="[0-9]{10}" title="Exactly 10 digits, numbers only." autofocus id="id_nisit_id"></div>
+          <p class="msg"></p>
+          
+        </div>
+
+        <div class="dept">
+          <span class="dept__label">Department</span>
+          <label class="dept__option"><input type="radio" name="department" value="ske" id="id_department_0"> Software & Knowledge Engineering</label>
+<label class="dept__option"><input type="radio" name="department" value="cpe" id="id_department_1"> Computer Engineering</label>
+
+          
+        </div>
+
+        <div class="field" data-rule="kuemail">
+          <label for="id_email">KU email</label>
+          <div class="control"><input type="email" name="email" placeholder="KU Email (@ku.th)" inputmode="email" autocomplete="email" autocapitalize="off" spellcheck="false" pattern="[^@\s]+@ku\.th" title="Your KU address, ending in @ku.th." id="id_email"></div>
+          <p class="msg"></p>
+          
+        </div>
+
+        <div class="field" data-rule="password8">
+          <label for="id_password1">Password</label>
+          <div class="control control--pw">
+            <input type="password" name="password1" placeholder="Password" id="id_password1">
+            <button type="button" class="reveal" data-for="id_password1"
+                    aria-label="Show password" aria-pressed="false">Show</button>
+          </div>
+          <div class="meter" data-for="id_password1" data-score="0" aria-hidden="true">
+            <span></span><span></span><span></span><span></span>
+          </div>
+          <p class="msg"></p>
+          
+        </div>
+
+        <button type="submit" class="btn btn--primary">
+          <span class="spin" aria-hidden="true"></span>
+          <span>Register</span>
+        </button>
+
+        <div class="linkrow linkrow--after">
+          Already have an account?&nbsp;<a href="login-preview.html">Sign in</a>
+        </div>
+      </form>
+
+      
+<div class="or">Or sign in with</div>
+<div class="oauth">
+  
+  <button type="button" class="oauth__btn" title="Sign in with Google (not set up yet)"
+          aria-label="Sign in with Google" disabled>
+    <img src="../name_list/accounts/static/accounts/img/google.webp" alt="" onerror="this.remove()">
+    <span class="glyph" aria-hidden="true">G</span>
+  </button>
+</div>
+
+    </div>
+  </div>
+</section>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- password reveal ---------- */
+  document.querySelectorAll(".reveal").forEach(function (btn) {
+    var input = document.getElementById(btn.dataset.for);
+    if (!input) return;
+    btn.addEventListener("click", function () {
+      var hidden = input.type === "password";
+      input.type = hidden ? "text" : "password";
+      btn.textContent = hidden ? "Hide" : "Show";
+      btn.setAttribute("aria-label", hidden ? "Hide password" : "Show password");
+      btn.setAttribute("aria-pressed", hidden ? "true" : "false");
+      input.focus({ preventScroll: true });
+    });
+  });
+
+  /* ---------- inline validation ----------
+     Rules live in data-rule on the field wrapper. Nothing here replaces
+     the server-side checks in forms.py; it just answers sooner. */
+  var RULES = {
+    nisit: function (v) {
+      if (!v) return "Please enter your Nisit ID.";
+      if (/\D/.test(v)) return "Nisit ID is numbers only.";
+      if (v.length !== 10) return "Nisit ID must be exactly 10 digits (you have " + v.length + ").";
+      return "";
+    },
+    required: function (v) { return v ? "" : "This field is required."; },
+    kuemail: function (v) {
+      if (!v) return "Please enter your KU email.";
+      if (v.indexOf("@") === -1) return "That is not an email address.";
+      if (!/^[^\s@]+@ku\.th$/i.test(v)) return "Use your KU address — it must end with @ku.th.";
+      return "";
+    },
+    password8: function (v) {
+      if (!v) return "Please choose a password.";
+      if (v.length < 8) return "Password must be at least 8 characters.";
+      return "";
+    }
+  };
+
+  function check(field, live) {
+    var rule = RULES[field.dataset.rule];
+    var input = field.querySelector("input");
+    if (!rule || !input) return true;
+    var problem = rule(input.value.trim());
+    var msg = field.querySelector(".msg");
+    // while typing, only ever clear an error — never raise a new one
+    if (live && !field.classList.contains("is-invalid")) return !problem;
+    field.classList.toggle("is-invalid", !!problem);
+    field.classList.toggle("is-valid", !problem && input.value.trim() !== "");
+    if (msg) msg.textContent = problem;
+    input.setAttribute("aria-invalid", problem ? "true" : "false");
+    return !problem;
+  }
+
+  /* ---------- Nisit ID: digits only, 10 of them ----------
+     Filtering on input means letters and pasted junk never land in the box at
+     all, rather than being accepted and complained about afterwards. The caret
+     is put back where the user had it, counted in digits, so editing the middle
+     of the number still behaves. Registered before the validation listeners
+     below so they always read an already-cleaned value. */
+  document.querySelectorAll('.field[data-rule="nisit"] input').forEach(function (input) {
+    input.addEventListener("input", function () {
+      var before = input.value.slice(0, input.selectionStart || 0);
+      var digitsBefore = before.replace(/\D/g, "").length;
+      var cleaned = input.value.replace(/\D/g, "").slice(0, 10);
+      if (cleaned === input.value) return;
+      input.value = cleaned;
+      var caret = Math.min(digitsBefore, cleaned.length);
+      try { input.setSelectionRange(caret, caret); } catch (e) { /* not selectable */ }
+    });
+  });
+
+  document.querySelectorAll(".field[data-rule]").forEach(function (field) {
+    var input = field.querySelector("input");
+    if (!input) return;
+    var msg = field.querySelector(".msg");
+    if (msg && !msg.id) {
+      msg.id = input.id + "-msg";
+      input.setAttribute("aria-describedby", msg.id);
+      msg.setAttribute("role", "alert");
+    }
+    input.addEventListener("input", function () {
+      field.dataset.touched = "1";
+      check(field, true);
+    });
+    input.addEventListener("blur", function () {
+      // an untouched, still-empty field has nothing to complain about yet
+      if (!field.dataset.touched && !input.value) return;
+      check(field, false);
+    });
+  });
+
+  /* ---------- password strength ---------- */
+  document.querySelectorAll(".meter").forEach(function (meter) {
+    var input = document.getElementById(meter.dataset.for);
+    if (!input) return;
+    input.addEventListener("input", function () {
+      var v = input.value, score = 0;
+      if (v.length >= 8) score++;
+      if (v.length >= 12) score++;
+      if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+      if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
+      meter.dataset.score = v ? String(Math.min(score, 4)) : "0";
+    });
+  });
+
+  /* ---------- the "Having Problems?" sheet ----------
+     A native <dialog>, so Escape and focus trapping are free. */
+  document.querySelectorAll("[data-open-sheet]").forEach(function (btn) {
+    var sheet = document.getElementById(btn.dataset.openSheet);
+    if (!sheet) return;
+    // Open on click, not pointerdown: the dialog covers the pointer once it
+    // is up, so the click that completes the press would land on the
+    // backdrop and close it again — instantly, and on the first tap.
+    btn.addEventListener("click", function () {
+      if (sheet.open) return;
+      if (sheet.showModal) sheet.showModal(); else sheet.setAttribute("open", "");
+      sheet.dataset.openedAt = String(Date.now());
+    });
+  });
+  document.querySelectorAll("dialog.sheet").forEach(function (sheet) {
+    sheet.querySelectorAll("[data-close-sheet]").forEach(function (x) {
+      x.addEventListener("click", function () { sheet.close(); });
+    });
+    // clicking the backdrop (i.e. outside the panel) closes it too, but not
+    // within a moment of opening — that would just be the opening click
+    // finishing on top of the freshly-shown backdrop
+    sheet.addEventListener("click", function (e) {
+      if (e.target !== sheet) return;
+      if (Date.now() - Number(sheet.dataset.openedAt || 0) < 200) return;
+      sheet.close();
+    });
+  });
+
+  /* ---------- FAQ: one answer opens at a time ---------- */
+  document.querySelectorAll(".faq__q").forEach(function (q) {
+    q.addEventListener("click", function () {
+      var open = q.getAttribute("aria-expanded") === "true";
+      q.closest(".faq").querySelectorAll(".faq__q").forEach(function (other) {
+        other.setAttribute("aria-expanded", "false");
+      });
+      q.setAttribute("aria-expanded", open ? "false" : "true");
+    });
+  });
+
+  /* ---------- submit: validate, then show a busy state ---------- */
+  document.querySelectorAll("form[data-validate]").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      var ok = true;
+      form.querySelectorAll(".field[data-rule]").forEach(function (field) {
+        if (!check(field, false)) ok = false;
+      });
+      if (!ok) {
+        e.preventDefault();
+        var bad = form.querySelector(".field.is-invalid input");
+        if (bad) bad.focus();
+        return;
+      }
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn && !calm) {
+        btn.classList.add("is-busy");
+        btn.disabled = true;
+        // re-enable if the browser restores the page from bfcache
+        window.addEventListener("pageshow", function () {
+          btn.classList.remove("is-busy");
+          btn.disabled = false;
+        });
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
