@@ -5,18 +5,30 @@
    you are and the way out, and the campus photo carries the rest. Whatever the
    portal ends up doing goes in the {% block content %} below. {% endcomment %}
 
+{% comment %} Marks the bar as the five-item signed-in one, which is the only
+   version that has to wrap on a phone. {% endcomment %}
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+
 {% block topbar_left %}
   <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
   <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
 {% endblock %}
 
 {% block topbar_right %}
-  {% comment %} POST, not a link: logging out changes state, so it must not be
-     something a browser can follow or prefetch. {% endcomment %}
-  <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
-    {% csrf_token %}
-    <button type="submit" class="topbar__logout">Log out</button>
-  </form>
+  <div class="topbar__right">
+    {% comment %} Role read straight off the two flags the Users table already
+       carries - is_superuser maps to isDepartment, is_staff to isLecturer.
+       Read-only display, no backend change. Anyone who is neither is a
+       student, which is the ordinary case. {% endcomment %}
+    <span class="topbar__role">{% if request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+
+    {% comment %} POST, not a link: logging out changes state, so it must not be
+       something a browser can follow or prefetch. {% endcomment %}
+    <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
+      {% csrf_token %}
+      <button type="submit" class="topbar__logout">Log out</button>
+    </form>
+  </div>
 {% endblock %}
 
 {% block content %}{% endblock %}

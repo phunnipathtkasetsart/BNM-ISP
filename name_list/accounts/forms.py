@@ -16,6 +16,20 @@ NISIT_ATTRS = {
     "title": "Exactly 10 digits, numbers only.",
 }
 
+# Signing in is a lookup, not a definition, and not every account is a student:
+# staff IDs look like "A0001" and "L0001". So the sign-in field accepts any
+# text up to the column width and leaves judgement to authentication — a wrong
+# ID simply fails to match. The strict digits-only rule stays on registration,
+# where a new student ID is actually being created.
+LOGIN_ID_ATTRS = {
+    "placeholder": "Nisit ID",
+    "inputmode": "text",
+    "autocapitalize": "characters",   # staff IDs are upper-case
+    "autocomplete": "username",
+    "spellcheck": "false",
+    "maxlength": "10",                # matches the userID column
+}
+
 KU_EMAIL_ATTRS = {
     "placeholder": "KU Email (@ku.th)",
     "inputmode": "email",
@@ -37,10 +51,8 @@ def normalise_ku_email(email):
 class LoginForm(forms.Form):
     nisit_id = forms.CharField(
         label="Nisit ID",
-        min_length=10,
         max_length=10,
-        validators=[nisit_id_validator],
-        widget=forms.TextInput(attrs={**NISIT_ATTRS, "autofocus": True}),
+        widget=forms.TextInput(attrs={**LOGIN_ID_ATTRS, "autofocus": True}),
     )
     password = forms.CharField(
         label="Password",
