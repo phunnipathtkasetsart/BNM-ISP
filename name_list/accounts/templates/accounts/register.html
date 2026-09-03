@@ -15,13 +15,13 @@
         {% csrf_token %}
 
         <div class="field-row">
-          <div class="field" data-rule="required">
+          <div class="field" data-rule="name">
             <label for="{{ form.first_name.id_for_label }}">First name</label>
             <div class="control">{{ form.first_name }}</div>
             <p class="msg"></p>
             {% if form.first_name.errors %}<div class="alert">{{ form.first_name.errors.0 }}</div>{% endif %}
           </div>
-          <div class="field" data-rule="required">
+          <div class="field" data-rule="name">
             <label for="{{ form.last_name.id_for_label }}">Last name</label>
             <div class="control">{{ form.last_name }}</div>
             <p class="msg"></p>

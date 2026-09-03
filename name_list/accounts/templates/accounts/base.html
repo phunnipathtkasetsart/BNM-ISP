@@ -6,6 +6,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2E5248">
 <title>{% block title %}KU Student Portal{% endblock %}</title>
+{% comment %} The KU mark doubles as the tab icon. Without these the browser
+   asks for /favicon.ico on every page, gets a 404 from Django, and shows the
+   blank-page glyph in the tab. apple-touch-icon is what iOS uses when someone
+   adds the portal to their home screen. {% endcomment %}
+<link rel="icon" href="{% static 'accounts/img/ku-logo.png' %}" type="image/png">
+<link rel="apple-touch-icon" href="{% static 'accounts/img/ku-logo.png' %}">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -22,9 +29,15 @@
   <div class="bg-photo" style="background-image:url('{% static "accounts/img/ku-campus.jpg" %}');"></div>
 </div>
 
-<header class="topbar">
-  <a class="topbar__logo" href="{% url 'accounts:login' %}">KU</a>
-  <a href="#" class="topbar__help">Help</a>
+{% comment %} Two slots so a page can put its own items in the bar. The signed-out
+   pages leave both alone and get the plain logo + Help; the dashboard fills
+   them with the student's details and a log-out control. {% endcomment %}
+<header class="topbar {% block topbar_mod %}{% endblock %}">
+  <div class="topbar__left">
+    <a class="topbar__logo" href="{% url 'accounts:login' %}">KU</a>
+    {% block topbar_left %}{% endblock %}
+  </div>
+  {% block topbar_right %}<a href="#" class="topbar__help">Help</a>{% endblock %}
 </header>
 
 <main class="stage" id="main">
@@ -58,6 +71,19 @@
       if (!v) return "Please enter your Nisit ID.";
       if (/\D/.test(v)) return "Nisit ID is numbers only.";
       if (v.length !== 10) return "Nisit ID must be exactly 10 digits (you have " + v.length + ").";
+      return "";
+    },
+    /* Sign-in only. Any ID that exists is valid here, and staff ones are not
+       ten digits ("A0001", "L0001"), so the sole rule is that you typed
+       something. Whether it is right is authentication's job to answer. */
+    loginid: function (v) { return v ? "" : "Please enter your Nisit ID."; },
+    /* Letters plus the joiners real names use — space, hyphen, apostrophe.
+       \p{L} with the /u flag is any Unicode letter, so Thai names pass as
+       readily as Latin ones; only digits and symbols are turned away. */
+    name: function (v) {
+      if (!v) return "This field is required.";
+      if (/\d/.test(v)) return "Names cannot contain numbers.";
+      if (!/^\p{L}+(?:[ '\-]\p{L}+)*$/u.test(v)) return "Names cannot contain symbols like @ or _.";
       return "";
     },
     required: function (v) { return v ? "" : "This field is required."; },

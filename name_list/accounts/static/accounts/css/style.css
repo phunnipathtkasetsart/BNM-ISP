@@ -103,6 +103,48 @@ body{
 .topbar__help:hover{text-decoration:underline}
 .topbar__help:focus-visible,.topbar__logo:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
 
+/* --- signed-in bar ---
+   The logo and the student's details travel together on the left, so the
+   bar's space-between still has exactly two children and Log out stays
+   pinned right however long the name is. */
+.topbar__left{
+  display:flex;align-items:center;
+  gap:calc(34 * var(--u));
+  min-width:0;                    /* lets a long name shrink instead of pushing */
+}
+/* Everything in the bar sits at the same weight and size as Help, so the bar
+   reads as one row of navigation rather than a headline plus a link. */
+.topbar__me,.topbar__role{
+  font-family:var(--font-ui);
+  font-weight:500;font-size:calc(16 * var(--u));color:#EAF3F0;
+  white-space:nowrap;
+}
+/* When the bar runs out of room the NAME gives way, never the ID. A clipped
+   name is still recognisable ("Name-Suran…"); a clipped ID is worthless, and
+   it is the thing a student is most likely to be reading off the screen. */
+.topbar__me--name{overflow:hidden;text-overflow:ellipsis;min-width:calc(60 * var(--u))}
+.topbar__me--id{flex:none}
+
+.topbar__right{
+  display:flex;align-items:center;
+  gap:calc(20 * var(--u));
+  flex:none;
+}
+.topbar__role{
+  flex:none;
+  color:var(--ku-sage-soft);        /* quieter than the control beside it */
+}
+.topbar__logout-form{margin:0;flex:none}
+.topbar__logout{
+  background:none;border:0;padding:calc(6 * var(--u)) calc(4 * var(--u));
+  font-family:var(--font-ui);
+  font-weight:500;font-size:calc(16 * var(--u));color:#fff;
+  border-radius:calc(6 * var(--u));
+  cursor:pointer;
+}
+.topbar__logout:hover{text-decoration:underline}
+.topbar__logout:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
 /* ============ STAGE ============ */
 .stage{
   position:relative;z-index:4;
@@ -526,6 +568,14 @@ body{
   .topbar{padding:16px 20px}
   .topbar__logo{font-size:20px;border-bottom-width:2px}
   .topbar__help{font-size:14px}
+  /* Five items will not fit one 375px row — squeezing them made the ID and the
+     role overlap. So the signed-in bar wraps to two: who you are on top, what
+     you are and the way out beneath it, pushed right. The signed-out pages
+     only ever have two items, so they never wrap and are untouched. */
+  .topbar--signed-in{flex-wrap:wrap;row-gap:10px}
+  .topbar--signed-in .topbar__left{width:100%;gap:12px}
+  .topbar--signed-in .topbar__right{margin-left:auto;gap:14px}
+  .topbar__me,.topbar__role,.topbar__logout{font-size:14px}
   .stage{padding:24px 20px 36px;align-items:start}
   .card__head{height:88px}
   .brand{height:62px}
@@ -551,4 +601,115 @@ body{
 
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important}
+}
+
+/* ================================================================
+   Role management (US-05)
+   A signed-in working page rather than a centred card: it is a list
+   to scan and act on, so it gets a wide panel and rows, not a form.
+   ================================================================ */
+.topbar__link{
+  font-family:var(--font-ui);
+  font-weight:500;font-size:calc(16 * var(--u));
+  color:#EAF3F0;text-decoration:none;white-space:nowrap;
+  padding:calc(6 * var(--u)) calc(4 * var(--u));
+  border-radius:calc(6 * var(--u));
+}
+.topbar__link:hover{text-decoration:underline}
+.topbar__link:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
+.panel{
+  width:min(calc(760 * var(--u)), 100%);
+  background:var(--card);
+  border-radius:var(--r-card);
+  box-shadow:0 calc(18 * var(--u)) calc(48 * var(--u)) rgba(28,60,50,.16);
+  overflow:hidden;
+}
+.panel__head{padding:calc(26 * var(--u)) calc(28 * var(--u)) calc(18 * var(--u))}
+.panel__head h1{
+  font-family:var(--font-display);font-weight:800;
+  font-size:calc(23 * var(--u));color:var(--ink);margin:0 0 calc(4 * var(--u));
+}
+.panel__sub{margin:0;color:var(--ink-muted);font-size:calc(13.5 * var(--u))}
+.panel__foot{
+  margin:0;padding:calc(16 * var(--u)) calc(28 * var(--u)) calc(24 * var(--u));
+  color:var(--ink-muted);font-size:calc(12.5 * var(--u));line-height:1.7;
+}
+.panel__foot strong{color:var(--ink-soft)}
+
+.banner{
+  margin:0 calc(28 * var(--u)) calc(14 * var(--u));
+  padding:calc(11 * var(--u)) calc(14 * var(--u));
+  border-radius:var(--r-field);font-size:calc(13.5 * var(--u));
+}
+.banner--ok{background:#EAF5EF;border:1px solid #B6D9C5;color:var(--ok)}
+.banner--bad{background:var(--danger-bg);border:1px solid var(--danger-line);color:var(--danger)}
+
+.rolelist{border-top:1px solid var(--hairline)}
+.rolerow{
+  display:flex;align-items:center;gap:calc(16 * var(--u));
+  padding:calc(14 * var(--u)) calc(28 * var(--u));
+  border-bottom:1px solid var(--hairline);
+}
+/* The signed-in admin's own row, marked so it is obvious why it has no control */
+.rolerow--me{background:var(--field)}
+.rolerow__who{display:flex;flex-direction:column;min-width:0;flex:1}
+.rolerow__name{
+  font-weight:600;color:var(--ink);font-size:calc(14.5 * var(--u));
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.rolerow__id{
+  font-size:calc(12.5 * var(--u));color:var(--ink-soft);
+  font-variant-numeric:tabular-nums;
+}
+.rolerow__mail{
+  font-size:calc(12 * var(--u));color:var(--ink-muted);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.rolerow__self{
+  font-size:calc(12.5 * var(--u));color:var(--ink-muted);
+  font-style:italic;flex:none;
+}
+
+/* Role is state, so it reads as a chip rather than another line of text. */
+.pill{
+  flex:none;font-size:calc(11.5 * var(--u));font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;
+  padding:calc(4 * var(--u)) calc(10 * var(--u));border-radius:999px;
+  border:1px solid transparent;
+}
+.pill--student{background:#EDF1EF;color:var(--ink-soft);border-color:var(--hairline)}
+.pill--lecturer{background:#E4F0EA;color:#2C6B54;border-color:#BCDCCB}
+.pill--department{background:var(--ku-green-800);color:#fff}
+
+.rolerow__set{display:flex;align-items:center;gap:calc(8 * var(--u));margin:0;flex:none}
+.select{
+  font-family:var(--font-ui);font-size:calc(13.5 * var(--u));color:var(--ink);
+  background:var(--field);border:1px solid var(--field-line);
+  border-radius:var(--r-field);padding:calc(8 * var(--u)) calc(10 * var(--u));
+  cursor:pointer;
+}
+.select:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+.btn--small{
+  width:auto;font-size:calc(13.5 * var(--u));
+  padding:calc(8 * var(--u)) calc(16 * var(--u));
+  background:var(--ku-green-800);color:#fff;
+}
+.rolelist__empty{padding:calc(24 * var(--u)) calc(28 * var(--u));color:var(--ink-muted)}
+
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}
+
+@media (max-width:720px){
+  .panel__head,.rolerow,.panel__foot,.rolelist__empty{padding-left:18px;padding-right:18px}
+  .banner{margin-left:18px;margin-right:18px}
+  /* Stacked, so the name and the control each get the full width instead of
+     being crushed into three competing columns. */
+  .rolerow{flex-wrap:wrap;gap:10px}
+  .rolerow__who{flex:1 1 100%}
+  .rolerow__set{flex:1 1 100%}
+  .select{flex:1}
+  .stage{align-items:start}
 }

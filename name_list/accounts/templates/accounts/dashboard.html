@@ -1,27 +1,41 @@
 {% extends "accounts/base.html" %}
 {% block title %}Dashboard — KU Student Portal{% endblock %}
 
-{% block content %}
-<section class="card">
-  {% include "accounts/_ribbons.html" %}
+{% comment %} The signed-in landing page. Deliberately bare: the bar carries who
+   you are and the way out, and the campus photo carries the rest. Whatever the
+   portal ends up doing goes in the {% block content %} below. {% endcomment %}
 
-  <div class="card__inner">
-    <div class="card__head">{% include "accounts/_brand.html" %}</div>
+{% comment %} Marks the bar as the five-item signed-in one, which is the only
+   version that has to wrap on a phone. {% endcomment %}
+{% block topbar_mod %}topbar--signed-in{% endblock %}
 
-    <div class="card__body">
-      <h1>Welcome, {{ request.user.first_name }}</h1>
-
-      <p class="welcome">
-        Nisit ID <strong>{{ request.user.nisit_id }}</strong><br>
-        Department <strong>{{ request.user.get_department_display }}</strong><br>
-        Email <strong>{{ request.user.email }}</strong>
-      </p>
-
-      <form method="post" action="{% url 'accounts:logout' %}">
-        {% csrf_token %}
-        <button type="submit" class="btn btn--primary">Log out</button>
-      </form>
-    </div>
-  </div>
-</section>
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
 {% endblock %}
+
+{% block topbar_right %}
+  <div class="topbar__right">
+    {% comment %} Role read straight off the two flags the Users table already
+       carries - is_superuser maps to isDepartment, is_staff to isLecturer.
+       Read-only display, no backend change. Anyone who is neither is a
+       student, which is the ordinary case. {% endcomment %}
+    <span class="topbar__role">{% if request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+
+    {% comment %} Only the Department role can manage roles, so only they are
+       shown the way in. The view checks again on its own - a hidden link is
+       not a permission. {% endcomment %}
+    {% if request.user.is_superuser %}
+      <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
+    {% endif %}
+
+    {% comment %} POST, not a link: logging out changes state, so it must not be
+       something a browser can follow or prefetch. {% endcomment %}
+    <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
+      {% csrf_token %}
+      <button type="submit" class="topbar__logout">Log out</button>
+    </form>
+  </div>
+{% endblock %}
+
+{% block content %}{% endblock %}

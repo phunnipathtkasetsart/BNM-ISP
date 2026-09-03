@@ -1,0 +1,77 @@
+{% extends "accounts/base.html" %}
+{% block title %}Manage roles — KU Student Portal{% endblock %}
+
+{% comment %} US-05: the Department admin assigns roles. Deliberately not Django
+   admin, which gates on is_staff (our isLecturer) and so admits lecturers while
+   turning the department away. {% endcomment %}
+
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+{% endblock %}
+
+{% block topbar_right %}
+  <div class="topbar__right">
+    <a class="topbar__link" href="{% url 'accounts:dashboard' %}">Dashboard</a>
+    <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
+      {% csrf_token %}
+      <button type="submit" class="topbar__logout">Log out</button>
+    </form>
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="panel">
+  <div class="panel__head">
+    <h1>Manage roles</h1>
+    <p class="panel__sub">{{ people|length }} account{{ people|length|pluralize }} in the
+    department. Changes take effect the next time that person loads a page.</p>
+  </div>
+
+  {% if notice %}<div class="banner banner--ok" role="status">{{ notice }}</div>{% endif %}
+  {% if error %}<div class="banner banner--bad" role="alert">{{ error }}</div>{% endif %}
+
+  <div class="rolelist">
+    {% for p in people %}
+      <div class="rolerow{% if p.is_me %} rolerow--me{% endif %}">
+        <div class="rolerow__who">
+          <span class="rolerow__name">{{ p.user.get_full_name|default:p.user.nisit_id }}</span>
+          <span class="rolerow__id">{{ p.user.nisit_id }}</span>
+          <span class="rolerow__mail">{{ p.user.email }}</span>
+        </div>
+
+        <span class="pill pill--{{ p.role }}">{{ p.role_label }}</span>
+
+        {% if p.is_me %}
+          {% comment %} No control at all rather than a disabled one: a department
+             admin demoting themselves would lock everyone out of this page. {% endcomment %}
+          <span class="rolerow__self">This is you</span>
+        {% else %}
+          <form method="post" class="rolerow__set">
+            {% csrf_token %}
+            <input type="hidden" name="nisit_id" value="{{ p.user.nisit_id }}">
+            <label class="sr-only" for="role-{{ p.user.nisit_id }}">
+              Role for {{ p.user.get_full_name|default:p.user.nisit_id }}
+            </label>
+            <select name="role" id="role-{{ p.user.nisit_id }}" class="select">
+              {% for r in roles %}
+                <option value="{{ r.key }}" {% if r.key == p.role %}selected{% endif %}>{{ r.label }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn--small">Save</button>
+          </form>
+        {% endif %}
+      </div>
+    {% empty %}
+      <p class="rolelist__empty">No accounts yet.</p>
+    {% endfor %}
+  </div>
+
+  <p class="panel__foot">
+    <strong>Department</strong> can manage roles. <strong>Lecturer</strong> can answer and pin
+    course questions. <strong>Student</strong> is the default for a new registration.
+  </p>
+</section>
+{% endblock %}
