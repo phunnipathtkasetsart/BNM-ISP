@@ -77,6 +77,15 @@
        ten digits ("A0001", "L0001"), so the sole rule is that you typed
        something. Whether it is right is authentication's job to answer. */
     loginid: function (v) { return v ? "" : "Please enter your Nisit ID."; },
+    /* Letters plus the joiners real names use — space, hyphen, apostrophe.
+       \p{L} with the /u flag is any Unicode letter, so Thai names pass as
+       readily as Latin ones; only digits and symbols are turned away. */
+    name: function (v) {
+      if (!v) return "This field is required.";
+      if (/\d/.test(v)) return "Names cannot contain numbers.";
+      if (!/^\p{L}+(?:[ '\-]\p{L}+)*$/u.test(v)) return "Names cannot contain symbols like @ or _.";
+      return "";
+    },
     required: function (v) { return v ? "" : "This field is required."; },
     kuemail: function (v) {
       if (!v) return "Please enter your KU email.";
