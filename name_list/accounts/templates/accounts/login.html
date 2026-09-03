@@ -11,6 +11,7 @@
     <div class="card__body">
       <h1>Account Sign In</h1>
 
+      {% for message in messages %}<div class="alert" role="alert">{{ message }}</div>{% endfor %}
       {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
 
       <form method="post" novalidate data-validate>

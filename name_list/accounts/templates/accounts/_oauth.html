@@ -1,10 +1,9 @@
 {% load static %}
 <div class="or">Or sign in with</div>
 <div class="oauth">
-  {# Deliberately not wired to anything yet — OAuth needs a provider set up. #}
-  <button type="button" class="oauth__btn" title="Sign in with Google (not set up yet)"
-          aria-label="Sign in with Google" disabled>
+  <a class="oauth__btn" title="Sign in with Google"
+     aria-label="Sign in with Google" href="{% url 'accounts:google_login' %}">
     <img src="{% static 'accounts/img/google.webp' %}" alt="" onerror="this.remove()">
     <span class="glyph" aria-hidden="true">G</span>
-  </button>
+  </a>
 </div>

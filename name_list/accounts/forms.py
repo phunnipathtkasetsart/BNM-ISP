@@ -144,6 +144,20 @@ class RegisterForm(forms.ModelForm):
         return user
 
 
+class GoogleAccountForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["nisit_id", "department"]
+        widgets = {
+            "nisit_id": forms.TextInput(attrs=NISIT_ATTRS),
+            "department": forms.RadioSelect,
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["department"].choices = User.Department.choices
+
+
 class ForgotPasswordForm(forms.Form):
     email = forms.EmailField(
         label="KU Email",
