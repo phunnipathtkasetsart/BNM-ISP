@@ -29,9 +29,15 @@
   <div class="bg-photo" style="background-image:url('{% static "accounts/img/ku-campus.jpg" %}');"></div>
 </div>
 
-<header class="topbar">
-  <a class="topbar__logo" href="{% url 'accounts:login' %}">KU</a>
-  <a href="#" class="topbar__help">Help</a>
+{% comment %} Two slots so a page can put its own items in the bar. The signed-out
+   pages leave both alone and get the plain logo + Help; the dashboard fills
+   them with the student's details and a log-out control. {% endcomment %}
+<header class="topbar {% block topbar_mod %}{% endblock %}">
+  <div class="topbar__left">
+    <a class="topbar__logo" href="{% url 'accounts:login' %}">KU</a>
+    {% block topbar_left %}{% endblock %}
+  </div>
+  {% block topbar_right %}<a href="#" class="topbar__help">Help</a>{% endblock %}
 </header>
 
 <main class="stage" id="main">
@@ -67,6 +73,10 @@
       if (v.length !== 10) return "Nisit ID must be exactly 10 digits (you have " + v.length + ").";
       return "";
     },
+    /* Sign-in only. Any ID that exists is valid here, and staff ones are not
+       ten digits ("A0001", "L0001"), so the sole rule is that you typed
+       something. Whether it is right is authentication's job to answer. */
+    loginid: function (v) { return v ? "" : "Please enter your Nisit ID."; },
     required: function (v) { return v ? "" : "This field is required."; },
     kuemail: function (v) {
       if (!v) return "Please enter your KU email.";

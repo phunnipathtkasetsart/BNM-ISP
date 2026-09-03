@@ -103,6 +103,48 @@ body{
 .topbar__help:hover{text-decoration:underline}
 .topbar__help:focus-visible,.topbar__logo:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
 
+/* --- signed-in bar ---
+   The logo and the student's details travel together on the left, so the
+   bar's space-between still has exactly two children and Log out stays
+   pinned right however long the name is. */
+.topbar__left{
+  display:flex;align-items:center;
+  gap:calc(34 * var(--u));
+  min-width:0;                    /* lets a long name shrink instead of pushing */
+}
+/* Everything in the bar sits at the same weight and size as Help, so the bar
+   reads as one row of navigation rather than a headline plus a link. */
+.topbar__me,.topbar__role{
+  font-family:var(--font-ui);
+  font-weight:500;font-size:calc(16 * var(--u));color:#EAF3F0;
+  white-space:nowrap;
+}
+/* When the bar runs out of room the NAME gives way, never the ID. A clipped
+   name is still recognisable ("Name-Suran…"); a clipped ID is worthless, and
+   it is the thing a student is most likely to be reading off the screen. */
+.topbar__me--name{overflow:hidden;text-overflow:ellipsis;min-width:calc(60 * var(--u))}
+.topbar__me--id{flex:none}
+
+.topbar__right{
+  display:flex;align-items:center;
+  gap:calc(20 * var(--u));
+  flex:none;
+}
+.topbar__role{
+  flex:none;
+  color:var(--ku-sage-soft);        /* quieter than the control beside it */
+}
+.topbar__logout-form{margin:0;flex:none}
+.topbar__logout{
+  background:none;border:0;padding:calc(6 * var(--u)) calc(4 * var(--u));
+  font-family:var(--font-ui);
+  font-weight:500;font-size:calc(16 * var(--u));color:#fff;
+  border-radius:calc(6 * var(--u));
+  cursor:pointer;
+}
+.topbar__logout:hover{text-decoration:underline}
+.topbar__logout:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
 /* ============ STAGE ============ */
 .stage{
   position:relative;z-index:4;
@@ -526,6 +568,14 @@ body{
   .topbar{padding:16px 20px}
   .topbar__logo{font-size:20px;border-bottom-width:2px}
   .topbar__help{font-size:14px}
+  /* Five items will not fit one 375px row — squeezing them made the ID and the
+     role overlap. So the signed-in bar wraps to two: who you are on top, what
+     you are and the way out beneath it, pushed right. The signed-out pages
+     only ever have two items, so they never wrap and are untouched. */
+  .topbar--signed-in{flex-wrap:wrap;row-gap:10px}
+  .topbar--signed-in .topbar__left{width:100%;gap:12px}
+  .topbar--signed-in .topbar__right{margin-left:auto;gap:14px}
+  .topbar__me,.topbar__role,.topbar__logout{font-size:14px}
   .stage{padding:24px 20px 36px;align-items:start}
   .card__head{height:88px}
   .brand{height:62px}

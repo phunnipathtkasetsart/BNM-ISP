@@ -16,7 +16,10 @@
       <form method="post" novalidate data-validate>
         {% csrf_token %}
 
-        <div class="field" data-rule="nisit">
+        {% comment %} "loginid", not "nisit": signing in must accept staff IDs
+           like A0001 as well as ten-digit student ones. Registration keeps the
+           strict rule. {% endcomment %}
+        <div class="field" data-rule="loginid">
           <label for="{{ form.nisit_id.id_for_label }}">Nisit ID</label>
           <div class="control">{{ form.nisit_id }}</div>
           <p class="msg"></p>
