@@ -1,27 +1,22 @@
 {% extends "accounts/base.html" %}
 {% block title %}Dashboard — KU Student Portal{% endblock %}
 
-{% block content %}
-<section class="card">
-  {% include "accounts/_ribbons.html" %}
+{% comment %} The signed-in landing page. Deliberately bare: the bar carries who
+   you are and the way out, and the campus photo carries the rest. Whatever the
+   portal ends up doing goes in the {% block content %} below. {% endcomment %}
 
-  <div class="card__inner">
-    <div class="card__head">{% include "accounts/_brand.html" %}</div>
-
-    <div class="card__body">
-      <h1>Welcome, {{ request.user.first_name }}</h1>
-
-      <p class="welcome">
-        Nisit ID <strong>{{ request.user.nisit_id }}</strong><br>
-        Department <strong>{{ request.user.get_department_display }}</strong><br>
-        Email <strong>{{ request.user.email }}</strong>
-      </p>
-
-      <form method="post" action="{% url 'accounts:logout' %}">
-        {% csrf_token %}
-        <button type="submit" class="btn btn--primary">Log out</button>
-      </form>
-    </div>
-  </div>
-</section>
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
 {% endblock %}
+
+{% block topbar_right %}
+  {% comment %} POST, not a link: logging out changes state, so it must not be
+     something a browser can follow or prefetch. {% endcomment %}
+  <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
+    {% csrf_token %}
+    <button type="submit" class="topbar__logout">Log out</button>
+  </form>
+{% endblock %}
+
+{% block content %}{% endblock %}

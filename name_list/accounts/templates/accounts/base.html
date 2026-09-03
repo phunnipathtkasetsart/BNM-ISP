@@ -29,9 +29,15 @@
   <div class="bg-photo" style="background-image:url('{% static "accounts/img/ku-campus.jpg" %}');"></div>
 </div>
 
+{% comment %} Two slots so a page can put its own items in the bar. The signed-out
+   pages leave both alone and get the plain logo + Help; the dashboard fills
+   them with the student's details and a log-out control. {% endcomment %}
 <header class="topbar">
-  <a class="topbar__logo" href="{% url 'accounts:login' %}">KU</a>
-  <a href="#" class="topbar__help">Help</a>
+  <div class="topbar__left">
+    <a class="topbar__logo" href="{% url 'accounts:login' %}">KU</a>
+    {% block topbar_left %}{% endblock %}
+  </div>
+  {% block topbar_right %}<a href="#" class="topbar__help">Help</a>{% endblock %}
 </header>
 
 <main class="stage" id="main">

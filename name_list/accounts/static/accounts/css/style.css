@@ -103,6 +103,35 @@ body{
 .topbar__help:hover{text-decoration:underline}
 .topbar__help:focus-visible,.topbar__logo:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
 
+/* --- signed-in bar ---
+   The logo and the student's details travel together on the left, so the
+   bar's space-between still has exactly two children and Log out stays
+   pinned right however long the name is. */
+.topbar__left{
+  display:flex;align-items:center;
+  gap:calc(34 * var(--u));
+  min-width:0;                    /* lets a long name shrink instead of pushing */
+}
+.topbar__me{
+  font-family:var(--font-display);
+  font-weight:700;font-size:calc(19 * var(--u));color:#fff;
+  white-space:nowrap;
+}
+/* When the bar runs out of room the NAME gives way, never the ID. A clipped
+   name is still recognisable ("Name-Suran…"); a clipped ID is worthless, and
+   it is the thing a student is most likely to be reading off the screen. */
+.topbar__me--name{overflow:hidden;text-overflow:ellipsis;min-width:calc(60 * var(--u))}
+.topbar__me--id{flex:none}
+.topbar__logout-form{margin:0;flex:none}
+.topbar__logout{
+  background:none;border:0;padding:calc(4 * var(--u)) calc(2 * var(--u));
+  font-family:var(--font-display);
+  font-weight:700;font-size:calc(19 * var(--u));color:#fff;
+  cursor:pointer;
+}
+.topbar__logout:hover{text-decoration:underline}
+.topbar__logout:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
 /* ============ STAGE ============ */
 .stage{
   position:relative;z-index:4;
@@ -526,6 +555,12 @@ body{
   .topbar{padding:16px 20px}
   .topbar__logo{font-size:20px;border-bottom-width:2px}
   .topbar__help{font-size:14px}
+  /* Four items in a 375px bar. Tighten the gap, drop the type, and let a long
+     name ellipsis rather than shove Log out off the edge — the one control
+     here has to stay reachable. */
+  .topbar__left{gap:14px}
+  .topbar__me{font-size:14px}
+  .topbar__logout{font-size:14px}
   .stage{padding:24px 20px 36px;align-items:start}
   .card__head{height:88px}
   .brand{height:62px}
