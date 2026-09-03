@@ -1,3 +1,5 @@
+import re
+
 from django import forms
 
 from .models import User, ku_email_validator, nisit_id_validator
@@ -41,6 +43,36 @@ KU_EMAIL_ATTRS = {
 }
 
 
+NAME_ATTRS = {
+    "autocapitalize": "words",
+    "autocomplete": "off",
+    "spellcheck": "false",
+    "maxlength": "150",
+    "title": "Letters only — no numbers or symbols.",
+}
+
+# Names are letters, and the joiners real names actually use: a space, a hyphen
+# ("Anne-Marie"), an apostrophe ("O'Brien"). No digits and no symbols. [^\W\d_]
+# is "a word character that is not a digit or underscore", which under Python's
+# default str matching means any Unicode letter — so Thai names pass as readily
+# as Latin ones. A joiner must sit between two letters, never lead or trail.
+NAME_RE = re.compile(r"^[^\W\d_]+(?:[ '\-][^\W\d_]+)*$")
+
+
+def validate_person_name(value, label):
+    """Return the cleaned name, or raise with a message naming the field."""
+    value = (value or "").strip()
+    if not value:
+        raise forms.ValidationError(f"Please enter your {label}.")
+    if any(ch.isdigit() for ch in value):
+        raise forms.ValidationError(f"{label.capitalize()} cannot contain numbers.")
+    if not NAME_RE.match(value):
+        raise forms.ValidationError(
+            f"{label.capitalize()} cannot contain symbols like @ or _."
+        )
+    return value
+
+
 def normalise_ku_email(email):
     """Lower-case it and confirm it is a @ku.th address."""
     email = (email or "").strip().lower()
@@ -71,8 +103,8 @@ class RegisterForm(forms.ModelForm):
         model = User
         fields = ["first_name", "last_name", "nisit_id", "department", "email"]
         widgets = {
-            "first_name": forms.TextInput(attrs={"placeholder": "First Name"}),
-            "last_name": forms.TextInput(attrs={"placeholder": "Last Name"}),
+            "first_name": forms.TextInput(attrs={**NAME_ATTRS, "placeholder": "First Name"}),
+            "last_name": forms.TextInput(attrs={**NAME_ATTRS, "placeholder": "Last Name"}),
             "nisit_id": forms.TextInput(
                 attrs={
                     **NISIT_ATTRS,
@@ -88,6 +120,12 @@ class RegisterForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         # drop Django's blank "---------" option from the radio group
         self.fields["department"].choices = User.Department.choices
+
+    def clean_first_name(self):
+        return validate_person_name(self.cleaned_data.get("first_name"), "first name")
+
+    def clean_last_name(self):
+        return validate_person_name(self.cleaned_data.get("last_name"), "last name")
 
     def clean_email(self):
         return normalise_ku_email(self.cleaned_data.get("email"))
