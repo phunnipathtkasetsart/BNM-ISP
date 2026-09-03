@@ -1,0 +1,41 @@
+{% extends "accounts/base.html" %}
+{% block title %}No access — KU Student Portal{% endblock %}
+
+{% comment %} Shown when a signed-in user reaches a page their role does not
+   cover. Says plainly what is required and where to go instead, rather than
+   bouncing them somewhere with no explanation. {% endcomment %}
+
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+{% endblock %}
+
+{% block topbar_right %}
+  <div class="topbar__right">
+    <a class="topbar__link" href="{% url 'accounts:dashboard' %}">Dashboard</a>
+    <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
+      {% csrf_token %}
+      <button type="submit" class="topbar__logout">Log out</button>
+    </form>
+  </div>
+{% endblock %}
+
+{% block content %}
+<section class="card">
+  {% include "accounts/_ribbons.html" %}
+  <div class="card__inner">
+    <div class="card__head">{% include "accounts/_brand.html" %}</div>
+    <div class="card__body">
+      <h1>Not your page</h1>
+      <p class="welcome">
+        Managing roles is limited to the <strong>Department</strong> role. Your account is
+        signed in as <strong>{{ request.user.nisit_id }}</strong>.
+      </p>
+      <p class="welcome">If you think that is wrong, ask a Department admin to change it.</p>
+      <a class="btn btn--primary" href="{% url 'accounts:dashboard' %}">Back to dashboard</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

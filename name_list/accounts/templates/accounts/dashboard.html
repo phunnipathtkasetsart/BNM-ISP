@@ -22,6 +22,13 @@
        student, which is the ordinary case. {% endcomment %}
     <span class="topbar__role">{% if request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
 
+    {% comment %} Only the Department role can manage roles, so only they are
+       shown the way in. The view checks again on its own - a hidden link is
+       not a permission. {% endcomment %}
+    {% if request.user.is_superuser %}
+      <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
+    {% endif %}
+
     {% comment %} POST, not a link: logging out changes state, so it must not be
        something a browser can follow or prefetch. {% endcomment %}
     <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
