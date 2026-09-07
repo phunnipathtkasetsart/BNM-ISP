@@ -1,0 +1,244 @@
+{
+  "version": "31.4.1",
+  "pages": [
+    {
+      "id": "GhK38LVvYlVSDMQiiHvZ",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-2",
+          "type": "node",
+          "parent": "1",
+          "label": "Users",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">Users</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-4",
+          "type": "node",
+          "parent": "1",
+          "label": "View",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">View</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-5",
+          "type": "node",
+          "parent": "1",
+          "label": "Controller",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">Controller</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-6",
+          "type": "node",
+          "parent": "1",
+          "label": "Model",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">Model</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-7",
+          "type": "node",
+          "parent": "1",
+          "label": "Database",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">Database</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-14",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-8",
+          "target": "ys-4hMEnNTGd_gLSM3je-2"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-15",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-8"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-8",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-17",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-9",
+          "target": "ys-4hMEnNTGd_gLSM3je-4"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-18",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-9"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-9",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-24",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-11",
+          "target": "ys-4hMEnNTGd_gLSM3je-6"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-25",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-11"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-54",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-11",
+          "target": "ys-4hMEnNTGd_gLSM3je-13"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-11",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-23",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-12"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-12",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-26",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-13"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-27",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-13",
+          "target": "ys-4hMEnNTGd_gLSM3je-7"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-62",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-13",
+          "target": "ys-4hMEnNTGd_gLSM3je-11"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-13",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-22",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-12",
+          "target": "ys-4hMEnNTGd_gLSM3je-5"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-29",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-8",
+          "target": "ys-4hMEnNTGd_gLSM3je-9"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-30",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-9",
+          "target": "ys-4hMEnNTGd_gLSM3je-12"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-31",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-12",
+          "target": "ys-4hMEnNTGd_gLSM3je-11"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-40",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-11",
+          "target": "ys-4hMEnNTGd_gLSM3je-12"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-41",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-12",
+          "target": "ys-4hMEnNTGd_gLSM3je-9"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-42",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-9",
+          "target": "ys-4hMEnNTGd_gLSM3je-8"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-43",
+          "type": "node",
+          "parent": "1",
+          "label": "1. Enter class code to join"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-45",
+          "type": "node",
+          "parent": "1",
+          "label": "2. Send user class code input"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-46",
+          "type": "node",
+          "parent": "1",
+          "label": "3. Check valid class code"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-49",
+          "type": "node",
+          "parent": "1",
+          "label": "6. Return authorize course data"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-50",
+          "type": "node",
+          "parent": "1",
+          "label": "7. Display authorize course data"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-51",
+          "type": "node",
+          "parent": "1",
+          "label": "8. Show \"Joined successfully\"&nbsp;"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-53",
+          "type": "node",
+          "parent": "1",
+          "label": "4. Query class code"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-61",
+          "type": "node",
+          "parent": "1",
+          "label": "5. Return authorize class data"
+        }
+      ]
+    }
+  ]
+}

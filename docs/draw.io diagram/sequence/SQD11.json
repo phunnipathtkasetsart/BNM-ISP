@@ -1,0 +1,144 @@
+{
+  "version": "31.4.4",
+  "pages": [
+    {
+      "id": "academic-information-management",
+      "name": "Academic Information Management",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "creator",
+          "type": "node",
+          "parent": "1",
+          "label": "Lecturer / TA / Professional Academic Employee"
+        },
+        {
+          "id": "view",
+          "type": "node",
+          "parent": "1",
+          "label": "view"
+        },
+        {
+          "id": "controller",
+          "type": "node",
+          "parent": "1",
+          "label": "controller"
+        },
+        {
+          "id": "model",
+          "type": "node",
+          "parent": "1",
+          "label": "model"
+        },
+        {
+          "id": "database",
+          "type": "node",
+          "parent": "1",
+          "label": "database"
+        },
+        {
+          "id": "life-creator",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "life-view",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "life-controller",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "life-model",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "life-database",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "e1",
+          "type": "edge",
+          "parent": "1",
+          "label": "1. Open academic \nmanagement page",
+          "html": "1. Open academic&nbsp;<div>management page</div>"
+        },
+        {
+          "id": "e2",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "e3",
+          "type": "edge",
+          "parent": "1",
+          "label": "3. Verify administrator authorisation"
+        },
+        {
+          "id": "e4",
+          "type": "edge",
+          "parent": "1",
+          "label": "4. Check role and permissions"
+        },
+        {
+          "id": "e5",
+          "type": "edge",
+          "parent": "1",
+          "label": "5. Return authorisation result"
+        },
+        {
+          "id": "e6",
+          "type": "edge",
+          "parent": "1",
+          "label": "6. If authorised, apply requested action"
+        },
+        {
+          "id": "e7",
+          "type": "edge",
+          "parent": "1",
+          "label": "7. Save academic information / document changes"
+        },
+        {
+          "id": "e8",
+          "type": "edge",
+          "parent": "1",
+          "label": "8. Return update result"
+        },
+        {
+          "id": "e9",
+          "type": "edge",
+          "parent": "1",
+          "label": "9. Return updated record or access denied"
+        },
+        {
+          "id": "e10",
+          "type": "edge",
+          "parent": "1",
+          "label": "10. Return management result"
+        },
+        {
+          "id": "e11",
+          "type": "edge",
+          "parent": "1",
+          "label": "11. Show confirmation or \naccess denied",
+          "html": "11. Show confirmation or&nbsp;<div>access denied</div>"
+        },
+        {
+          "id": "ihMlTKtAhL67av8tJi6P-1",
+          "type": "node",
+          "parent": "1",
+          "label": "2. Submit create request video, or \nedit / change availability / \narchive request",
+          "html": "<span style=\"white-space: nowrap; background-color: rgb(255, 255, 255);\">2. Submit create request video,&nbsp;</span><span style=\"background-color: light-dark(rgb(255, 255, 255), rgb(18, 18, 18)); white-space: nowrap; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));\">or&nbsp;</span><div><span style=\"background-color: light-dark(rgb(255, 255, 255), rgb(18, 18, 18)); white-space: nowrap; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));\">edit / change availability /&nbsp;</span></div><div><span style=\"background-color: light-dark(rgb(255, 255, 255), rgb(18, 18, 18)); white-space: nowrap; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));\">archive request</span></div>"
+        }
+      ]
+    }
+  ]
+}

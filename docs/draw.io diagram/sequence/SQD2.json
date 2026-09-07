@@ -1,0 +1,165 @@
+{
+  "version": "31.4.1",
+  "pages": [
+    {
+      "id": "DiSRckcvle6rggjfDTPG",
+      "name": "หน้า-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-1",
+          "type": "node",
+          "parent": "1",
+          "label": "Users"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-3",
+          "type": "node",
+          "parent": "1",
+          "label": "view"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-4",
+          "type": "node",
+          "parent": "1",
+          "label": "controller"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-9",
+          "type": "node",
+          "parent": "1",
+          "label": "model"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-10",
+          "type": "node",
+          "parent": "1",
+          "label": "database"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-12",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-13",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-14",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-15",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-16",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-17",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-18",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-19",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-21",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-22",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-23",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-24",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-25",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-26",
+          "type": "node",
+          "parent": "1",
+          "label": "1.click \"login with google\""
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-27",
+          "type": "node",
+          "parent": "1",
+          "label": "2. Forward login request",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">2. Forward login request</span>"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-28",
+          "type": "node",
+          "parent": "1",
+          "label": "3. Verify Google token & domain",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">3. Verify Google token &amp; domain</span>"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-29",
+          "type": "node",
+          "parent": "1",
+          "label": "4. Query role by @ku.th email",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">4. Query role by @ku.th email</span>"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-30",
+          "type": "node",
+          "parent": "1",
+          "label": "5. Return role data",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">5. Return role data</span>"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-31",
+          "type": "node",
+          "parent": "1",
+          "label": "6. Return authenticated user",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">6. Return authenticated user</span>"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-32",
+          "type": "node",
+          "parent": "1",
+          "label": "7. Render dashboard by role",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">7. Render dashboard by role</span>"
+        },
+        {
+          "id": "j7a1_Aa7JpSN04L93APX-33",
+          "type": "node",
+          "parent": "1",
+          "label": "8. Show dashboard",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">8. Show dashboard</span>"
+        }
+      ]
+    }
+  ]
+}
