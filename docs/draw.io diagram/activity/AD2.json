@@ -1,0 +1,236 @@
+{
+  "version": "31.4.1",
+  "pages": [
+    {
+      "id": "lY8bBnfNAuem_1260u-E",
+      "name": "หน้า-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-1",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-2",
+          "type": "node",
+          "parent": "1",
+          "label": "Students open academic page",
+          "html": "<div><br></div><div>Students open academic page</div>"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-3",
+          "type": "node",
+          "parent": "1",
+          "label": "System retrieves available courses and department information"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-6",
+          "type": "edge",
+          "parent": "1",
+          "target": "2NYBibMq4A0K_977Uyln-2"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-7",
+          "type": "node",
+          "parent": "1",
+          "label": "System display course and department",
+          "html": "<br>System display&nbsp;<span style=\"background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));\">course and department</span>"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-8",
+          "type": "edge",
+          "parent": "1",
+          "source": "2NYBibMq4A0K_977Uyln-2",
+          "target": "2NYBibMq4A0K_977Uyln-3"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-9",
+          "type": "edge",
+          "parent": "1",
+          "source": "2NYBibMq4A0K_977Uyln-3",
+          "target": "2NYBibMq4A0K_977Uyln-7"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-10",
+          "type": "node",
+          "parent": "1",
+          "label": "student selects a course or department"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-12",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-13",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-14",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-15",
+          "type": "node",
+          "parent": "1",
+          "label": "[course]"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-16",
+          "type": "node",
+          "parent": "1",
+          "label": "System retrieves course information"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-17",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-19",
+          "type": "node",
+          "parent": "1",
+          "label": "System displays course information and FAQs"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-20",
+          "type": "edge",
+          "parent": "1",
+          "source": "2NYBibMq4A0K_977Uyln-19",
+          "target": "2NYBibMq4A0K_977Uyln-26"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-22",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-23",
+          "type": "node",
+          "parent": "1",
+          "label": "System retrieves department information"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-24",
+          "type": "node",
+          "parent": "1",
+          "label": "System displays department information and FAQs"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-25",
+          "type": "edge",
+          "parent": "1",
+          "source": "2NYBibMq4A0K_977Uyln-24",
+          "target": "2NYBibMq4A0K_977Uyln-26"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-26",
+          "type": "node",
+          "parent": "1",
+          "label": "Student looks for an answer"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-27",
+          "type": "node",
+          "parent": "1",
+          "label": "Answer found?"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-28",
+          "type": "edge",
+          "parent": "1",
+          "source": "2NYBibMq4A0K_977Uyln-26",
+          "target": "2NYBibMq4A0K_977Uyln-27"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-29",
+          "type": "edge",
+          "parent": "1",
+          "target": "2NYBibMq4A0K_977Uyln-33"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-30",
+          "type": "edge",
+          "parent": "1",
+          "source": "2NYBibMq4A0K_977Uyln-27",
+          "target": "2NYBibMq4A0K_977Uyln-34"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-31",
+          "type": "node",
+          "parent": "1",
+          "label": "[Yes]"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-32",
+          "type": "node",
+          "parent": "1",
+          "label": "[No]"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-33",
+          "type": "node",
+          "parent": "1",
+          "label": "Students view answer",
+          "html": "Students view answer<div><br></div>"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-34",
+          "type": "node",
+          "parent": "1",
+          "label": "Students create a new forum",
+          "html": "<div>Students create a new forum</div>"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-35",
+          "type": "node",
+          "parent": "1",
+          "label": "System display the new forum",
+          "html": "System display the new forum<div><br></div>"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-36",
+          "type": "edge",
+          "parent": "1",
+          "source": "2NYBibMq4A0K_977Uyln-34",
+          "target": "2NYBibMq4A0K_977Uyln-35"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-37",
+          "type": "edge",
+          "parent": "1",
+          "target": "2NYBibMq4A0K_977Uyln-38"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-38",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-39",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-42",
+          "type": "edge",
+          "parent": "1",
+          "source": "2NYBibMq4A0K_977Uyln-33",
+          "target": "2NYBibMq4A0K_977Uyln-38"
+        },
+        {
+          "id": "2NYBibMq4A0K_977Uyln-43",
+          "type": "node",
+          "parent": "1",
+          "label": "[department]"
+        }
+      ]
+    }
+  ]
+}

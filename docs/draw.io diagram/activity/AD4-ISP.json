@@ -1,0 +1,168 @@
+{
+  "version": "31.4.4",
+  "pages": [
+    {
+      "id": "C5RBs43oDa-KdzZeNtuy",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "WIyWlLk6GJQsqaUBKTNV-1",
+          "type": "layer"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-0",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-48",
+          "target": "broJoNGANRysIMVnRZ1B-3"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-1",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-45",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-3",
+          "target": "broJoNGANRysIMVnRZ1B-44"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-56",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-3",
+          "target": "broJoNGANRysIMVnRZ1B-41"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-58",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-3",
+          "target": "broJoNGANRysIMVnRZ1B-43"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-3",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "label": "A calendar UI"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-40",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "label": "The work description and deadline is marked inside the calendar"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-41",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "label": "Student can edit the desciption as they like"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-51",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-43",
+          "target": "broJoNGANRysIMVnRZ1B-52"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-55",
+          "type": "node",
+          "parent": "broJoNGANRysIMVnRZ1B-51",
+          "label": "[No]"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-60",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-43",
+          "target": "broJoNGANRysIMVnRZ1B-59"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-61",
+          "type": "node",
+          "parent": "broJoNGANRysIMVnRZ1B-60",
+          "label": "[Yes]"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-43",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "label": "A deadline is reached?"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-46",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-44",
+          "target": "broJoNGANRysIMVnRZ1B-40"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-44",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "label": "A new work has \nbeen posted",
+          "html": "A new work has&nbsp;<div>been posted</div>"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-49",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-1",
+          "target": "broJoNGANRysIMVnRZ1B-48"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-48",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-52",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-53",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-40",
+          "target": "broJoNGANRysIMVnRZ1B-52"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-54",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-52",
+          "target": "broJoNGANRysIMVnRZ1B-48"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-57",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-41",
+          "target": "broJoNGANRysIMVnRZ1B-48"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-63",
+          "type": "edge",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "source": "broJoNGANRysIMVnRZ1B-59",
+          "target": "broJoNGANRysIMVnRZ1B-62"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-59",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1",
+          "label": "Notify"
+        },
+        {
+          "id": "broJoNGANRysIMVnRZ1B-62",
+          "type": "node",
+          "parent": "WIyWlLk6GJQsqaUBKTNV-1"
+        }
+      ]
+    }
+  ]
+}
