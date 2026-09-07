@@ -25,7 +25,7 @@ A centralized, easily navigable, and simple-to-maintain digital hub that unifies
   - Software Proposal
   - SRS (Software Requirements Specification)
   - Iteration Report
-- **Diagrams (JSON)** — located in [`docs/`](./docs)
+- **Diagrams (JSON)** — located in [`docs/draw.io-diagram`](./docs/draw.io-diagram/)
   - plane.so Gantt Chart export
   - draw.io diagrams (Use Case, Activity, Sequence)
 
