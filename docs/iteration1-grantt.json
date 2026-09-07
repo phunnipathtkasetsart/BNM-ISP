@@ -1,0 +1,362 @@
+[
+  {
+    "project_name": "BNM-Iteration-1",
+    "project_identifier": "BNMITERATI",
+    "parent": "",
+    "identifier": "BNMITERATI-3",
+    "name": "Implement Session Authentication & Role-Based Access Control",
+    "state_name": "Done",
+    "priority": "none",
+    "assignees": [
+      "suppamok.t@ku.th",
+      "chayapol.ka@ku.th"
+    ],
+    "description": "(US-05)",
+    "subscribers": [
+      "chayapol.ka@ku.th",
+      "phunnipath@gmail.com",
+      "suppamok.t@ku.th",
+      "suwat.te@ku.th"
+    ],
+    "created_by_name": "",
+    "start_date": "2026-09-04",
+    "due_date": "2026-09-04",
+    "completed_at": "2026-09-07T06:19:37.517815Z",
+    "created_at": "2026-08-31T07:06:15.144000Z",
+    "updated_at": "2026-09-07T06:19:37.523277Z",
+    "archived_at": null,
+    "estimate": "",
+    "labels": [
+      "1.3"
+    ],
+    "cycle_name": "",
+    "cycle_start_date": "",
+    "cycle_end_date": "",
+    "module_name": "",
+    "links": [],
+    "relations": [
+      {
+        "type": "blocked_by",
+        "related_issue": "BNMITERATI-7"
+      }
+    ],
+    "comments": [],
+    "issue_type": "",
+    "total_time_logged": "0h 0m",
+    "worklogs": [],
+    "custom_properties": "",
+    "customers": [],
+    "initiatives": []
+  },
+  {
+    "project_name": "BNM-Iteration-1",
+    "project_identifier": "BNMITERATI",
+    "parent": "",
+    "identifier": "BNMITERATI-4",
+    "name": "Create Migration Scripts & Initial Seeds for Roles",
+    "state_name": "Done",
+    "priority": "none",
+    "assignees": [
+      "suwat.te@ku.th",
+      "phunnipath@gmail.com"
+    ],
+    "description": "US-05",
+    "subscribers": [
+      "phunnipath@gmail.com",
+      "suwat.te@ku.th"
+    ],
+    "created_by_name": "",
+    "start_date": "2026-09-02",
+    "due_date": "2026-09-03",
+    "completed_at": "2026-09-07T06:19:39.198500Z",
+    "created_at": "2026-08-31T07:06:15.144000Z",
+    "updated_at": "2026-09-07T06:19:39.211687Z",
+    "archived_at": null,
+    "estimate": "",
+    "labels": [
+      "1.1"
+    ],
+    "cycle_name": "",
+    "cycle_start_date": "",
+    "cycle_end_date": "",
+    "module_name": "",
+    "links": [],
+    "relations": [
+      {
+        "type": "blocked_by",
+        "related_issue": "BNMITERATI-5"
+      }
+    ],
+    "comments": [],
+    "issue_type": "",
+    "total_time_logged": "0h 0m",
+    "worklogs": [],
+    "custom_properties": "",
+    "customers": [],
+    "initiatives": []
+  },
+  {
+    "project_name": "BNM-Iteration-1",
+    "project_identifier": "BNMITERATI",
+    "parent": "",
+    "identifier": "BNMITERATI-1",
+    "name": "Build Frontend Session Management & Auth Redirect Guard",
+    "state_name": "Done",
+    "priority": "none",
+    "assignees": [
+      "apichai.pa@ku.th",
+      "chayapol.ka@ku.th"
+    ],
+    "description": "US-01",
+    "subscribers": [
+      "chayapol.ka@ku.th",
+      "phunnipath@gmail.com",
+      "apichai.pa@ku.th",
+      "suwat.te@ku.th"
+    ],
+    "created_by_name": "",
+    "start_date": "2026-09-01",
+    "due_date": "2026-09-01",
+    "completed_at": "2026-09-07T06:19:35.672141Z",
+    "created_at": "2026-08-31T07:06:15.144000Z",
+    "updated_at": "2026-09-07T06:19:35.682757Z",
+    "archived_at": null,
+    "estimate": "",
+    "labels": [
+      "1.6",
+      "1.4"
+    ],
+    "cycle_name": "",
+    "cycle_start_date": "",
+    "cycle_end_date": "",
+    "module_name": "",
+    "links": [],
+    "relations": [],
+    "comments": [],
+    "issue_type": "",
+    "total_time_logged": "0h 0m",
+    "worklogs": [],
+    "custom_properties": "",
+    "customers": [],
+    "initiatives": []
+  },
+  {
+    "project_name": "BNM-Iteration-1",
+    "project_identifier": "BNMITERATI",
+    "parent": "",
+    "identifier": "BNMITERATI-7",
+    "name": "Implement Google OAuth2 Strategy & Ku.th Validation Middleware",
+    "state_name": "Done",
+    "priority": "none",
+    "assignees": [
+      "suppamok.t@ku.th",
+      "chayapol.ka@ku.th"
+    ],
+    "description": "US-01",
+    "subscribers": [
+      "suppamok.t@ku.th",
+      "phunnipath@gmail.com",
+      "chayapol.ka@ku.th",
+      "suwat.te@ku.th"
+    ],
+    "created_by_name": "",
+    "start_date": "2026-09-03",
+    "due_date": "2026-09-04",
+    "completed_at": "2026-09-07T06:19:38.365202Z",
+    "created_at": "2026-08-31T07:06:15.144000Z",
+    "updated_at": "2026-09-07T06:19:38.375867Z",
+    "archived_at": null,
+    "estimate": "",
+    "labels": [
+      "1.1"
+    ],
+    "cycle_name": "",
+    "cycle_start_date": "",
+    "cycle_end_date": "",
+    "module_name": "",
+    "links": [],
+    "relations": [],
+    "comments": [],
+    "issue_type": "",
+    "total_time_logged": "0h 0m",
+    "worklogs": [],
+    "custom_properties": "",
+    "customers": [],
+    "initiatives": []
+  },
+  {
+    "project_name": "BNM-Iteration-1",
+    "project_identifier": "BNMITERATI",
+    "parent": "",
+    "identifier": "BNMITERATI-8",
+    "name": "Iteration 1: Foundation User Authentication & RBAC Schema",
+    "state_name": "Done",
+    "priority": "none",
+    "assignees": [],
+    "description": "US-01; US-5",
+    "subscribers": [
+      "phunnipath@gmail.com",
+      "suwat.te@ku.th"
+    ],
+    "created_by_name": "",
+    "start_date": "2026-09-04",
+    "due_date": "2026-09-04",
+    "completed_at": "2026-09-07T06:19:32.211052Z",
+    "created_at": "2026-08-31T07:06:15.144000Z",
+    "updated_at": "2026-09-07T06:19:32.223128Z",
+    "archived_at": null,
+    "estimate": "",
+    "labels": [],
+    "cycle_name": "",
+    "cycle_start_date": "",
+    "cycle_end_date": "",
+    "module_name": "",
+    "links": [],
+    "relations": [
+      {
+        "type": "blocked_by",
+        "related_issue": "BNMITERATI-3"
+      }
+    ],
+    "comments": [],
+    "issue_type": "",
+    "total_time_logged": "0h 0m",
+    "worklogs": [],
+    "custom_properties": "",
+    "customers": [],
+    "initiatives": []
+  },
+  {
+    "project_name": "BNM-Iteration-1",
+    "project_identifier": "BNMITERATI",
+    "parent": "",
+    "identifier": "BNMITERATI-5",
+    "name": "Design MySQL Schema (Users Roles Permissions)",
+    "state_name": "Done",
+    "priority": "none",
+    "assignees": [
+      "suwat.te@ku.th",
+      "phunnipath@gmail.com"
+    ],
+    "description": "US-01; US-05",
+    "subscribers": [
+      "phunnipath@gmail.com",
+      "suwat.te@ku.th"
+    ],
+    "created_by_name": "",
+    "start_date": "2026-09-01",
+    "due_date": "2026-09-02",
+    "completed_at": "2026-09-07T06:19:36.644708Z",
+    "created_at": "2026-08-31T07:06:15.144000Z",
+    "updated_at": "2026-09-07T06:19:36.657873Z",
+    "archived_at": null,
+    "estimate": "",
+    "labels": [],
+    "cycle_name": "",
+    "cycle_start_date": "",
+    "cycle_end_date": "",
+    "module_name": "",
+    "links": [],
+    "relations": [],
+    "comments": [],
+    "issue_type": "",
+    "total_time_logged": "0h 0m",
+    "worklogs": [],
+    "custom_properties": "",
+    "customers": [],
+    "initiatives": []
+  },
+  {
+    "project_name": "BNM-Iteration-1",
+    "project_identifier": "BNMITERATI",
+    "parent": "",
+    "identifier": "BNMITERATI-2",
+    "name": "Build Login Landing Page UI & Google Sign-In Button",
+    "state_name": "Done",
+    "priority": "none",
+    "assignees": [
+      "apichai.pa@ku.th"
+    ],
+    "description": "US-01",
+    "subscribers": [
+      "phunnipath@gmail.com",
+      "apichai.pa@ku.th",
+      "suwat.te@ku.th"
+    ],
+    "created_by_name": "",
+    "start_date": "2026-09-01",
+    "due_date": "2026-09-02",
+    "completed_at": "2026-09-07T06:19:33.477450Z",
+    "created_at": "2026-08-31T07:06:15.144000Z",
+    "updated_at": "2026-09-07T06:19:33.485731Z",
+    "archived_at": null,
+    "estimate": "",
+    "labels": [
+      "1.3"
+    ],
+    "cycle_name": "",
+    "cycle_start_date": "",
+    "cycle_end_date": "",
+    "module_name": "",
+    "links": [],
+    "relations": [],
+    "comments": [],
+    "issue_type": "",
+    "total_time_logged": "0h 0m",
+    "worklogs": [],
+    "custom_properties": "",
+    "customers": [],
+    "initiatives": []
+  },
+  {
+    "project_name": "BNM-Iteration-1",
+    "project_identifier": "BNMITERATI",
+    "parent": "",
+    "identifier": "BNMITERATI-6",
+    "name": "Implement Backend RBAC Guard Middleware",
+    "state_name": "Done",
+    "priority": "none",
+    "assignees": [
+      "suppamok.t@ku.th",
+      "suppamok.t@ku.th",
+      "chayapol.ka@ku.th"
+    ],
+    "description": "US-01; US-05",
+    "subscribers": [
+      "chayapol.ka@ku.th",
+      "phunnipath@gmail.com",
+      "suppamok.t@ku.th",
+      "suwat.te@ku.th"
+    ],
+    "created_by_name": "",
+    "start_date": "2026-09-03",
+    "due_date": "2026-09-04",
+    "completed_at": "2026-09-07T06:19:34.648944Z",
+    "created_at": "2026-08-31T07:06:15.144000Z",
+    "updated_at": "2026-09-07T06:19:34.662237Z",
+    "archived_at": null,
+    "estimate": "",
+    "labels": [
+      "1.4",
+      "1.2"
+    ],
+    "cycle_name": "",
+    "cycle_start_date": "",
+    "cycle_end_date": "",
+    "module_name": "",
+    "links": [],
+    "relations": [
+      {
+        "type": "blocked_by",
+        "related_issue": "BNMITERATI-7"
+      }
+    ],
+    "comments": [],
+    "issue_type": "",
+    "total_time_logged": "0h 0m",
+    "worklogs": [],
+    "custom_properties": "",
+    "customers": [],
+    "initiatives": []
+  }
+]
