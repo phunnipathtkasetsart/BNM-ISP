@@ -1,0 +1,228 @@
+{
+  "version": "31.4.1",
+  "pages": [
+    {
+      "id": "S6T3SQjjHLRZ3RzlxDdt",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-2",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-3",
+          "type": "node",
+          "parent": "1",
+          "label": "Department information &amp; communication hub"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-28",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-4",
+          "target": "z8f9eWawWum1TGpsAxQQ-7"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-29",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-4",
+          "target": "z8f9eWawWum1TGpsAxQQ-8"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-30",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-4",
+          "target": "z8f9eWawWum1TGpsAxQQ-10"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-31",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-4",
+          "target": "z8f9eWawWum1TGpsAxQQ-11"
+        },
+        {
+          "id": "AV1CoZexst0gBJHpdIGK-4",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-4",
+          "target": "AV1CoZexst0gBJHpdIGK-3"
+        },
+        {
+          "id": "AV1CoZexst0gBJHpdIGK-5",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-4",
+          "target": "AV1CoZexst0gBJHpdIGK-2"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-4",
+          "type": "node",
+          "parent": "1",
+          "label": "Students , guests",
+          "html": "<div>Students , guests</div><div><br></div>"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-33",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-5",
+          "target": "z8f9eWawWum1TGpsAxQQ-13"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-34",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-5",
+          "target": "z8f9eWawWum1TGpsAxQQ-14"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-35",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-5",
+          "target": "z8f9eWawWum1TGpsAxQQ-10"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-5",
+          "type": "node",
+          "parent": "1",
+          "label": "Department / Lecturer / TA"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-17",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-7",
+          "target": "z8f9eWawWum1TGpsAxQQ-9"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-7",
+          "type": "node",
+          "parent": "1",
+          "label": "View information and announcement about academic (Lab , department meeting , etc.)&nbsp; and guidance"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-16",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-8",
+          "target": "z8f9eWawWum1TGpsAxQQ-9"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-8",
+          "type": "node",
+          "parent": "1",
+          "label": "Nontifications of announcement"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-9",
+          "type": "node",
+          "parent": "1",
+          "label": "Authentication of roles ( SKE , CPE students )"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-10",
+          "type": "node",
+          "parent": "1",
+          "label": "FAQs ( Pantip forum )"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-11",
+          "type": "node",
+          "parent": "1",
+          "label": "Calendar managing"
+        },
+        {
+          "id": "bg-FbFEm49R2kqiKhkzA-3",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-12",
+          "target": "bg-FbFEm49R2kqiKhkzA-1"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-12",
+          "type": "node",
+          "parent": "1",
+          "label": "Class Join"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-20",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-13",
+          "target": "z8f9eWawWum1TGpsAxQQ-19"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-13",
+          "type": "node",
+          "parent": "1",
+          "label": "CRUD announcements , information posting, courses"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-21",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-14",
+          "target": "z8f9eWawWum1TGpsAxQQ-19"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-14",
+          "type": "node",
+          "parent": "1",
+          "label": "Academic Support"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-18",
+          "type": "node",
+          "parent": "1",
+          "label": "&lt;&lt; include &gt;&gt;"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-19",
+          "type": "node",
+          "parent": "1",
+          "label": "Authentication of roles ( Department Lecturer, TA )"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-23",
+          "type": "node",
+          "parent": "1",
+          "label": "&lt;&lt; include &gt;&gt;"
+        },
+        {
+          "id": "z8f9eWawWum1TGpsAxQQ-32",
+          "type": "edge",
+          "parent": "1",
+          "source": "z8f9eWawWum1TGpsAxQQ-4",
+          "target": "z8f9eWawWum1TGpsAxQQ-12"
+        },
+        {
+          "id": "AV1CoZexst0gBJHpdIGK-2",
+          "type": "node",
+          "parent": "1",
+          "label": "DoomScroll"
+        },
+        {
+          "id": "AV1CoZexst0gBJHpdIGK-3",
+          "type": "node",
+          "parent": "1",
+          "label": "Class code joining"
+        },
+        {
+          "id": "bg-FbFEm49R2kqiKhkzA-1",
+          "type": "node",
+          "parent": "1",
+          "label": "Group gathering"
+        }
+      ]
+    }
+  ]
+}
