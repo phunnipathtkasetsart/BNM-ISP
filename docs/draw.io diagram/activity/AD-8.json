@@ -1,0 +1,339 @@
+{
+  "version": "31.4.1",
+  "pages": [
+    {
+      "id": "S6T3SQjjHLRZ3RzlxDdt",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-166",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-167",
+          "type": "node",
+          "parent": "CCFGJTMUt4nD2RiEISQf-166"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-168",
+          "type": "node",
+          "parent": "CCFGJTMUt4nD2RiEISQf-166"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-169",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-149",
+          "target": "CCFGJTMUt4nD2RiEISQf-168"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-143",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-7",
+          "target": "CCFGJTMUt4nD2RiEISQf-41"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-144",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-7",
+          "target": "CCFGJTMUt4nD2RiEISQf-35"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-7",
+          "type": "node",
+          "parent": "1",
+          "label": "Any user enter web-app"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-120",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-27",
+          "target": "CCFGJTMUt4nD2RiEISQf-7"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-27",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-61",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-35",
+          "target": "CCFGJTMUt4nD2RiEISQf-48"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-35",
+          "type": "node",
+          "parent": "1",
+          "label": "Client level users enter login page features login via Oauth or traditional email and password"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-111",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-41",
+          "target": "CCFGJTMUt4nD2RiEISQf-109"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-41",
+          "type": "node",
+          "parent": "1",
+          "label": "Redirect to admin subdomain"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-63",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-48",
+          "target": "CCFGJTMUt4nD2RiEISQf-59"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-117",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-48",
+          "target": "CCFGJTMUt4nD2RiEISQf-57"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-48",
+          "type": "node",
+          "parent": "1",
+          "label": "Email valid ?"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-180",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-53",
+          "target": "CCFGJTMUt4nD2RiEISQf-82"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-53",
+          "type": "node",
+          "parent": "1",
+          "label": "Redirect to registration page for user to enter information and setup their account"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-118",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-57",
+          "target": "CCFGJTMUt4nD2RiEISQf-53"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-140",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-57",
+          "target": "CCFGJTMUt4nD2RiEISQf-82"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-57",
+          "type": "node",
+          "parent": "1",
+          "label": "User has signed in before ?"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-112",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-59",
+          "target": "CCFGJTMUt4nD2RiEISQf-35"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-59",
+          "type": "node",
+          "parent": "1",
+          "label": "Invalid email"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-150",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-69",
+          "target": "CCFGJTMUt4nD2RiEISQf-147"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-69",
+          "type": "node",
+          "parent": "1",
+          "label": "System validate admin roles in specific access"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-163",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-82",
+          "target": "CCFGJTMUt4nD2RiEISQf-162"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-82",
+          "type": "node",
+          "parent": "1",
+          "label": "System validate users roles in specific access"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-114",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-109",
+          "target": "CCFGJTMUt4nD2RiEISQf-69"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-109",
+          "type": "node",
+          "parent": "1",
+          "label": "Admin level users enter pre-made admin email and password"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-129",
+          "type": "node",
+          "parent": "1",
+          "label": "Yes"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-130",
+          "type": "node",
+          "parent": "1",
+          "label": "Yes"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-131",
+          "type": "node",
+          "parent": "1",
+          "label": "Yes"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-132",
+          "type": "node",
+          "parent": "1",
+          "label": "No"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-135",
+          "type": "node",
+          "parent": "1",
+          "label": "No"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-148",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-147",
+          "target": "CCFGJTMUt4nD2RiEISQf-149"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-156",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-147",
+          "target": "CCFGJTMUt4nD2RiEISQf-151"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-147",
+          "type": "node",
+          "parent": "1",
+          "label": "Authorized ?"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-149",
+          "type": "node",
+          "parent": "1",
+          "label": "Redirect to specific permitted routes"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-157",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-151",
+          "target": "CCFGJTMUt4nD2RiEISQf-41"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-151",
+          "type": "node",
+          "parent": "1",
+          "label": "Unauthorized"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-158",
+          "type": "node",
+          "parent": "1",
+          "label": "No"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-160",
+          "type": "node",
+          "parent": "1",
+          "label": "Yes"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-173",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-162",
+          "target": "CCFGJTMUt4nD2RiEISQf-171"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-162",
+          "type": "node",
+          "parent": "1",
+          "label": "Redirect to specific permitted routes"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-174",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-171",
+          "target": "CCFGJTMUt4nD2RiEISQf-172"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-176",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-171",
+          "target": "CCFGJTMUt4nD2RiEISQf-168"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-171",
+          "type": "node",
+          "parent": "1",
+          "label": "Authorized ?"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-181",
+          "type": "edge",
+          "parent": "1",
+          "source": "CCFGJTMUt4nD2RiEISQf-172",
+          "target": "CCFGJTMUt4nD2RiEISQf-35"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-172",
+          "type": "node",
+          "parent": "1",
+          "label": "Unauthorized"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-177",
+          "type": "node",
+          "parent": "1",
+          "label": "Yes"
+        },
+        {
+          "id": "CCFGJTMUt4nD2RiEISQf-179",
+          "type": "node",
+          "parent": "1",
+          "label": "No"
+        }
+      ]
+    }
+  ]
+}
