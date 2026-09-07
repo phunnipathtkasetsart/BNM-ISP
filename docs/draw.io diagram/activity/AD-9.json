@@ -1,0 +1,147 @@
+{
+  "version": "31.4.4",
+  "pages": [
+    {
+      "id": "KZQpBV6mqOMIlp-aSpZz",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-8",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-1",
+          "target": "F7ddITKVSNAAXl9SikG_-3"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-1",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-19",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-3",
+          "target": "F7ddITKVSNAAXl9SikG_-18"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-3",
+          "type": "node",
+          "parent": "1",
+          "label": "Student want to join a class"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-6",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-4",
+          "target": "F7ddITKVSNAAXl9SikG_-7"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-12",
+          "type": "node",
+          "parent": "F7ddITKVSNAAXl9SikG_-6",
+          "label": "[Yes]"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-13",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-4",
+          "target": "F7ddITKVSNAAXl9SikG_-14"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-17",
+          "type": "node",
+          "parent": "F7ddITKVSNAAXl9SikG_-13",
+          "label": "[No]"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-4",
+          "type": "node",
+          "parent": "1",
+          "label": "The code is correct?"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-10",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-5",
+          "target": "F7ddITKVSNAAXl9SikG_-4"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-5",
+          "type": "node",
+          "parent": "1",
+          "label": "Lecturer hand out class code"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-22",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-7",
+          "target": "F7ddITKVSNAAXl9SikG_-21"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-7",
+          "type": "node",
+          "parent": "1",
+          "label": "Student join the class succesfully"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-16",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-14",
+          "target": "F7ddITKVSNAAXl9SikG_-5"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-14",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-23",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-18",
+          "target": "F7ddITKVSNAAXl9SikG_-14"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-25",
+          "type": "node",
+          "parent": "F7ddITKVSNAAXl9SikG_-23",
+          "label": "[Yes]"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-27",
+          "type": "edge",
+          "parent": "1",
+          "source": "F7ddITKVSNAAXl9SikG_-18",
+          "target": "F7ddITKVSNAAXl9SikG_-21"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-28",
+          "type": "node",
+          "parent": "F7ddITKVSNAAXl9SikG_-27",
+          "label": "[No]"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-18",
+          "type": "node",
+          "parent": "1",
+          "label": "The student is logged in?"
+        },
+        {
+          "id": "F7ddITKVSNAAXl9SikG_-21",
+          "type": "node",
+          "parent": "1"
+        }
+      ]
+    }
+  ]
+}

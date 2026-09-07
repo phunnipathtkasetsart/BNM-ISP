@@ -1,0 +1,271 @@
+{
+  "version": "31.4.4",
+  "pages": [
+    {
+      "id": "fX9FOuSlLsRFeGlfnz1U",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-5",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-1",
+          "target": "HVzaB9advCmZEuC6O7FI-2"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-1",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-6",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-2",
+          "target": "HVzaB9advCmZEuC6O7FI-4"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-2",
+          "type": "node",
+          "parent": "1",
+          "label": "Student want to have \na group",
+          "html": "Student want to have&nbsp;<div>a group</div>"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-24",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-3",
+          "target": "HVzaB9advCmZEuC6O7FI-15"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-31",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-24",
+          "label": "[No]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-25",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-3",
+          "target": "HVzaB9advCmZEuC6O7FI-11"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-30",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-25",
+          "label": "[Yes]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-3",
+          "type": "node",
+          "parent": "1",
+          "label": "Create a group?",
+          "html": "<div>Create a group?</div>"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-26",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-4",
+          "target": "HVzaB9advCmZEuC6O7FI-3"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-29",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-26",
+          "label": "[No]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-27",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-4",
+          "target": "HVzaB9advCmZEuC6O7FI-34"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-28",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-27",
+          "label": "[Yes]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-4",
+          "type": "node",
+          "parent": "1",
+          "label": "Is already in a group"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-21",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-11",
+          "target": "HVzaB9advCmZEuC6O7FI-13"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-11",
+          "type": "node",
+          "parent": "1",
+          "label": "Student can edit group name, group size and join permission (public, private)"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-37",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-13",
+          "target": "HVzaB9advCmZEuC6O7FI-34"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-13",
+          "type": "node",
+          "parent": "1",
+          "label": "Group created"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-22",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-15",
+          "target": "HVzaB9advCmZEuC6O7FI-16"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-15",
+          "type": "node",
+          "parent": "1",
+          "label": "Student find and join\n a group",
+          "html": "Student find and join<div>&nbsp;a group</div>"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-58",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-16",
+          "target": "HVzaB9advCmZEuC6O7FI-17"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-61",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-58",
+          "label": "[No]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-16",
+          "type": "node",
+          "parent": "1",
+          "label": "Is the group full?"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-35",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-50",
+          "target": "HVzaB9advCmZEuC6O7FI-34"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-44",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-17",
+          "target": "HVzaB9advCmZEuC6O7FI-43"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-47",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-44",
+          "label": "[No]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-17",
+          "type": "node",
+          "parent": "1",
+          "label": "Is it a public group?"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-34",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-49",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-40",
+          "target": "HVzaB9advCmZEuC6O7FI-15"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-40",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-41",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-16",
+          "target": "HVzaB9advCmZEuC6O7FI-40"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-60",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-41",
+          "label": "[Yes]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-43",
+          "type": "node",
+          "parent": "1",
+          "label": "Group leader authorized?"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-48",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-43",
+          "target": "HVzaB9advCmZEuC6O7FI-40"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-55",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-48",
+          "label": "[No]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-50",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-53",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-17",
+          "target": "HVzaB9advCmZEuC6O7FI-50"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-54",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-53",
+          "label": "[Yes]"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-56",
+          "type": "edge",
+          "parent": "1",
+          "source": "HVzaB9advCmZEuC6O7FI-43",
+          "target": "HVzaB9advCmZEuC6O7FI-50"
+        },
+        {
+          "id": "HVzaB9advCmZEuC6O7FI-57",
+          "type": "node",
+          "parent": "HVzaB9advCmZEuC6O7FI-56",
+          "label": "[Yes]"
+        }
+      ]
+    }
+  ]
+}

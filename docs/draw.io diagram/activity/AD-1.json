@@ -1,0 +1,204 @@
+{
+  "version": "31.4.1",
+  "pages": [
+    {
+      "id": "I3inP2PRrrN7FVlrTNTz",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-15",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-2",
+          "target": "b7qB0_I1IZVDvir-UKh7-4"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-2",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-19",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-3",
+          "target": "b7qB0_I1IZVDvir-UKh7-10"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-3",
+          "type": "node",
+          "parent": "1",
+          "label": "Lecturer / TA / Department enter/edit documents or announcements"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-16",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-4",
+          "target": "b7qB0_I1IZVDvir-UKh7-3"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-17",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-4",
+          "target": "b7qB0_I1IZVDvir-UKh7-5"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-4",
+          "type": "node",
+          "parent": "1",
+          "label": "Lecturer / TA / Department open admin dashboard"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-18",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-5",
+          "target": "b7qB0_I1IZVDvir-UKh7-10"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-5",
+          "type": "node",
+          "parent": "1",
+          "label": "Lecturer / TA / Department delete/archive documents or announcements"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-24",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-10",
+          "target": "b7qB0_I1IZVDvir-UKh7-20"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-10",
+          "type": "node",
+          "parent": "1",
+          "label": "System validate authorize and authentication"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-27",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-12",
+          "target": "b7qB0_I1IZVDvir-UKh7-4"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-12",
+          "type": "node",
+          "parent": "1",
+          "label": "Unauthorize"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-30",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-13",
+          "target": "b7qB0_I1IZVDvir-UKh7-28"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-13",
+          "type": "node",
+          "parent": "1",
+          "label": "System post/update the announcement and content"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-31",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-14",
+          "target": "b7qB0_I1IZVDvir-UKh7-28"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-14",
+          "type": "node",
+          "parent": "1",
+          "label": "System delete/archive the announcement and content"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-22",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-20",
+          "target": "b7qB0_I1IZVDvir-UKh7-12"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-23",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-20",
+          "target": "b7qB0_I1IZVDvir-UKh7-21"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-20",
+          "type": "node",
+          "parent": "1",
+          "label": "Authorized in specific access?"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-35",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-21",
+          "target": "b7qB0_I1IZVDvir-UKh7-14"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-21",
+          "type": "node",
+          "parent": "1",
+          "label": "Post ?"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-33",
+          "type": "node",
+          "parent": "1",
+          "label": "Yes"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-34",
+          "type": "edge",
+          "parent": "1",
+          "source": "b7qB0_I1IZVDvir-UKh7-21",
+          "target": "b7qB0_I1IZVDvir-UKh7-13"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-37",
+          "type": "node",
+          "parent": "1",
+          "label": "Yes"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-38",
+          "type": "node",
+          "parent": "1",
+          "label": "No"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-39",
+          "type": "node",
+          "parent": "1",
+          "label": "No"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-40",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-32",
+          "type": "node",
+          "parent": "b7qB0_I1IZVDvir-UKh7-40"
+        },
+        {
+          "id": "b7qB0_I1IZVDvir-UKh7-28",
+          "type": "node",
+          "parent": "b7qB0_I1IZVDvir-UKh7-40"
+        }
+      ]
+    }
+  ]
+}

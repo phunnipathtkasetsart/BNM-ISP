@@ -1,0 +1,165 @@
+{
+  "version": "31.4.1",
+  "pages": [
+    {
+      "id": "GgrFitaEx2FYKR5QIObk",
+      "name": "หน้า-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-1",
+          "type": "node",
+          "parent": "1",
+          "label": "Users"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-2",
+          "type": "node",
+          "parent": "1",
+          "label": "view"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-3",
+          "type": "node",
+          "parent": "1",
+          "label": "controller"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-4",
+          "type": "node",
+          "parent": "1",
+          "label": "model"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-5",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-6",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-7",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-8",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-9",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-10",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-11",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-12",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-13",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-14",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-15",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-16",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-17",
+          "type": "edge",
+          "parent": "1"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-18",
+          "type": "node",
+          "parent": "1",
+          "label": "1. Open dashboard page",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">1. Open dashboard page</span>"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-19",
+          "type": "node",
+          "parent": "1",
+          "label": "2. Get dashboard data",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">2. Get dashboard data</span>"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-20",
+          "type": "node",
+          "parent": "1",
+          "label": "3. GET announcements, courses, syllabus, deadlines"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-21",
+          "type": "node",
+          "parent": "1",
+          "label": "4. Select global dept. records \nand upcoming deadlines",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; white-space: nowrap;\">4. Select global dept. records&nbsp;</span><div><span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; white-space: nowrap;\">and upcoming deadlines</span></div>"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-22",
+          "type": "node",
+          "parent": "1",
+          "label": "5. Return records",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">5. Return records</span>"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-23",
+          "type": "node",
+          "parent": "1",
+          "label": "6. Return dashboard data",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">6. Return dashboard data</span>"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-24",
+          "type": "node",
+          "parent": "1",
+          "label": "7. Render dashboard",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">7. Render dashboard<span style=\"white-space: pre;\">\t</span></span>"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-25",
+          "type": "node",
+          "parent": "1",
+          "label": "8. Show dashboard",
+          "html": "<span style=\"color: rgb(11, 11, 11); font-family: anthropic-sans, -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, sans-serif; text-align: start; white-space: nowrap;\">8. Show dashboard</span>"
+        },
+        {
+          "id": "-B4YtsKEpGPMGrBWV5wz-52",
+          "type": "node",
+          "parent": "1",
+          "label": "database"
+        }
+      ]
+    }
+  ]
+}

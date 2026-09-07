@@ -1,0 +1,246 @@
+{
+  "version": "31.4.1",
+  "pages": [
+    {
+      "id": "GhK38LVvYlVSDMQiiHvZ",
+      "name": "Page-1",
+      "cells": [
+        {
+          "id": "1",
+          "type": "layer"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-2",
+          "type": "node",
+          "parent": "1",
+          "label": "Users",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">Users</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-4",
+          "type": "node",
+          "parent": "1",
+          "label": "View",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">View</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-5",
+          "type": "node",
+          "parent": "1",
+          "label": "Controller",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">Controller</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-6",
+          "type": "node",
+          "parent": "1",
+          "label": "Model",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">Model</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-7",
+          "type": "node",
+          "parent": "1",
+          "label": "Database",
+          "html": "<font style=\"font-size: 17px;\" face=\"Times New Roman\">Database</font>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-14",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-8",
+          "target": "ys-4hMEnNTGd_gLSM3je-2"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-15",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-8"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-8",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-17",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-9",
+          "target": "ys-4hMEnNTGd_gLSM3je-4"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-18",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-9"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-9",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-24",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-11",
+          "target": "ys-4hMEnNTGd_gLSM3je-6"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-25",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-11"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-54",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-11",
+          "target": "ys-4hMEnNTGd_gLSM3je-13"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-11",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-23",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-12"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-12",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-26",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-13"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-27",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-13",
+          "target": "ys-4hMEnNTGd_gLSM3je-7"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-62",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-13",
+          "target": "ys-4hMEnNTGd_gLSM3je-11"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-13",
+          "type": "node",
+          "parent": "1"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-22",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-12",
+          "target": "ys-4hMEnNTGd_gLSM3je-5"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-29",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-8",
+          "target": "ys-4hMEnNTGd_gLSM3je-9"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-30",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-9",
+          "target": "ys-4hMEnNTGd_gLSM3je-12"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-31",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-12",
+          "target": "ys-4hMEnNTGd_gLSM3je-11"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-40",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-11",
+          "target": "ys-4hMEnNTGd_gLSM3je-12"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-41",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-12",
+          "target": "ys-4hMEnNTGd_gLSM3je-9"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-42",
+          "type": "edge",
+          "parent": "1",
+          "source": "ys-4hMEnNTGd_gLSM3je-9",
+          "target": "ys-4hMEnNTGd_gLSM3je-8"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-43",
+          "type": "node",
+          "parent": "1",
+          "label": "1. Open academic/search page"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-45",
+          "type": "node",
+          "parent": "1",
+          "label": "2. GET / announcements"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-46",
+          "type": "node",
+          "parent": "1",
+          "label": "3. Check session (SRS-2)"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-49",
+          "type": "node",
+          "parent": "1",
+          "label": "6. Return content list"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-50",
+          "type": "node",
+          "parent": "1",
+          "label": "7. Render dashboard/search results"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-51",
+          "type": "node",
+          "parent": "1",
+          "label": "8. Show information"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-53",
+          "type": "node",
+          "parent": "1",
+          "label": "[Logged-in User/Guest]\n4. Query global department posts (US-02) and enrolled course posts (SRS-3)",
+          "html": "<div>[Logged-in User/Guest]</div><div>4. Query global department posts (US-02) and enrolled course posts (SRS-3)</div>"
+        },
+        {
+          "id": "ys-4hMEnNTGd_gLSM3je-61",
+          "type": "node",
+          "parent": "1",
+          "label": "5. Full-text search across labs/news/announcements (SRS-1) and matching posts with ranked results",
+          "html": "<div>5. Full-text search across labs/news/announcements (SRS-1) and matching posts with&nbsp;<span style=\"background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));\">ranked results</span></div>"
+        }
+      ]
+    }
+  ]
+}
