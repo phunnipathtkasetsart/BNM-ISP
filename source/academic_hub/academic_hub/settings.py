@@ -21,12 +21,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ce#6iemf#u@)dfzj!r@^a%%mcoj-%5+2r=%m@(pf4gv1!&=^w9'
+# Read from the environment; docker-compose loads .env for the web service.
+# The fallback exists so a fresh clone still boots without a .env - it is
+# deliberately not a real key, and DEBUG must be False in any deployment,
+# which is where a missing SECRET_KEY would matter.
+SECRET_KEY = os.getenv("SECRET_KEY", "django-insecure-local-dev-only-do-not-deploy")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").strip().lower() not in {"false", "0", "no"}
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    h.strip() for h in os.getenv(
+        "ALLOWED_HOSTS", "localhost,127.0.0.1,0.0.0.0"
+    ).split(",") if h.strip()
+]
 
 
 # Application definition
@@ -45,7 +53,7 @@ INSTALLED_APPS = [
 
 AUTH_USER_MODEL = "accounts.User"
 LOGIN_URL = "accounts:login"
-LOGIN_REDIRECT_URL = "accounts:dashboard"
+LOGIN_REDIRECT_URL = "announcements:public_board"
 LOGOUT_REDIRECT_URL = "accounts:login"
 
 GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID", "")
@@ -61,6 +69,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'accounts.middleware.GuestAccessMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -92,11 +101,16 @@ WSGI_APPLICATION = 'academic_hub.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'postgres',
-        'USER': 'postgres',
-        'PASSWORD': 'postgres',
-        'HOST': 'db',  # Service name in your docker-compose.yml
-        'PORT': '5432',
+        # POSTGRES_* is read first: docker-compose sets it from the same values
+        # it uses to create the database container, so the two can never
+        # disagree. DB_* is the fallback for running outside compose. Reading
+        # DB_* first was wrong - a stale .env carried MySQL placeholders and
+        # authentication failed against a Postgres container that was fine.
+        'NAME': os.getenv('POSTGRES_NAME', os.getenv('DB_NAME', 'postgres')),
+        'USER': os.getenv('POSTGRES_USER', os.getenv('DB_USER', 'postgres')),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', os.getenv('DB_PASSWORD', 'postgres')),
+        'HOST': os.getenv('DB_HOST', 'db'),  # service name in docker-compose.yml
+        'PORT': os.getenv('DB_PORT', '5432'),
         'OPTIONS': {
             'options': '-c search_path=ISP_DJANGO_2026,public'  # Tells Django to look in your custom schema
         }

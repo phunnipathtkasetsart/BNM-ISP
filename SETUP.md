@@ -37,7 +37,7 @@ Open your terminal (PowerShell, Git Bash, or macOS Terminal) and run:
 
 ```bash
 git clone https://github.com/phunnipathtkasetsart/BNM-ISP.git
-cd BNM-ISP/name_list
+cd BNM-ISP/source/academic_hub
 ```
 
 ### 2. Create Your Local Environment File
@@ -72,7 +72,7 @@ You can now access the site in your browser at:
 
 ### 4. Apply Initial Database Migrations
 
-Open a **new terminal tab/window**, navigate to `BNM-ISP/name_list`, and run:
+Open a **new terminal tab/window**, navigate to `BNM-ISP/source/academic_hub`, and run:
 
 ```bash
 docker compose exec web python manage.py migrate

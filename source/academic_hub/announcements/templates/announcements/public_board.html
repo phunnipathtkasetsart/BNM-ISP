@@ -8,10 +8,33 @@
 
 {% block topbar_mod %}topbar--signed-in{% endblock %}
 
+{% comment %} The board is now the landing page for everyone, so the bar
+   carries identity for signed-in users and a way in for guests. It replaced
+   the dashboard, which showed the same bar over an empty page. {% endcomment %}
+{% block topbar_left %}
+  {% if request.user.is_authenticated %}
+    {% comment %} Guests included: they are a generated account like any other,
+       and showing the name and ID makes the generated values visible. {% endcomment %}
+    <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+    <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+  {% endif %}
+{% endblock %}
+
 {% block topbar_right %}
   <div class="topbar__right">
-    <span class="topbar__role">Guest</span>
-    <a class="topbar__link" href="{% url 'accounts:login' %}">Sign in</a>
+    {% if request.user.is_authenticated %}
+      <span class="topbar__role">{% if is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+      {% if request.user.is_superuser %}
+        <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
+      {% endif %}
+      <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
+        {% csrf_token %}
+        <button type="submit" class="topbar__logout">Log out</button>
+      </form>
+    {% else %}
+      <span class="topbar__role">Guest</span>
+      <a class="topbar__link" href="{% url 'accounts:login' %}">Sign in</a>
+    {% endif %}
   </div>
 {% endblock %}
 
@@ -22,6 +45,13 @@
   <a class="subnav__tab subnav__tab--on" href="{% url 'announcements:public_board' %}">Home</a>
   <span class="subnav__tab subnav__tab--off" aria-disabled="true"
         title="Sign in to see your courses">Course</span>
+
+  {% comment %} Lecturers and the Department publish; students and guests do
+     not see this at all. The view re-checks the role - a hidden control is
+     not a permission. {% endcomment %}
+  {% if can_manage %}
+    <a class="subnav__action" href="{% url 'announcements:announcement_create' %}">Create Announcement</a>
+  {% endif %}
 </nav>
 
 <div class="board">
@@ -86,6 +116,17 @@
 
           <p class="post__meta">
             {{ a.author_label }} &middot; {{ a.published_at|date:"M j, Y" }}
+            {% comment %} Django templates have no parentheses, so the two
+               conditions are nested rather than combined. {% endcomment %}
+            {% if can_manage %}
+              {% if request.user.is_superuser or a.author_id == request.user.pk %}
+                &middot; <a class="post__edit" href="{% url 'announcements:announcement_edit' a.pk %}">Edit</a>
+              {% endif %}
+            {% endif %}
+            {% if a.audience != "public" %}
+              {% comment %} Says plainly why a guest will not see this one. {% endcomment %}
+              <span class="post__scope">{{ a.get_audience_display }}</span>
+            {% endif %}
           </p>
 
           <p class="post__body">{{ a.body }}</p>

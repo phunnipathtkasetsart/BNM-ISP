@@ -14,7 +14,7 @@
 
 {% block topbar_right %}
   <div class="topbar__right">
-    <a class="topbar__link" href="{% url 'accounts:dashboard' %}">Dashboard</a>
+    <a class="topbar__link" href="{% url 'announcements:public_board' %}">Board</a>
     <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
       {% csrf_token %}
       <button type="submit" class="topbar__logout">Log out</button>

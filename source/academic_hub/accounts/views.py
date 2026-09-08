@@ -7,17 +7,26 @@ from urllib.request import Request, urlopen
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.db import IntegrityError, transaction
+from django.views.decorators.http import require_POST
 
 from .forms import ForgotPasswordForm, GoogleAccountForm, LoginForm, RegisterForm
+from .middleware import (
+    GUEST_ID_PREFIX,
+    GUEST_LANDING_VIEW,
+    GUEST_SESSION_KEY,
+    GUEST_SESSION_SECONDS,
+    is_guest_request,
+)
 from .models import User
 
 
 def google_login(request):
     if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)
 
     if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
         messages.error(request, "Google sign-in is not configured yet.")
@@ -97,13 +106,13 @@ def google_callback(request):
         return redirect("accounts:login")
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    return redirect("accounts:dashboard")
+    return redirect(GUEST_LANDING_VIEW)
 
 
 def google_register(request):
     pending = request.session.get("google_pending_account")
     if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)
     if not pending:
         messages.error(request, "Your Google sign-in session expired. Please try again.")
         return redirect("accounts:login")
@@ -125,7 +134,7 @@ def google_register(request):
         else:
             request.session.pop("google_pending_account", None)
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-            return redirect("accounts:dashboard")
+            return redirect(GUEST_LANDING_VIEW)
 
     return render(
         request,
@@ -134,9 +143,25 @@ def google_register(request):
     )
 
 
+def discard_guest_account(request):
+    """Drop the throwaway row when a guest session ends.
+
+    Returns the account so the caller can delete it after `login()` has
+    replaced the session - reading request.user afterwards would give the
+    new user, not the guest being left behind.
+    """
+    if not is_guest_request(request) or not request.user.is_authenticated:
+        return None
+    guest = request.user
+    return guest if str(guest.nisit_id).startswith(GUEST_ID_PREFIX) else None
+
+
 def login_view(request):
-    if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+    # A guest is signed in as a generated account, so the usual
+    # "already authenticated" bounce would trap them in guest mode with no
+    # way to reach this form.
+    if request.user.is_authenticated and not is_guest_request(request):
+        return redirect(GUEST_LANDING_VIEW)
 
     error = None
     form = LoginForm(request.POST or None)
@@ -148,34 +173,103 @@ def login_view(request):
             password=form.cleaned_data["password"],
         )
         if user is not None:
+            stale_guest = discard_guest_account(request)
             login(request, user)
-            return redirect("accounts:dashboard")
+            # Signing in ends guest mode. login() cycles the session key but
+            # keeps its contents, so the flag would otherwise linger and
+            # reappear as a restriction after the next logout.
+            request.session.pop(GUEST_SESSION_KEY, None)
+            if stale_guest is not None:
+                stale_guest.delete()
+            return redirect(GUEST_LANDING_VIEW)
         error = "Invalid Nisit ID or password."
 
     return render(request, "accounts/login.html", {"form": form, "error": error})
 
 
+def _new_guest_id():
+    """A free 10-character ID for a guest row.
+
+    "G" plus nine digits fits `userID` exactly and cannot collide with a
+    ten-digit nisit ID or a staff ID like A0001. Retried rather than assumed
+    unique, because the primary key is the one thing that must not clash.
+    """
+    for _ in range(20):
+        candidate = GUEST_ID_PREFIX + "".join(secrets.choice("0123456789") for _ in range(9))
+        if not User.objects.filter(nisit_id=candidate).exists():
+            return candidate
+    raise RuntimeError("Could not allocate a guest ID after 20 attempts.")
+
+
+def create_guest_account():
+    """Generate a throwaway account inside the existing Users table.
+
+    No schema change: every value fits the columns that are already there.
+    The password is set unusable, so the row can never be signed into through
+    the normal form - it is reachable only by pressing "Sign in as guest".
+    """
+    guest_id = _new_guest_id()
+    user = User(
+        nisit_id=guest_id,
+        first_name="Guest",
+        last_name=guest_id[1:],          # userLastName is varchar(20)
+        email=f"{guest_id.lower()}@guest.local",   # unique, fits varchar(50)
+        department="",
+        is_staff=False,
+        is_superuser=False,
+        is_active=True,
+    )
+    user.set_unusable_password()
+    user.save()
+    return user
+
+
+@require_POST
+def guest_login_view(request):
+    """Create a guest account and sign into it for a limited time."""
+    if request.user.is_authenticated and not is_guest_request(request):
+        return redirect(GUEST_LANDING_VIEW)
+
+    request.session.pop("google_oauth_state", None)
+    request.session.pop("google_pending_account", None)
+
+    guest = create_guest_account()
+    # No password was checked, so the backend has to be named explicitly.
+    login(request, guest, backend="django.contrib.auth.backends.ModelBackend")
+
+    request.session[GUEST_SESSION_KEY] = True
+    # Per-session expiry: a real student's session is unaffected.
+    request.session.set_expiry(GUEST_SESSION_SECONDS)
+    return redirect(GUEST_LANDING_VIEW)
+
+
 def register_view(request):
-    if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+    # Same reason as login_view: a guest is authenticated, and must still be
+    # able to create a real account.
+    if request.user.is_authenticated and not is_guest_request(request):
+        return redirect(GUEST_LANDING_VIEW)
 
     form = RegisterForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
+        stale_guest = discard_guest_account(request)
         user = form.save()
         login(request, user)
-        return redirect("accounts:dashboard")
+        request.session.pop(GUEST_SESSION_KEY, None)
+        if stale_guest is not None:
+            stale_guest.delete()
+        return redirect(GUEST_LANDING_VIEW)
 
     return render(request, "accounts/register.html", {"form": form})
 
 
-@login_required(login_url="accounts:login")
-def dashboard_view(request):
-    return render(request, "accounts/dashboard.html")
-
-
 def logout_view(request):
+    # Remove the generated row on the way out rather than leaving it for the
+    # purge command - the session it belonged to is over either way.
+    stale_guest = discard_guest_account(request)
     logout(request)
+    if stale_guest is not None:
+        stale_guest.delete()
     return redirect("accounts:login")
 
 
