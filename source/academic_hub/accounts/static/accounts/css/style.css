@@ -622,7 +622,10 @@ body{
   width:min(calc(760 * var(--u)), 100%);
   background:var(--card);
   border-radius:var(--r-card);
-  box-shadow:0 calc(18 * var(--u)) calc(48 * var(--u)) rgba(28,60,50,.16);
+  /* Same shadow as .card, so every raised surface in the product sits at the
+     same apparent height. A panel is a bigger box than the sign-in card, but
+     lifting it further just made the two read as different systems. */
+  box-shadow:0 calc(10 * var(--u)) calc(34 * var(--u)) rgba(28,60,50,.16);
   overflow:hidden;
 }
 .panel__head{padding:calc(26 * var(--u)) calc(28 * var(--u)) calc(18 * var(--u))}
@@ -727,4 +730,173 @@ body{
 .btn--guest:hover{
   background:#5E6A65;
   box-shadow:0 calc(4 * var(--u)) calc(14 * var(--u)) rgba(28,60,50,.18);
+}
+
+/* ================================================================
+   PUBLIC BOARD (US-02, US-09)
+   A reading surface, not a single centred card, so the stage stops
+   centring and the layout becomes two columns on a wide window.
+   ================================================================ */
+.stage:has(.board){display:block;padding:0;max-width:none}
+
+/* --- second-level nav ---
+   The angled right edge is the ribbon motif again, so the tabs read as
+   part of the same system rather than a generic tab bar. */
+.subnav{
+  position:relative;z-index:5;
+  /* The stage is a flex column, so a bare flex child shrinks to its content.
+     Full-bleed is the whole point of this bar, hence the explicit width. */
+  width:100%;
+  background:var(--ku-sage);
+  display:flex;align-items:stretch;gap:calc(2 * var(--u));
+  padding:0 calc(40 * var(--u));
+}
+.subnav__tab{
+  display:flex;align-items:center;
+  padding:calc(12 * var(--u)) calc(30 * var(--u)) calc(12 * var(--u)) calc(22 * var(--u));
+  font-family:var(--font-display);font-weight:700;
+  font-size:calc(16 * var(--u));color:#F2F8F5;text-decoration:none;
+  clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%);
+}
+.subnav__tab--on{
+  background:var(--card);color:var(--ku-green-900);
+  /* drop-shadow, not box-shadow: clip-path cuts the angled edge and clips a
+     box-shadow away with it, so the tab threw an invisible shadow. A filter
+     applies to the clipped result, so the shadow follows the angle. Blur is
+     roughly half the box-shadow value because drop-shadow takes a standard
+     deviation rather than a blur radius - the two match at about 2:1. */
+  filter:drop-shadow(0 calc(5 * var(--u)) calc(15 * var(--u)) rgba(28,60,50,.22));
+}
+.subnav__tab--off{color:#DCEAE3;opacity:.72;cursor:not-allowed}
+.subnav__tab:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+
+/* --- two-column board --- */
+.board{
+  position:relative;z-index:4;
+  /* Same reason as .subnav: the stage centres and shrink-wraps its children,
+     so the columns would otherwise be sized by their content and drift to the
+     middle whenever a filter cut the list short. */
+  width:100%;
+  display:grid;
+  grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);
+  gap:calc(22 * var(--u));
+  align-items:start;
+  padding:calc(24 * var(--u)) calc(40 * var(--u)) calc(48 * var(--u));
+}
+.board__main{width:auto}
+
+/* --- search bar --- */
+.searchbar{
+  display:flex;align-items:center;gap:calc(10 * var(--u));
+  margin:0 calc(28 * var(--u)) calc(14 * var(--u));
+  background:#fff;border:1px solid var(--field-line);
+  border-radius:999px;padding:calc(9 * var(--u)) calc(16 * var(--u));
+}
+.searchbar__icon{width:calc(17 * var(--u));height:calc(17 * var(--u));color:var(--ink-muted);flex:none}
+.searchbar input{
+  flex:1;min-width:0;border:0;outline:0;background:none;
+  font-family:var(--font-ui);font-size:calc(14 * var(--u));color:var(--ink);
+}
+.searchbar input::placeholder{color:var(--ink-muted)}
+.searchbar:focus-within{border-color:var(--ku-sage);box-shadow:0 0 0 3px rgba(111,168,144,.20)}
+
+/* --- filter chips --- */
+.chips{display:flex;flex-wrap:wrap;gap:calc(7 * var(--u));margin:0 calc(28 * var(--u)) calc(16 * var(--u))}
+.chip{
+  font-size:calc(12.5 * var(--u));font-weight:600;color:var(--ink-soft);
+  background:#E7EDE9;border:1px solid transparent;border-radius:999px;
+  padding:calc(4 * var(--u)) calc(12 * var(--u));text-decoration:none;
+  transition:background .14s var(--ease),color .14s var(--ease);
+}
+.chip:hover{background:#D8E4DC}
+.chip--on{background:var(--ku-green-800);color:#fff}
+.chip--sm{font-size:calc(11.5 * var(--u));padding:calc(3 * var(--u)) calc(10 * var(--u))}
+.chip:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+
+/* --- announcement cards --- */
+.feed{display:flex;flex-direction:column;gap:calc(12 * var(--u));padding:0 calc(28 * var(--u)) calc(26 * var(--u))}
+.post{
+  background:#fff;border:1px solid var(--hairline);
+  border-radius:calc(10 * var(--u));
+  padding:calc(15 * var(--u)) calc(18 * var(--u));
+}
+/* Urgent gets a left stripe rather than a louder fill: it has to stand out
+   in a scan without making the ordinary notices look inert. */
+.post--urgent{border-left:calc(4 * var(--u)) solid var(--danger)}
+.post__top{display:flex;align-items:flex-start;gap:calc(12 * var(--u))}
+.post__title{
+  font-family:var(--font-display);font-weight:800;
+  font-size:calc(16.5 * var(--u));color:var(--ink);margin:0;flex:1;
+}
+.post__meta{margin:calc(3 * var(--u)) 0 calc(9 * var(--u));font-size:calc(12.5 * var(--u));color:var(--ink-muted)}
+.post__body{margin:0;font-size:calc(13.5 * var(--u));line-height:1.62;color:var(--ink-soft)}
+.post__tags{display:flex;flex-wrap:wrap;gap:calc(6 * var(--u));margin-top:calc(11 * var(--u))}
+
+.badge{
+  flex:none;font-size:calc(10.5 * var(--u));font-weight:800;letter-spacing:.05em;
+  text-transform:uppercase;padding:calc(4 * var(--u)) calc(10 * var(--u));
+  border-radius:999px;white-space:nowrap;
+}
+.badge--deadline{background:#F6E2DA;color:#9C4A2A;border:1px solid #E2B9A6}
+.badge--urgent{background:var(--danger);color:#fff}
+
+.feed__empty{padding:calc(18 * var(--u)) 0;color:var(--ink-muted);font-size:calc(13.5 * var(--u))}
+
+/* --- FAQ panel --- */
+.panel--faq{position:relative;overflow:hidden;padding:0}
+.panel--faq .panel__inner{position:relative;z-index:1}
+.faq__head{
+  height:calc(74 * var(--u));display:flex;align-items:center;justify-content:center;
+}
+.faq__head h2{
+  font-family:var(--font-display);font-weight:800;
+  font-size:calc(21 * var(--u));color:#fff;margin:0;
+}
+.faq__list{background:#fff;padding:calc(8 * var(--u)) calc(20 * var(--u)) calc(22 * var(--u));min-height:calc(220 * var(--u))}
+.qa{border-bottom:1px solid var(--hairline)}
+.qa:last-child{border-bottom:0}
+.qa__q{
+  cursor:pointer;list-style:none;
+  padding:calc(13 * var(--u)) calc(24 * var(--u)) calc(13 * var(--u)) 0;
+  font-weight:600;font-size:calc(13.5 * var(--u));color:var(--ink);
+  position:relative;
+}
+.qa__q::-webkit-details-marker{display:none}
+/* Chevron drawn in CSS so the panel needs no icon asset */
+.qa__q::after{
+  content:"";position:absolute;right:calc(4 * var(--u));top:50%;
+  width:calc(8 * var(--u));height:calc(8 * var(--u));
+  border-right:2px solid var(--ink-muted);border-bottom:2px solid var(--ink-muted);
+  transform:translateY(-70%) rotate(45deg);
+  transition:transform .18s var(--ease);
+}
+.qa[open] .qa__q::after{transform:translateY(-20%) rotate(-135deg)}
+.qa__a{padding:0 calc(24 * var(--u)) calc(13 * var(--u)) 0;font-size:calc(13 * var(--u));color:var(--ink-soft)}
+.qa__a p{margin:0 0 calc(8 * var(--u))}
+.qa__q:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px;border-radius:calc(4 * var(--u))}
+
+@media (max-width:900px){
+  /* One column: the FAQ drops beneath the feed rather than being squeezed
+     into a strip too narrow to read a question in. */
+  .board{grid-template-columns:1fr;padding:16px;gap:16px}
+  .subnav{padding:0 16px}
+  .searchbar,.chips{margin-left:18px;margin-right:18px}
+  .feed{padding-left:18px;padding-right:18px}
+}
+
+/* --- search state --- */
+.searchbar__clear{
+  flex:none;text-decoration:none;color:var(--ink-muted);
+  font-size:calc(18 * var(--u));line-height:1;
+  padding:0 calc(4 * var(--u));border-radius:calc(4 * var(--u));
+}
+.searchbar__clear:hover{color:var(--ink)}
+.searchbar__clear:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+.resultline{
+  margin:0 calc(28 * var(--u)) calc(12 * var(--u));
+  font-size:calc(13 * var(--u));color:var(--ink-muted);
+}
+.resultline strong{color:var(--ink-soft)}
+@media (max-width:900px){
+  .resultline{margin-left:18px;margin-right:18px}
 }

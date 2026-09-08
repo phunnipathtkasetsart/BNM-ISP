@@ -1,0 +1,139 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block title %}Announcements — KU Student Portal{% endblock %}
+
+{% comment %} Guest view of the public board (US-02, US-09). No account needed,
+   so the bar offers a way in rather than an identity, and no admin controls
+   are rendered at all - not disabled, absent. {% endcomment %}
+
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+
+{% block topbar_right %}
+  <div class="topbar__right">
+    <span class="topbar__role">Guest</span>
+    <a class="topbar__link" href="{% url 'accounts:login' %}">Sign in</a>
+  </div>
+{% endblock %}
+
+{% block content %}
+{% comment %} Second-level nav. Course is inert for a guest: course content is
+   behind sign-in, so it is marked rather than silently dead. {% endcomment %}
+<nav class="subnav" aria-label="Sections">
+  <a class="subnav__tab subnav__tab--on" href="{% url 'announcements:public_board' %}">Home</a>
+  <span class="subnav__tab subnav__tab--off" aria-disabled="true"
+        title="Sign in to see your courses">Course</span>
+</nav>
+
+<div class="board">
+
+  <section class="board__main panel">
+    <div class="panel__head">
+      <h1>Announcements</h1>
+    </div>
+
+    <form class="searchbar" method="get" role="search">
+      <svg class="searchbar__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+        <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+        <line x1="13.5" y1="13.5" x2="18" y2="18" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <label class="sr-only" for="q">Search announcements and FAQs</label>
+      <input id="q" name="q" type="search" list="suggest" value="{{ query }}"
+             autocomplete="off"
+             placeholder="Search announcements, course updates, news, historical materials by keyword or tag…">
+      {% comment %} Keeps the active tag when submitting a search, so the two
+         filters combine instead of clearing each other. {% endcomment %}
+      {% if active_tag %}<input type="hidden" name="tag" value="{{ active_tag }}">{% endif %}
+      {% if query %}
+        <a class="searchbar__clear" href="{% if active_tag %}?tag={{ active_tag }}{% else %}{% url 'announcements:public_board' %}{% endif %}"
+           aria-label="Clear search">&times;</a>
+      {% endif %}
+    </form>
+
+    {% comment %} Suggestions rendered up front: the browser matches them with
+       no request and no JavaScript. {% endcomment %}
+    <datalist id="suggest">
+      {% for s in suggestions %}<option value="{{ s }}"></option>{% endfor %}
+    </datalist>
+
+    <div class="chips" role="list">
+      <a class="chip{% if not active_tag %} chip--on{% endif %}" role="listitem"
+         href="{% if query %}?q={{ query|urlencode }}{% else %}{% url 'announcements:public_board' %}{% endif %}">#All</a>
+      {% for tag in chips %}
+        <a class="chip{% if tag.slug == active_tag %} chip--on{% endif %}" role="listitem"
+           href="?tag={{ tag.slug }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">#{{ tag.label }}</a>
+      {% endfor %}
+    </div>
+
+    {% if is_searching %}
+      <p class="resultline" role="status">
+        {{ result_count }} result{{ result_count|pluralize }} for
+        <strong>{{ query }}</strong>{% if active_tag %} in #{{ active_tag }}{% endif %}
+      </p>
+    {% endif %}
+
+    <div class="feed">
+      {% for a in announcements %}
+        <article class="post{% if a.is_urgent %} post--urgent{% endif %}">
+          <div class="post__top">
+            <h2 class="post__title">{{ a.title }}</h2>
+            {% if a.is_urgent %}
+              <span class="badge badge--urgent">URGENT</span>
+            {% elif a.deadline_near %}
+              <span class="badge badge--deadline">DEADLINE NEAR</span>
+            {% endif %}
+          </div>
+
+          <p class="post__meta">
+            {{ a.author_label }} &middot; {{ a.published_at|date:"M j, Y" }}
+          </p>
+
+          <p class="post__body">{{ a.body }}</p>
+
+          {% if a.tags.all %}
+            <div class="post__tags">
+              {% for tag in a.tags.all %}
+                <a class="chip chip--sm" href="?tag={{ tag.slug }}">#{{ tag.label }}</a>
+              {% endfor %}
+            </div>
+          {% endif %}
+        </article>
+      {% empty %}
+        <p class="feed__empty">
+          {% if query %}
+            No announcements match <strong>{{ query }}</strong>{% if active_tag %} in #{{ active_tag }}{% endif %}.
+            <a href="{% url 'announcements:public_board' %}">Clear filters</a>
+          {% elif active_tag %}
+            Nothing tagged <strong>#{{ active_tag }}</strong> yet.
+            <a href="{% url 'announcements:public_board' %}">Show all</a>
+          {% else %}
+            No public announcements yet.
+          {% endif %}
+        </p>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="board__side">
+    <section class="panel panel--faq">
+      {% include "accounts/_ribbons.html" %}
+      <div class="panel__inner">
+        <div class="faq__head"><h2>FAQ</h2></div>
+        <div class="faq__list">
+          {% for f in faqs %}
+            {% comment %} <details> gives keyboard support, Escape and screen
+               reader semantics for free - no JavaScript needed. {% endcomment %}
+            <details class="qa">
+              <summary class="qa__q">{{ f.question }}</summary>
+              <div class="qa__a">{{ f.answer|linebreaks }}</div>
+            </details>
+          {% empty %}
+            <p class="feed__empty">{% if query %}No FAQs match <strong>{{ query }}</strong>.{% else %}No questions published yet.{% endif %}</p>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  </aside>
+
+</div>
+{% endblock %}
