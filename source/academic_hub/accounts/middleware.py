@@ -19,12 +19,24 @@ GUEST_ALLOWED_VIEWS = {
 }
 
 
+# How long a guest session lasts before it expires and the row is orphaned.
+# Set per-session rather than through SESSION_COOKIE_AGE, which would log real
+# students out on the same timer.
+GUEST_SESSION_SECONDS = 30 * 60
+
+# Guest accounts are real rows, so their IDs have to live in the same 10-char
+# primary key as everyone else. "G" + 9 digits cannot collide with a ten-digit
+# nisit ID (all digits) or a staff ID like A0001 (different letter, shorter).
+GUEST_ID_PREFIX = "G"
+
+
 def is_guest_request(request):
-    """Return True only for an anonymous browser session marked as a guest."""
-    return (
-        not request.user.is_authenticated
-        and request.session.get(GUEST_SESSION_KEY, False) is True
-    )
+    """Return True for a browser session marked as a guest.
+
+    A guest is signed in as a generated account, so authentication alone no
+    longer distinguishes them - the session flag is what does.
+    """
+    return request.session.get(GUEST_SESSION_KEY, False) is True
 
 
 class GuestAccessMiddleware:

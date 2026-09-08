@@ -13,6 +13,8 @@
    the dashboard, which showed the same bar over an empty page. {% endcomment %}
 {% block topbar_left %}
   {% if request.user.is_authenticated %}
+    {% comment %} Guests included: they are a generated account like any other,
+       and showing the name and ID makes the generated values visible. {% endcomment %}
     <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
     <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
   {% endif %}
@@ -21,7 +23,7 @@
 {% block topbar_right %}
   <div class="topbar__right">
     {% if request.user.is_authenticated %}
-      <span class="topbar__role">{% if request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+      <span class="topbar__role">{% if is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
       {% if request.user.is_superuser %}
         <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
       {% endif %}

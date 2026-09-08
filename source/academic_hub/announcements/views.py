@@ -12,6 +12,7 @@ from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from accounts.middleware import is_guest_request
 from .forms import AnnouncementForm
 from .models import Announcement, Faq, Tag
 
@@ -94,6 +95,7 @@ def public_board(request):
         "is_searching": bool(query),
         "result_count": len(announcements) + len(faqs),
         "can_manage": can_manage,
+        "is_guest": is_guest_request(request),
     })
 
 

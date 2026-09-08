@@ -104,9 +104,34 @@ class GuestAccessTests(TestCase):
     def test_announcements_page_has_been_removed(self):
         self.assertEqual(self.client.get("/accounts/announcements/").status_code, 404)
 
-    def test_authenticated_user_is_never_treated_as_guest(self):
-        request = SimpleNamespace(
-            user=SimpleNamespace(is_authenticated=True),
-            session={GUEST_SESSION_KEY: True},
+    def test_guest_flag_is_what_marks_a_guest_not_authentication(self):
+        """A guest is now signed in as a generated account.
+
+        Before, guests were anonymous and `is_authenticated` could tell them
+        apart. It cannot any more, so the session flag is the only marker.
+        """
+        self.assertTrue(is_guest_request(
+            SimpleNamespace(session={GUEST_SESSION_KEY: True})
+        ))
+        self.assertFalse(is_guest_request(SimpleNamespace(session={})))
+
+    def test_guest_account_is_generated_and_removed_on_logout(self):
+        from .middleware import GUEST_ID_PREFIX
+        from .models import User
+
+        self.sign_in_as_guest()
+        guests = User.objects.filter(nisit_id__startswith=GUEST_ID_PREFIX)
+        self.assertEqual(guests.count(), 1)
+
+        guest = guests.first()
+        # Everything fits the existing columns - no schema change was needed.
+        self.assertEqual(len(guest.nisit_id), 10)
+        self.assertEqual(guest.first_name, "Guest")
+        self.assertFalse(guest.is_staff)
+        self.assertFalse(guest.is_superuser)
+        self.assertFalse(guest.has_usable_password())
+
+        self.client.post(reverse("accounts:logout"))
+        self.assertEqual(
+            User.objects.filter(nisit_id__startswith=GUEST_ID_PREFIX).count(), 0
         )
-        self.assertFalse(is_guest_request(request))
