@@ -29,12 +29,16 @@
   <div class="bg-photo" style="background-image:url('{% static "accounts/img/ku-campus.jpg" %}');"></div>
 </div>
 
-{% comment %} Two slots so a page can put its own items in the bar. The signed-out
-   pages leave both alone and get the plain logo + Help; the dashboard fills
-   them with the student's details and a log-out control. {% endcomment %}
+{% comment %} Two slots so a page can put its own items in the bar. The
+   signed-out pages leave both alone and get the plain logo; the board fills
+   them with the reader's details and a log-out control. {% endcomment %}
 <header class="topbar {% block topbar_mod %}{% endblock %}">
   <div class="topbar__left">
-    <a class="topbar__logo" href="{% url 'accounts:login' %}">KU</a>
+    {% comment %} Home is the board, for everyone. Pointing this at the sign-in
+     page meant a signed-in user clicking the logo landed on a login form,
+     and the OAuth path then bounced them into whichever account was already
+     in session. {% endcomment %}
+    <a class="topbar__logo" href="{% url 'announcements:public_board' %}">KU</a>
     {% block topbar_left %}{% endblock %}
   </div>
   {% comment %} No default. The old "Help" link here pointed at "#" and did
