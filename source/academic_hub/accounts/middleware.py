@@ -8,7 +8,6 @@ GUEST_LANDING_VIEW = "announcements:public_board"
 
 GUEST_ALLOWED_VIEWS = {
     GUEST_LANDING_VIEW,
-    "accounts:dashboard",
     "accounts:logout",
     # The way out of guest mode. Blocking these made the "Sign in"
     # control in the bar bounce straight back to the board, which
@@ -29,7 +28,7 @@ def is_guest_request(request):
 
 
 class GuestAccessMiddleware:
-    """Keep guest sessions inside the shared dashboard.
+    """Keep guest sessions on the public board.
 
     Guests are deliberately session identities, not rows in the custom Users
     table. Centralising the restriction here means a guest cannot reach an

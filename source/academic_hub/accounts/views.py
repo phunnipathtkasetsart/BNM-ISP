@@ -20,7 +20,7 @@ from .models import User
 
 def google_login(request):
     if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)
 
     if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
         messages.error(request, "Google sign-in is not configured yet.")
@@ -100,13 +100,13 @@ def google_callback(request):
         return redirect("accounts:login")
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    return redirect("accounts:dashboard")
+    return redirect(GUEST_LANDING_VIEW)
 
 
 def google_register(request):
     pending = request.session.get("google_pending_account")
     if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)
     if not pending:
         messages.error(request, "Your Google sign-in session expired. Please try again.")
         return redirect("accounts:login")
@@ -128,7 +128,7 @@ def google_register(request):
         else:
             request.session.pop("google_pending_account", None)
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-            return redirect("accounts:dashboard")
+            return redirect(GUEST_LANDING_VIEW)
 
     return render(
         request,
@@ -139,7 +139,7 @@ def google_register(request):
 
 def login_view(request):
     if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)
 
     error = None
     form = LoginForm(request.POST or None)
@@ -156,7 +156,7 @@ def login_view(request):
             # but keeps its contents, so the flag would otherwise linger
             # and reappear as a restriction after the next logout.
             request.session.pop(GUEST_SESSION_KEY, None)
-            return redirect("accounts:dashboard")
+            return redirect(GUEST_LANDING_VIEW)
         error = "Invalid Nisit ID or password."
 
     return render(request, "accounts/login.html", {"form": form, "error": error})
@@ -166,7 +166,7 @@ def login_view(request):
 def guest_login_view(request):
     """Start an isolated, database-free guest session."""
     if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)
 
     request.session.cycle_key()
     request.session.pop("google_oauth_state", None)
@@ -177,30 +177,16 @@ def guest_login_view(request):
 
 def register_view(request):
     if request.user.is_authenticated:
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)
 
     form = RegisterForm(request.POST or None)
 
     if request.method == "POST" and form.is_valid():
         user = form.save()
         login(request, user)
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)
 
     return render(request, "accounts/register.html", {"form": form})
-
-
-def dashboard_view(request):
-    if not request.user.is_authenticated and not is_guest_request(request):
-        return redirect_to_login(
-            request.get_full_path(),
-            login_url="accounts:login",
-        )
-
-    return render(
-        request,
-        "accounts/dashboard.html",
-        {"is_guest": is_guest_request(request)},
-    )
 
 
 def logout_view(request):
