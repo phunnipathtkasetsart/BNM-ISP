@@ -21,6 +21,7 @@ from django.views.generic import RedirectView
 urlpatterns = [
     path('admin/', admin.site.urls),
     path("accounts/", include("accounts.urls")),
+    path("announcements/", include("announcements.urls")),
     # Site root was a 404. Send it to the sign-in page, which is the
     # entry point for every visitor who is not already logged in.
     path("", RedirectView.as_view(pattern_name="accounts:login", permanent=False)),
