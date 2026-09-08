@@ -16,6 +16,8 @@
 
 {% block topbar_right %}
   <div class="topbar__right">
+    <a class="topbar__link" href="{% url 'accounts:announcements' %}">Announcements</a>
+
     {% comment %} Role read straight off the two flags the Users table already
        carries - is_superuser maps to isDepartment, is_staff to isLecturer.
        Read-only display, no backend change. Anyone who is neither is a

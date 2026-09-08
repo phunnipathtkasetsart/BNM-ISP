@@ -1,0 +1,46 @@
+from django.conf import settings
+from django.shortcuts import redirect
+
+
+GUEST_SESSION_KEY = "is_guest"
+GUEST_ALLOWED_VIEWS = {
+    "accounts:announcements",
+    "accounts:logout",
+}
+
+
+def is_guest_request(request):
+    """Return True only for an anonymous browser session marked as a guest."""
+    return (
+        not request.user.is_authenticated
+        and request.session.get(GUEST_SESSION_KEY, False) is True
+    )
+
+
+class GuestAccessMiddleware:
+    """Keep guest sessions inside the read-only announcements area.
+
+    Guests are deliberately session identities, not rows in the custom Users
+    table. Centralising the restriction here means a guest cannot reach an
+    existing or future application view merely by typing its URL.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_view(self, request, view_func, view_args, view_kwargs):
+        if not is_guest_request(request):
+            return None
+
+        static_path = f"/{settings.STATIC_URL.lstrip('/')}"
+        if request.path.startswith(static_path):
+            return None
+
+        view_name = getattr(request.resolver_match, "view_name", None)
+        if view_name in GUEST_ALLOWED_VIEWS:
+            return None
+
+        return redirect("accounts:announcements")
