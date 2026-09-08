@@ -7,6 +7,9 @@ ENV/
 .env
 env
 .env.*
+# ...but the template must be committed, or a new teammate has nothing
+# to copy and the web container will not start.
+!.env.example
 *.sqlite3
 
 # Python Cache & IDE
