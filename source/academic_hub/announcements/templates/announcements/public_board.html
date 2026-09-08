@@ -22,6 +22,13 @@
   <a class="subnav__tab subnav__tab--on" href="{% url 'announcements:public_board' %}">Home</a>
   <span class="subnav__tab subnav__tab--off" aria-disabled="true"
         title="Sign in to see your courses">Course</span>
+
+  {% comment %} Lecturers and the Department publish; students and guests do
+     not see this at all. The view re-checks the role - a hidden control is
+     not a permission. {% endcomment %}
+  {% if can_manage %}
+    <a class="subnav__action" href="{% url 'announcements:announcement_create' %}">Create Announcement</a>
+  {% endif %}
 </nav>
 
 <div class="board">
@@ -86,6 +93,17 @@
 
           <p class="post__meta">
             {{ a.author_label }} &middot; {{ a.published_at|date:"M j, Y" }}
+            {% comment %} Django templates have no parentheses, so the two
+               conditions are nested rather than combined. {% endcomment %}
+            {% if can_manage %}
+              {% if request.user.is_superuser or a.author_id == request.user.pk %}
+                &middot; <a class="post__edit" href="{% url 'announcements:announcement_edit' a.pk %}">Edit</a>
+              {% endif %}
+            {% endif %}
+            {% if a.audience != "public" %}
+              {% comment %} Says plainly why a guest will not see this one. {% endcomment %}
+              <span class="post__scope">{{ a.get_audience_display }}</span>
+            {% endif %}
           </p>
 
           <p class="post__body">{{ a.body }}</p>

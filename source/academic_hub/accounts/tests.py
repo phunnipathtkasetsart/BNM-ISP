@@ -55,9 +55,7 @@ class GuestAccessTests(SimpleTestCase):
         self.sign_in_as_guest()
 
         blocked_views = (
-            "accounts:login",
             "accounts:roles",
-            "accounts:register",
             "accounts:forgot_password",
             "accounts:faq",
             "accounts:google_login",
@@ -72,6 +70,18 @@ class GuestAccessTests(SimpleTestCase):
                     reverse("announcements:public_board"),
                     fetch_redirect_response=False,
                 )
+
+    def test_guest_can_reach_sign_in_and_register(self):
+        """A guest must have a way out of guest mode.
+
+        Blocking these made the "Sign in" control in the bar bounce back to
+        the board, stranding a guest with no route to a real account.
+        """
+        self.sign_in_as_guest()
+        for view_name in ("accounts:login", "accounts:register"):
+            with self.subTest(view_name=view_name):
+                response = self.client.get(reverse(view_name))
+                self.assertEqual(response.status_code, 200)
 
     def test_guest_is_redirected_from_admin(self):
         self.sign_in_as_guest()

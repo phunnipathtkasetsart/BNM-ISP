@@ -10,6 +10,13 @@ GUEST_ALLOWED_VIEWS = {
     GUEST_LANDING_VIEW,
     "accounts:dashboard",
     "accounts:logout",
+    # The way out of guest mode. Blocking these made the "Sign in"
+    # control in the bar bounce straight back to the board, which
+    # left a guest with no route to an account at all. Register is
+    # included because the sign-in page links to it - allowing one
+    # without the other just moves the dead end one click along.
+    "accounts:login",
+    "accounts:register",
 }
 
 

@@ -6,4 +6,7 @@ app_name = "announcements"
 
 urlpatterns = [
     path("", views.public_board, name="public_board"),
+    path("new/", views.announcement_form, name="announcement_create"),
+    path("<int:pk>/edit/", views.announcement_form, name="announcement_edit"),
+    path("<int:pk>/delete/", views.announcement_delete, name="announcement_delete"),
 ]

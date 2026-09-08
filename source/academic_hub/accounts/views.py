@@ -152,6 +152,10 @@ def login_view(request):
         )
         if user is not None:
             login(request, user)
+            # Signing in ends guest mode. login() cycles the session key
+            # but keeps its contents, so the flag would otherwise linger
+            # and reappear as a restriction after the next logout.
+            request.session.pop(GUEST_SESSION_KEY, None)
             return redirect("accounts:dashboard")
         error = "Invalid Nisit ID or password."
 
