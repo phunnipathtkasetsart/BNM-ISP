@@ -14,7 +14,7 @@ from django.db import IntegrityError, transaction
 from django.views.decorators.http import require_POST
 
 from .forms import ForgotPasswordForm, GoogleAccountForm, LoginForm, RegisterForm
-from .middleware import GUEST_SESSION_KEY, is_guest_request
+from .middleware import GUEST_LANDING_VIEW, GUEST_SESSION_KEY, is_guest_request
 from .models import User
 
 
@@ -168,7 +168,7 @@ def guest_login_view(request):
     request.session.pop("google_oauth_state", None)
     request.session.pop("google_pending_account", None)
     request.session[GUEST_SESSION_KEY] = True
-    return redirect("accounts:dashboard")
+    return redirect(GUEST_LANDING_VIEW)
 
 
 def register_view(request):

@@ -3,7 +3,11 @@ from django.shortcuts import redirect
 
 
 GUEST_SESSION_KEY = "is_guest"
+# The public board is the point of a guest session, so it heads the list.
+GUEST_LANDING_VIEW = "announcements:public_board"
+
 GUEST_ALLOWED_VIEWS = {
+    GUEST_LANDING_VIEW,
     "accounts:dashboard",
     "accounts:logout",
 }
@@ -43,4 +47,4 @@ class GuestAccessMiddleware:
         if view_name in GUEST_ALLOWED_VIEWS:
             return None
 
-        return redirect("accounts:dashboard")
+        return redirect(GUEST_LANDING_VIEW)

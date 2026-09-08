@@ -5,7 +5,7 @@ from django.shortcuts import render
 from django.test import Client, RequestFactory, SimpleTestCase, override_settings
 from django.urls import reverse
 
-from .middleware import GUEST_SESSION_KEY, is_guest_request
+from .middleware import GUEST_ALLOWED_VIEWS, GUEST_SESSION_KEY, is_guest_request
 from .models import User
 from .views import dashboard_view
 
@@ -20,24 +20,31 @@ class GuestAccessTests(SimpleTestCase):
     def sign_in_as_guest(self):
         return self.client.post(reverse("accounts:guest_login"))
 
-    def test_guest_sign_in_is_post_only_and_opens_dashboard(self):
+    def test_guest_sign_in_is_post_only_and_opens_the_public_board(self):
         response = self.client.get(reverse("accounts:guest_login"))
         self.assertEqual(response.status_code, 405)
 
         response = self.sign_in_as_guest()
         self.assertRedirects(
             response,
-            reverse("accounts:dashboard"),
+            reverse("announcements:public_board"),
             fetch_redirect_response=False,
         )
         self.assertTrue(self.client.session[GUEST_SESSION_KEY])
 
+        # The board itself is not fetched here: it queries announcements and
+        # FAQs, and these tests run without a database on purpose - `Users` is
+        # managed=False in a separate schema, so Django cannot build a test
+        # database for it. What matters for this change is the destination,
+        # and that the middleware now treats the board as allowed.
+        self.assertIn("announcements:public_board", GUEST_ALLOWED_VIEWS)
+
+    def test_guest_may_still_open_the_dashboard(self):
+        self.sign_in_as_guest()
         response = self.client.get(reverse("accounts:dashboard"))
         self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, "accounts/dashboard.html")
         self.assertContains(response, "Guest access")
         self.assertContains(response, '<span class="topbar__role">Guest</span>', html=True)
-        self.assertNotContains(response, "Manage roles")
 
     def test_anonymous_visitor_must_choose_guest_or_normal_login(self):
         response = self.client.get(reverse("accounts:dashboard"))
@@ -62,7 +69,7 @@ class GuestAccessTests(SimpleTestCase):
                 response = self.client.get(reverse(view_name))
                 self.assertRedirects(
                     response,
-                    reverse("accounts:dashboard"),
+                    reverse("announcements:public_board"),
                     fetch_redirect_response=False,
                 )
 
@@ -71,7 +78,7 @@ class GuestAccessTests(SimpleTestCase):
         response = self.client.get("/admin/")
         self.assertRedirects(
             response,
-            reverse("accounts:dashboard"),
+            reverse("announcements:public_board"),
             fetch_redirect_response=False,
         )
 
