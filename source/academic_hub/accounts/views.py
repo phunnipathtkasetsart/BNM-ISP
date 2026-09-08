@@ -7,11 +7,14 @@ from urllib.request import Request, urlopen
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.db import IntegrityError, transaction
+from django.views.decorators.http import require_POST
 
 from .forms import ForgotPasswordForm, GoogleAccountForm, LoginForm, RegisterForm
+from .middleware import GUEST_SESSION_KEY, is_guest_request
 from .models import User
 
 
@@ -155,6 +158,19 @@ def login_view(request):
     return render(request, "accounts/login.html", {"form": form, "error": error})
 
 
+@require_POST
+def guest_login_view(request):
+    """Start an isolated, database-free guest session."""
+    if request.user.is_authenticated:
+        return redirect("accounts:dashboard")
+
+    request.session.cycle_key()
+    request.session.pop("google_oauth_state", None)
+    request.session.pop("google_pending_account", None)
+    request.session[GUEST_SESSION_KEY] = True
+    return redirect("accounts:dashboard")
+
+
 def register_view(request):
     if request.user.is_authenticated:
         return redirect("accounts:dashboard")
@@ -169,9 +185,18 @@ def register_view(request):
     return render(request, "accounts/register.html", {"form": form})
 
 
-@login_required(login_url="accounts:login")
 def dashboard_view(request):
-    return render(request, "accounts/dashboard.html")
+    if not request.user.is_authenticated and not is_guest_request(request):
+        return redirect_to_login(
+            request.get_full_path(),
+            login_url="accounts:login",
+        )
+
+    return render(
+        request,
+        "accounts/dashboard.html",
+        {"is_guest": is_guest_request(request)},
+    )
 
 
 def logout_view(request):

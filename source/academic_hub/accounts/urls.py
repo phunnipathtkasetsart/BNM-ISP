@@ -6,6 +6,7 @@ app_name = "accounts"
 
 urlpatterns = [
     path("login/", views.login_view, name="login"),
+    path("guest/", views.guest_login_view, name="guest_login"),
     path("oauth/google/", views.google_login, name="google_login"),
     path("oauth/google/callback/", views.google_callback, name="google_callback"),
     path("oauth/google/register/", views.google_register, name="google_register"),
