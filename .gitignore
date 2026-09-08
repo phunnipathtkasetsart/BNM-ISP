@@ -5,6 +5,7 @@ ENV/
 
 # Database & Secrets
 .env
+env
 .env.*
 *.sqlite3
 

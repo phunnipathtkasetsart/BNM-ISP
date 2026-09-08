@@ -1,5 +1,5 @@
 """
-ASGI config for name_list project.
+ASGI config for academic_hub project.
 
 It exposes the ASGI callable as a module-level variable named ``application``.
 
@@ -11,6 +11,6 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'name_list.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'academic_hub.settings')
 
 application = get_asgi_application()
