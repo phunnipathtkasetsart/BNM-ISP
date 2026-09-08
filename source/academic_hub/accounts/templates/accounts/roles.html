@@ -14,7 +14,6 @@
 
 {% block topbar_right %}
   <div class="topbar__right">
-    <a class="topbar__link" href="{% url 'accounts:announcements' %}">Announcements</a>
     <a class="topbar__link" href="{% url 'accounts:dashboard' %}">Dashboard</a>
     <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
       {% csrf_token %}

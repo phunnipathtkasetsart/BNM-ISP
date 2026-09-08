@@ -12,7 +12,6 @@ urlpatterns = [
     path("oauth/google/register/", views.google_register, name="google_register"),
     path("register/", views.register_view, name="register"),
     path("dashboard/", views.dashboard_view, name="dashboard"),
-    path("announcements/", views.announcements_view, name="announcements"),
     path("logout/", views.logout_view, name="logout"),
     path("forgot-password/", views.forgot_password_view, name="forgot_password"),
     path("faq/", views.faq_view, name="faq"),

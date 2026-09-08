@@ -4,7 +4,7 @@ from django.shortcuts import redirect
 
 GUEST_SESSION_KEY = "is_guest"
 GUEST_ALLOWED_VIEWS = {
-    "accounts:announcements",
+    "accounts:dashboard",
     "accounts:logout",
 }
 
@@ -18,7 +18,7 @@ def is_guest_request(request):
 
 
 class GuestAccessMiddleware:
-    """Keep guest sessions inside the read-only announcements area.
+    """Keep guest sessions inside the shared dashboard.
 
     Guests are deliberately session identities, not rows in the custom Users
     table. Centralising the restriction here means a guest cannot reach an
@@ -43,4 +43,4 @@ class GuestAccessMiddleware:
         if view_name in GUEST_ALLOWED_VIEWS:
             return None
 
-        return redirect("accounts:announcements")
+        return redirect("accounts:dashboard")

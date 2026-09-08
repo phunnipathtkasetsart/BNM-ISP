@@ -168,7 +168,7 @@ def guest_login_view(request):
     request.session.pop("google_oauth_state", None)
     request.session.pop("google_pending_account", None)
     request.session[GUEST_SESSION_KEY] = True
-    return redirect("accounts:announcements")
+    return redirect("accounts:dashboard")
 
 
 def register_view(request):
@@ -185,12 +185,7 @@ def register_view(request):
     return render(request, "accounts/register.html", {"form": form})
 
 
-@login_required(login_url="accounts:login")
 def dashboard_view(request):
-    return render(request, "accounts/dashboard.html")
-
-
-def announcements_view(request):
     if not request.user.is_authenticated and not is_guest_request(request):
         return redirect_to_login(
             request.get_full_path(),
@@ -199,7 +194,7 @@ def announcements_view(request):
 
     return render(
         request,
-        "accounts/announcements.html",
+        "accounts/dashboard.html",
         {"is_guest": is_guest_request(request)},
     )
 

@@ -10,19 +10,21 @@
 {% block topbar_mod %}topbar--signed-in{% endblock %}
 
 {% block topbar_left %}
+  {% if is_guest %}
+  <span class="topbar__me topbar__me--name">Guest access</span>
+  {% else %}
   <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
   <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+  {% endif %}
 {% endblock %}
 
 {% block topbar_right %}
   <div class="topbar__right">
-    <a class="topbar__link" href="{% url 'accounts:announcements' %}">Announcements</a>
-
     {% comment %} Role read straight off the two flags the Users table already
        carries - is_superuser maps to isDepartment, is_staff to isLecturer.
        Read-only display, no backend change. Anyone who is neither is a
        student, which is the ordinary case. {% endcomment %}
-    <span class="topbar__role">{% if request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+    <span class="topbar__role">{% if is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
 
     {% comment %} Only the Department role can manage roles, so only they are
        shown the way in. The view checks again on its own - a hidden link is
