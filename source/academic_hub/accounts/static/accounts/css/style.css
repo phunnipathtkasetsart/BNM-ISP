@@ -713,3 +713,18 @@ body{
   .select{flex:1}
   .stage{align-items:start}
 }
+
+/* --- guest button ---
+   A secondary action, so it sits below the primary pair rather than competing
+   with them: a desaturated slate that carries a hint of the page green, so it
+   reads as muted rather than as a second brand colour. Inherits the .btn hover
+   wedge, which keeps it in the same family as Sign In. */
+.btn--guest{
+  background:#6E7A75;
+  color:#fff;
+  margin-top:calc(4 * var(--u));
+}
+.btn--guest:hover{
+  background:#5E6A65;
+  box-shadow:0 calc(4 * var(--u)) calc(14 * var(--u)) rgba(28,60,50,.18);
+}

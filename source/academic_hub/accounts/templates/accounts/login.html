@@ -52,6 +52,14 @@
         </div>
       </form>
 
+      {% comment %} Placeholder. Guest browsing is US-02 (announcements visible
+         without signing in) and has no route yet, so this deliberately does
+         nothing. type="button" keeps it out of the form, and aria-disabled
+         tells a screen reader it is not live while leaving it readable.
+         Wire it to the public announcements view when that exists. {% endcomment %}
+      <button type="button" class="btn btn--guest" aria-disabled="true"
+              title="Guest browsing is not available yet">Sign in as guest</button>
+
       {% include "accounts/_oauth.html" %}
       {% include "accounts/_help_sheet.html" %}
     </div>

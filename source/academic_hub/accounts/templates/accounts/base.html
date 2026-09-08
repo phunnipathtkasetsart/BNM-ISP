@@ -37,7 +37,10 @@
     <a class="topbar__logo" href="{% url 'accounts:login' %}">KU</a>
     {% block topbar_left %}{% endblock %}
   </div>
-  {% block topbar_right %}<a href="#" class="topbar__help">Help</a>{% endblock %}
+  {% comment %} No default. The old "Help" link here pointed at "#" and did
+     nothing, so it was removed rather than left looking clickable. Signed-in
+     pages fill this slot; signed-out pages leave the right side empty. {% endcomment %}
+  {% block topbar_right %}{% endblock %}
 </header>
 
 <main class="stage" id="main">
