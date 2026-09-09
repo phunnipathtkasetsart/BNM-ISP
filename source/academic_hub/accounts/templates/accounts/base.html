@@ -34,11 +34,13 @@
    them with the reader's details and a log-out control. {% endcomment %}
 <header class="topbar {% block topbar_mod %}{% endblock %}">
   <div class="topbar__left">
-    {% comment %} Home is the board, for everyone. Pointing this at the sign-in
-     page meant a signed-in user clicking the logo landed on a login form,
-     and the OAuth path then bounced them into whichever account was already
-     in session. {% endcomment %}
-    <a class="topbar__logo" href="{% url 'announcements:public_board' %}">KU</a>
+    {% comment %} The board is only reachable once you are signed in or have
+       pressed "Sign in as guest". A guest is an authenticated generated
+       account, so one check covers both. Anonymous visitors get the sign-in
+       page, because this link used to walk them straight past the guest
+       button into content they had not asked for. {% endcomment %}
+    <a class="topbar__logo"
+       href="{% if request.user.is_authenticated %}{% url 'announcements:public_board' %}{% else %}{% url 'accounts:login' %}{% endif %}">KU</a>
     {% block topbar_left %}{% endblock %}
   </div>
   {% comment %} No default. The old "Help" link here pointed at "#" and did
@@ -55,6 +57,37 @@
 (function () {
   "use strict";
   var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- guest session countdown ----------
+     Reads the expiry the server rendered and ticks it down. Purely
+     informational: the session is enforced server-side either way, so a
+     browser with JavaScript off simply sees no clock. */
+  document.querySelectorAll(".guestclock").forEach(function (el) {
+    var ends = Date.parse(el.dataset.expires || "");
+    if (isNaN(ends)) { el.remove(); return; }
+    function tick() {
+      var left = Math.max(0, Math.floor((ends - Date.now()) / 1000));
+      var m = Math.floor(left / 60), sec = left % 60;
+      el.textContent = m + ":" + (sec < 10 ? "0" : "") + sec + " left";
+      el.classList.toggle("guestclock--low", left <= 300);
+      if (left === 0) { el.textContent = "session ended"; clearInterval(id); }
+    }
+    tick();
+    var id = setInterval(tick, 1000);
+  });
+
+  /* ---------- date pickers open from anywhere in the field ----------
+     A datetime-local input only opens its picker when the little calendar
+     glyph is hit, which is a small target and not where anyone aims.
+     showPicker() opens it from a click anywhere in the box. Guarded because
+     it throws if the browser does not support it, and because it must be
+     called from a real user gesture. */
+  document.querySelectorAll('input[type="datetime-local"], input[type="date"]').forEach(function (input) {
+    input.addEventListener("click", function () {
+      if (typeof input.showPicker !== "function") return;
+      try { input.showPicker(); } catch (e) { /* not allowed here; typing still works */ }
+    });
+  });
 
   /* ---------- password reveal ---------- */
   document.querySelectorAll(".reveal").forEach(function (btn) {

@@ -59,6 +59,33 @@ class PublishedQuerySet(models.QuerySet):
         """
         return self.published().filter(audience=Audience.PUBLIC)
 
+    def visible_to(self, user, is_guest=False):
+        """Everything this reader may see, widening by role.
+
+        One method, used by the board and by search, so the two cannot
+        disagree about what someone is allowed to read.
+
+            guest / anonymous  public only
+            student            public + students
+            lecturer           public + students + staff
+            department         everything, including unpublished drafts
+
+        A guest is signed in as a generated account, so `is_guest` has to be
+        passed in - the flags on the row are identical to a student's.
+        """
+        if is_guest or not user.is_authenticated:
+            return self.for_guest()
+
+        # The department owns the board and has to be able to reach a draft in
+        # order to publish it, so it is the only role not filtered by state.
+        if user.is_superuser:
+            return self.all()
+
+        allowed = [Audience.PUBLIC, Audience.STUDENTS]
+        if user.is_staff:
+            allowed.append(Audience.STAFF)
+        return self.published().filter(audience__in=allowed)
+
 
 class Audience(models.TextChoices):
     """Who an item is addressed to, widest first."""

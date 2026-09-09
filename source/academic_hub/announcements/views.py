@@ -9,7 +9,9 @@ it would be easiest to leak something by forgetting it.
 from django.contrib.auth.decorators import login_required
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.db.models import F
+from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from accounts.middleware import is_guest_request
@@ -36,29 +38,35 @@ def _search(queryset, query):
 
 
 def public_board(request):
-    """Announcements and FAQs a guest may read, optionally searched/filtered."""
+    """The board. Reachable once signed in, or after choosing guest access.
+
+    Not open to a bare anonymous visitor: they are sent to sign in, where
+    "Sign in as guest" is the deliberate way in. Guests are authenticated
+    generated accounts, so one check covers both cases.
+    """
+    if not request.user.is_authenticated:
+        return redirect_to_login(request.get_full_path(), reverse("accounts:login"))
+
     query = request.GET.get("q", "").strip()
     active_tag = request.GET.get("tag", "").strip()
 
     can_manage = can_manage_announcements(request.user)
+    is_guest = is_guest_request(request)
 
-    # The board is the public surface, so it shows public items. A signed-in
-    # publisher also sees their own drafts and course notices here, otherwise
-    # they would have no way back to something they just wrote that guests
-    # cannot see. Guests and students are unaffected: this branch needs an
-    # authenticated publisher.
-    if can_manage:
-        mine = Announcement.objects.filter(author=request.user)
-        if request.user.is_superuser:
-            mine = Announcement.objects.all()
+    # One rule for both models and for search below, so no read path can
+    # disagree with another about what this reader may see.
+    announcements = (
+        Announcement.objects.visible_to(request.user, is_guest)
+        .prefetch_related("tags")
+    )
+    # A lecturer also keeps sight of their own drafts, which visible_to()
+    # filters out for everyone but the department.
+    if can_manage and not request.user.is_superuser:
         announcements = (
-            (Announcement.objects.for_guest() | mine).distinct()
-            .prefetch_related("tags")
-        )
-    else:
-        announcements = Announcement.objects.for_guest().prefetch_related("tags")
+            announcements | Announcement.objects.filter(author=request.user)
+        ).distinct().prefetch_related("tags")
 
-    faqs = Faq.objects.for_guest().prefetch_related("tags")
+    faqs = Faq.objects.visible_to(request.user, is_guest).prefetch_related("tags")
 
     if active_tag:
         announcements = announcements.filter(tags__slug=active_tag)
@@ -71,7 +79,8 @@ def public_board(request):
     # Chips come from tags that actually appear on announcements a guest can
     # see, so the row can never offer a filter that returns nothing.
     chips = (
-        Tag.objects.filter(announcements__in=Announcement.objects.for_guest())
+        Tag.objects.filter(announcements__in=Announcement.objects.visible_to(
+            request.user, is_guest))
         .distinct()
         .order_by("kind", "label")
     )
@@ -81,8 +90,8 @@ def public_board(request):
     # board ever holds thousands of items this should become a lookup instead.
     suggestions = (
         [t.label for t in chips]
-        + list(Announcement.objects.for_guest().values_list("title", flat=True))
-        + list(Faq.objects.for_guest().values_list("question", flat=True))
+        + list(announcements.values_list("title", flat=True))
+        + list(faqs.values_list("question", flat=True))
     )
 
     return render(request, "announcements/public_board.html", {
@@ -95,7 +104,12 @@ def public_board(request):
         "is_searching": bool(query),
         "result_count": len(announcements) + len(faqs),
         "can_manage": can_manage,
-        "is_guest": is_guest_request(request),
+        "is_guest": is_guest,
+        # ISO timestamp for the countdown in the bar. A guest should be able
+        # to see how long is left rather than be dropped without warning.
+        "guest_expires_at": (
+            request.session.get_expiry_date().isoformat() if is_guest else ""
+        ),
     })
 
 
@@ -173,3 +187,21 @@ def announcement_delete(request, pk):
 
     announcement.delete()
     return redirect("announcements:public_board")
+
+
+@login_required(login_url="accounts:login")
+def faq_board(request):
+    """The FAQ side of the portal (US-10, US-11 - Iteration 5).
+
+    Deliberately empty. Iteration 2 only needs the route and the switch
+    between the two boards; threads, posting and replies come later.
+    """
+    is_guest = is_guest_request(request)
+    return render(request, "announcements/faq_board.html", {
+        "is_guest": is_guest,
+        "can_post": request.user.is_authenticated and not is_guest,
+        # The countdown follows a guest across both boards.
+        "guest_expires_at": (
+            request.session.get_expiry_date().isoformat() if is_guest else ""
+        ),
+    })

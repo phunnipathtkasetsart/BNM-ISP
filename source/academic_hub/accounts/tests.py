@@ -43,11 +43,16 @@ class GuestAccessTests(TestCase):
         """
         self.assertEqual(self.client.get("/accounts/dashboard/").status_code, 404)
 
-    def test_anonymous_visitor_may_read_the_public_board(self):
-        """US-02: the board is public. No sign-in, no guest session needed."""
-        self.assertEqual(
-            self.client.get(reverse("announcements:public_board")).status_code, 200
-        )
+    def test_anonymous_visitor_is_sent_to_sign_in(self):
+        """The board sits behind sign-in or the guest button.
+
+        US-02 is still met: a visitor without an account reads the board by
+        pressing "Sign in as guest". What is blocked is arriving there without
+        having chosen either, which used to happen from the KU logo.
+        """
+        response = self.client.get(reverse("announcements:public_board"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(reverse("accounts:login"), response["Location"])
 
     def test_guest_is_redirected_from_every_other_application_page(self):
         self.sign_in_as_guest()
