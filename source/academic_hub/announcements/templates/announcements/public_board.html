@@ -24,6 +24,12 @@
   <div class="topbar__right">
     {% if request.user.is_authenticated %}
       <span class="topbar__role">{% if is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+      {% if is_guest %}
+        {% comment %} A guest session expires. Showing the time left is kinder
+           than dropping them mid-read with no explanation. {% endcomment %}
+        <span class="guestclock" data-expires="{{ guest_expires_at }}"
+              title="Your guest session ends then">&mdash;</span>
+      {% endif %}
       {% if request.user.is_superuser %}
         <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
       {% endif %}
@@ -156,10 +162,31 @@
   </section>
 
   <aside class="board__side">
+    {% comment %} Guests get the FAQ panel only. Signed-in roles also get the
+       two administrative panels, per the agreed dashboards. Upcoming Deadline
+       stays empty until course enrolment exists in Iteration 3. {% endcomment %}
+    {% if not is_guest %}
+      <section class="panel sidepanel">
+        <div class="sidepanel__head"><h2>Upcoming Deadline</h2></div>
+        <div class="sidepanel__body">
+          <p class="sidepanel__soon">Assignment deadlines arrive with courses in Iteration&nbsp;3.</p>
+        </div>
+      </section>
+
+      <section class="panel sidepanel">
+        <div class="sidepanel__head"><h2>Administrative contact</h2></div>
+        <div class="sidepanel__body">
+          <p class="sidepanel__soon">Department contact details to be added.</p>
+        </div>
+      </section>
+    {% endif %}
+
     <section class="panel panel--faq">
       {% include "accounts/_ribbons.html" %}
       <div class="panel__inner">
-        <div class="faq__head"><h2>FAQ</h2></div>
+        <div class="faq__head">
+          <h2>{% if can_manage %}FAQ{% else %}Most FAQ{% endif %}</h2>
+        </div>
         <div class="faq__list">
           {% for f in faqs %}
             {% comment %} <details> gives keyboard support, Escape and screen
@@ -177,4 +204,10 @@
   </aside>
 
 </div>
+
+{% comment %} The switch to the FAQ board. A plain link, so it works without
+   JavaScript and the back button behaves; the page-turn is a CSS animation
+   that runs when the next board arrives. {% endcomment %}
+<a class="switcher" href="{% url 'announcements:faq_board' %}"
+   aria-label="Go to FAQ"><span>FAQ</span></a>
 {% endblock %}

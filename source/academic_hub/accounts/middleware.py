@@ -8,6 +8,8 @@ GUEST_LANDING_VIEW = "announcements:public_board"
 
 GUEST_ALLOWED_VIEWS = {
     GUEST_LANDING_VIEW,
+    # Guests read the FAQ board too - they just cannot post on it.
+    "announcements:faq_board",
     "accounts:logout",
     # The way out of guest mode. Blocking these made the "Sign in"
     # control in the bar bounce straight back to the board, which

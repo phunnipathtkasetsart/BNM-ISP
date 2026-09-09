@@ -979,3 +979,85 @@ body{
 /* The whole datetime box opens the picker now, so it should look clickable. */
 .annform input[type="datetime-local"]{cursor:pointer}
 .annform input[type="datetime-local"]::-webkit-calendar-picker-indicator{cursor:pointer}
+
+/* ================================================================
+   Right-column panels, guest clock, and the board switcher
+   ================================================================ */
+.board__side{display:flex;flex-direction:column;gap:calc(16 * var(--u))}
+
+.sidepanel{width:auto}
+.sidepanel__head{
+  padding:calc(16 * var(--u)) calc(20 * var(--u)) calc(10 * var(--u));
+  background:#fff;
+}
+.sidepanel__head h2{
+  margin:0;font-family:var(--font-display);font-weight:700;
+  font-size:calc(15.5 * var(--u));color:var(--ink);text-align:center;
+}
+.sidepanel__body{
+  background:#fff;padding:0 calc(20 * var(--u)) calc(20 * var(--u));
+  min-height:calc(96 * var(--u));
+}
+/* Says why a panel is empty, rather than leaving a blank box that reads as
+   broken. */
+.sidepanel__soon{
+  margin:0;font-size:calc(12.5 * var(--u));color:var(--ink-muted);
+  line-height:1.6;text-align:center;padding-top:calc(18 * var(--u));
+}
+
+/* --- guest session clock --- */
+.guestclock{
+  flex:none;font-family:var(--font-ui);font-size:calc(13 * var(--u));
+  font-weight:600;color:var(--ku-sage-soft);
+  background:rgba(255,255,255,.10);
+  padding:calc(3 * var(--u)) calc(10 * var(--u));border-radius:999px;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+/* Last five minutes: warm, not alarming — the session ending is expected. */
+.guestclock--low{color:#F6D9CB;background:rgba(200,120,80,.28)}
+
+/* --- switcher: the round button that flips between the two boards ---
+   A link, so it works with JavaScript off. The page-turn is done on arrival
+   by .board's animation rather than on click, which would need a script and
+   would break the back button. */
+.switcher{
+  position:fixed;right:calc(28 * var(--u));bottom:calc(26 * var(--u));z-index:9;
+  width:calc(56 * var(--u));height:calc(56 * var(--u));border-radius:50%;
+  display:grid;place-items:center;
+  background:#3B49DF;color:#fff;text-decoration:none;
+  font-family:var(--font-ui);font-weight:700;font-size:calc(12.5 * var(--u));
+  box-shadow:0 calc(6 * var(--u)) calc(18 * var(--u)) rgba(28,40,90,.34);
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease);
+}
+.switcher:hover{transform:translateY(calc(-2 * var(--u))) scale(1.04)}
+.switcher:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.switcher--back{background:var(--ku-green-800)}
+
+/* The page-turn: the incoming board lifts in from the corner the button sits
+   in, so pressing it reads as the old page folding away into it. */
+@keyframes board-in{
+  from{opacity:0;transform:translate3d(calc(18 * var(--u)),calc(22 * var(--u)),0) scale(.985)}
+  to{opacity:1;transform:none}
+}
+.board{animation:board-in .34s var(--ease) both;transform-origin:100% 100%}
+@media (prefers-reduced-motion:reduce){
+  .board{animation:none}
+  .switcher{transition:none}
+}
+
+/* --- FAQ page header row --- */
+.faqhead{
+  display:flex;gap:calc(10 * var(--u));
+  padding:calc(18 * var(--u)) calc(28 * var(--u)) calc(4 * var(--u));
+}
+.faqhead__tab{
+  flex:1;text-align:center;border-radius:var(--r-field);
+  padding:calc(9 * var(--u)) calc(14 * var(--u));
+  font-weight:700;font-size:calc(14 * var(--u));
+  background:#fff;border:1px solid var(--hairline);color:var(--ink);
+}
+.faqhead__tab--off{color:var(--ink-muted);cursor:not-allowed;background:var(--field)}
+
+@media (max-width:900px){
+  .switcher{right:16px;bottom:16px}
+}
