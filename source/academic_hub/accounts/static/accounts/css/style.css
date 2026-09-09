@@ -975,3 +975,7 @@ body{
   border-top:1px solid var(--hairline);
 }
 .linkbtn--danger{color:var(--danger);font-size:calc(13 * var(--u))}
+
+/* The whole datetime box opens the picker now, so it should look clickable. */
+.annform input[type="datetime-local"]{cursor:pointer}
+.annform input[type="datetime-local"]::-webkit-calendar-picker-indicator{cursor:pointer}

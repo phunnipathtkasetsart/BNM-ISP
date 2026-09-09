@@ -41,24 +41,22 @@ def public_board(request):
     active_tag = request.GET.get("tag", "").strip()
 
     can_manage = can_manage_announcements(request.user)
+    is_guest = is_guest_request(request)
 
-    # The board is the public surface, so it shows public items. A signed-in
-    # publisher also sees their own drafts and course notices here, otherwise
-    # they would have no way back to something they just wrote that guests
-    # cannot see. Guests and students are unaffected: this branch needs an
-    # authenticated publisher.
-    if can_manage:
-        mine = Announcement.objects.filter(author=request.user)
-        if request.user.is_superuser:
-            mine = Announcement.objects.all()
+    # One rule for both models and for search below, so no read path can
+    # disagree with another about what this reader may see.
+    announcements = (
+        Announcement.objects.visible_to(request.user, is_guest)
+        .prefetch_related("tags")
+    )
+    # A lecturer also keeps sight of their own drafts, which visible_to()
+    # filters out for everyone but the department.
+    if can_manage and not request.user.is_superuser:
         announcements = (
-            (Announcement.objects.for_guest() | mine).distinct()
-            .prefetch_related("tags")
-        )
-    else:
-        announcements = Announcement.objects.for_guest().prefetch_related("tags")
+            announcements | Announcement.objects.filter(author=request.user)
+        ).distinct().prefetch_related("tags")
 
-    faqs = Faq.objects.for_guest().prefetch_related("tags")
+    faqs = Faq.objects.visible_to(request.user, is_guest).prefetch_related("tags")
 
     if active_tag:
         announcements = announcements.filter(tags__slug=active_tag)
@@ -71,7 +69,8 @@ def public_board(request):
     # Chips come from tags that actually appear on announcements a guest can
     # see, so the row can never offer a filter that returns nothing.
     chips = (
-        Tag.objects.filter(announcements__in=Announcement.objects.for_guest())
+        Tag.objects.filter(announcements__in=Announcement.objects.visible_to(
+            request.user, is_guest))
         .distinct()
         .order_by("kind", "label")
     )
@@ -81,8 +80,8 @@ def public_board(request):
     # board ever holds thousands of items this should become a lookup instead.
     suggestions = (
         [t.label for t in chips]
-        + list(Announcement.objects.for_guest().values_list("title", flat=True))
-        + list(Faq.objects.for_guest().values_list("question", flat=True))
+        + list(announcements.values_list("title", flat=True))
+        + list(faqs.values_list("question", flat=True))
     )
 
     return render(request, "announcements/public_board.html", {
@@ -95,7 +94,7 @@ def public_board(request):
         "is_searching": bool(query),
         "result_count": len(announcements) + len(faqs),
         "can_manage": can_manage,
-        "is_guest": is_guest_request(request),
+        "is_guest": is_guest,
     })
 
 

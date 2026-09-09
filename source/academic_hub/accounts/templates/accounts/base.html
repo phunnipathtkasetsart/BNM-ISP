@@ -56,6 +56,19 @@
   "use strict";
   var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+  /* ---------- date pickers open from anywhere in the field ----------
+     A datetime-local input only opens its picker when the little calendar
+     glyph is hit, which is a small target and not where anyone aims.
+     showPicker() opens it from a click anywhere in the box. Guarded because
+     it throws if the browser does not support it, and because it must be
+     called from a real user gesture. */
+  document.querySelectorAll('input[type="datetime-local"], input[type="date"]').forEach(function (input) {
+    input.addEventListener("click", function () {
+      if (typeof input.showPicker !== "function") return;
+      try { input.showPicker(); } catch (e) { /* not allowed here; typing still works */ }
+    });
+  });
+
   /* ---------- password reveal ---------- */
   document.querySelectorAll(".reveal").forEach(function (btn) {
     var input = document.getElementById(btn.dataset.for);

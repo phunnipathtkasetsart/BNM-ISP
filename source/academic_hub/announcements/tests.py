@@ -135,3 +135,63 @@ class SignedInBoardTests(TestCase):
                 response = self.client.get(reverse("announcements:public_board"))
                 expected = role in {"Lecturer", "Department"}
                 self.assertEqual(b"Create Announcement" in response.content, expected)
+
+
+class RoleVisibilityTests(TestCase):
+    """Who sees which audience. The bug this covers: signed-in students and
+    lecturers only ever saw public items, so anything addressed to them was
+    invisible to them."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import User
+        cls.people = {}
+        for key, nid, staff, sup in (
+            ("student", "7000000101", False, False),
+            ("lecturer", "7000000102", True, False),
+            ("department", "7000000103", False, True),
+        ):
+            u = User.objects.create_user(
+                nisit_id=nid, email=f"{key}@ku.th", password="vis-1234",
+                first_name=key.title(), last_name="V", department="ske",
+            )
+            u.is_staff, u.is_superuser = staff, sup
+            u.save(update_fields=["is_staff", "is_superuser"])
+            cls.people[key] = u
+
+        for title, audience in (
+            ("Probe public", Audience.PUBLIC),
+            ("Probe students", Audience.STUDENTS),
+            ("Probe staff", Audience.STAFF),
+        ):
+            Announcement.objects.create(title=title, body="probe", audience=audience)
+
+    def board(self):
+        return self.client.get(reverse("announcements:public_board"))
+
+    def test_visibility_matrix(self):
+        expected = {
+            # role        public students staff
+            "anonymous": (True, False, False),
+            "student": (True, True, False),
+            "lecturer": (True, True, True),
+            "department": (True, True, True),
+        }
+        for role, (pub, stu, staff) in expected.items():
+            with self.subTest(role=role):
+                if role == "anonymous":
+                    self.client.logout()
+                else:
+                    self.client.force_login(self.people[role])
+                page = self.board().content
+                self.assertEqual(b"Probe public" in page, pub)
+                self.assertEqual(b"Probe students" in page, stu)
+                self.assertEqual(b"Probe staff" in page, staff)
+
+    def test_student_cannot_reach_a_staff_item_through_search(self):
+        """Search is the second read path, so it gets its own assertion."""
+        self.client.force_login(self.people["student"])
+        response = self.client.get(
+            reverse("announcements:public_board"), {"q": "Probe"}
+        )
+        self.assertNotContains(response, "Probe staff")
