@@ -1,5 +1,7 @@
 {% extends "accounts/base.html" %}
+{% load static %}
 {% block title %}No access — KU Student Portal{% endblock %}
+{% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/auth.css' %}">{% endblock %}
 
 {% comment %} Shown when a signed-in user reaches a page their role does not
    cover. Says plainly what is required and where to go instead, rather than

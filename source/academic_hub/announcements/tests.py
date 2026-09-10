@@ -9,6 +9,7 @@ whole public layer depends on can finally be asserted rather than eyeballed.
 from django.test import TestCase
 from django.urls import reverse
 
+from .forms import AnnouncementForm
 from .models import Announcement, Audience, Faq, Tag
 
 
@@ -215,3 +216,172 @@ class RoleVisibilityTests(TestCase):
             reverse("announcements:public_board"), {"q": "Probe"}
         )
         self.assertNotContains(response, "Probe staff")
+
+
+class LabTagTests(TestCase):
+    """Lab notices are department business and never public.
+
+    US-02 says internal lab posts stay hidden from unauthenticated readers,
+    and the team's rule is that only the Department may post one.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import User
+        cls.lab = Tag.objects.create(slug="lab", label="Lab", kind=Tag.Kind.LAB)
+        cls.dept_tag = Tag.objects.create(
+            slug="department", label="Department", kind=Tag.Kind.DEPARTMENT
+        )
+        cls.lecturer = User.objects.create_user(
+            nisit_id="7300000002", email="lec@ku.th", password="lab-1234",
+            first_name="Lec", last_name="T", department="ske",
+        )
+        cls.lecturer.is_staff = True
+        cls.lecturer.save(update_fields=["is_staff"])
+
+        cls.department = User.objects.create_user(
+            nisit_id="7300000003", email="dep@ku.th", password="lab-1234",
+            first_name="Dep", last_name="T", department="ske",
+        )
+        cls.department.is_superuser = True
+        cls.department.save(update_fields=["is_superuser"])
+
+        cls.lab_post = Announcement.objects.create(
+            title="Lab access hours changed", body="Closing early.",
+            audience=Audience.STAFF,
+        )
+        cls.lab_post.tags.set([cls.lab])
+
+    def test_a_lecturer_cannot_post_a_lab_tag(self):
+        form = AnnouncementForm(
+            data={"title": "x", "body": "y", "audience": Audience.STAFF,
+                  "tags": [self.lab.pk]},
+            author=self.lecturer,
+        )
+        self.assertFalse(form.is_valid())
+        self.assertIn("Department", form.errors["tags"][0])
+
+    def test_the_department_can_post_a_lab_tag(self):
+        form = AnnouncementForm(
+            data={"title": "x", "body": "y", "audience": Audience.STAFF,
+                  "tags": [self.lab.pk]},
+            author=self.department,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_a_lecturer_may_still_use_an_ordinary_tag(self):
+        form = AnnouncementForm(
+            data={"title": "x", "body": "y", "audience": Audience.STUDENTS,
+                  "tags": [self.dept_tag.pk]},
+            author=self.lecturer,
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_a_public_item_tagged_lab_is_still_hidden_from_guests(self):
+        """Belt and braces: mistagging must not leak an internal notice."""
+        slip = Announcement.objects.create(
+            title="Mistagged lab notice", body="Should stay hidden.",
+            audience=Audience.PUBLIC,
+        )
+        slip.tags.set([self.lab])
+        self.client.post(reverse("accounts:guest_login"))
+        response = self.client.get(reverse("announcements:public_board"))
+        self.assertNotContains(response, "Mistagged lab notice")
+
+
+class DateFilterTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        from datetime import datetime, timezone as tz
+        cls.old = Announcement.objects.create(
+            title="Older notice", body="b", audience=Audience.PUBLIC,
+            published_at=datetime(2026, 1, 5, 9, 0, tzinfo=tz.utc),
+        )
+        cls.recent = Announcement.objects.create(
+            title="Recent notice", body="b", audience=Audience.PUBLIC,
+            published_at=datetime(2026, 6, 20, 9, 0, tzinfo=tz.utc),
+        )
+
+    def board(self, **params):
+        self.client.post(reverse("accounts:guest_login"))
+        return self.client.get(reverse("announcements:public_board"), params)
+
+    def test_from_date_excludes_earlier_items(self):
+        response = self.board(**{"from": "2026-03-01"})
+        self.assertContains(response, "Recent notice")
+        self.assertNotContains(response, "Older notice")
+
+    def test_to_date_excludes_later_items(self):
+        response = self.board(**{"to": "2026-03-01"})
+        self.assertContains(response, "Older notice")
+        self.assertNotContains(response, "Recent notice")
+
+    def test_a_single_day_includes_that_whole_day(self):
+        """Posted at 09:00, so comparing against midnight would drop it."""
+        response = self.board(**{"from": "2026-06-20", "to": "2026-06-20"})
+        self.assertContains(response, "Recent notice")
+
+    def test_an_unparseable_date_narrows_nothing(self):
+        response = self.board(**{"from": "notadate"})
+        self.assertContains(response, "Older notice")
+        self.assertContains(response, "Recent notice")
+
+
+class LabEditGuardTests(TestCase):
+    """A lecturer cannot edit a post carrying a lab tag.
+
+    The form cannot offer a lab tag to a lecturer, so letting the edit through
+    would drop the tag on save without saying so.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import User
+        cls.lab = Tag.objects.create(slug="lab", label="Lab", kind=Tag.Kind.LAB)
+        cls.plain = Tag.objects.create(
+            slug="department", label="Department", kind=Tag.Kind.DEPARTMENT
+        )
+        cls.lecturer = User.objects.create_user(
+            nisit_id="7600000002", email="l6@ku.th", password="lab-1234",
+            first_name="Lec", last_name="G", department="ske",
+        )
+        cls.lecturer.is_staff = True
+        cls.lecturer.save(update_fields=["is_staff"])
+        cls.department = User.objects.create_user(
+            nisit_id="7600000003", email="d6@ku.th", password="lab-1234",
+            first_name="Dep", last_name="G", department="ske",
+        )
+        cls.department.is_superuser = True
+        cls.department.save(update_fields=["is_superuser"])
+
+        cls.lab_post = Announcement.objects.create(
+            title="Own lab post", body="b",
+            audience=Audience.STUDENTS, author=cls.lecturer,
+        )
+        cls.lab_post.tags.set([cls.lab])
+
+        cls.plain_post = Announcement.objects.create(
+            title="Own plain post", body="b",
+            audience=Audience.STUDENTS, author=cls.lecturer,
+        )
+        cls.plain_post.tags.set([cls.plain])
+
+    def edit(self, pk):
+        return self.client.get(reverse("announcements:announcement_edit", args=[pk]))
+
+    def test_lecturer_cannot_edit_their_own_lab_post(self):
+        self.client.force_login(self.lecturer)
+        self.assertEqual(self.edit(self.lab_post.pk).status_code, 403)
+
+    def test_lecturer_can_still_edit_their_ordinary_post(self):
+        self.client.force_login(self.lecturer)
+        self.assertEqual(self.edit(self.plain_post.pk).status_code, 200)
+
+    def test_department_can_edit_a_lab_post(self):
+        self.client.force_login(self.department)
+        self.assertEqual(self.edit(self.lab_post.pk).status_code, 200)
+
+    def test_a_lab_tagged_post_never_reaches_a_guest(self):
+        self.client.post(reverse("accounts:guest_login"))
+        response = self.client.get(reverse("announcements:public_board"))
+        self.assertNotContains(response, "Own lab post")

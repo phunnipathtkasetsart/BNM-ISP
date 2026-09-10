@@ -32,6 +32,9 @@ class Tag(models.Model):
     class Kind(models.TextChoices):
         DEPARTMENT = "department", "Department"
         COURSE = "course", "Course"
+        # Internal lab notices. US-02 says these stay hidden from
+        # unauthenticated readers, and only the Department may post them.
+        LAB = "lab", "Lab"
         TOPIC = "topic", "Topic"
 
     slug = models.SlugField(max_length=60, unique=True)
@@ -54,10 +57,17 @@ class PublishedQuerySet(models.QuerySet):
     def for_guest(self):
         """What someone who is not signed in may read.
 
-        Deliberately strict: public audience only. A course-tagged item is
-        never public, because a guest cannot be enrolled on anything.
+        Deliberately strict: public audience only, and never anything carrying
+        a course or lab tag. A guest cannot be enrolled on a course, and US-02
+        says internal lab posts stay hidden from unauthenticated readers, so
+        the tag is excluded here as well as the audience. Belt and braces:
+        mistagging a public item should not leak it.
         """
-        return self.published().filter(audience=Audience.PUBLIC)
+        return (
+            self.published()
+            .filter(audience=Audience.PUBLIC)
+            .exclude(tags__kind__in=[Tag.Kind.COURSE, Tag.Kind.LAB])
+        )
 
     def visible_to(self, user, is_guest=False):
         """Everything this reader may see, widening by role.

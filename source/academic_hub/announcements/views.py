@@ -1,9 +1,7 @@
 """Public information layer (US-02, US-03, US-09).
 
-The board is readable without signing in. Everything reaching the template
-comes through `for_guest()`, so the visibility rule lives in one place on the
-queryset rather than being re-stated in each view - including in search, where
-it would be easiest to leak something by forgetting it.
+Every read goes through `visible_to()` so the board and search cannot
+disagree about what a reader may see.
 """
 
 from django.contrib.auth.decorators import login_required
@@ -12,6 +10,7 @@ from django.db.models import F
 from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from accounts.middleware import is_guest_request
@@ -20,14 +19,10 @@ from .models import Announcement, Faq, Tag
 
 
 def _search(queryset, query):
-    """Rank a queryset against the stored tsvector.
+    """Rank against the stored tsvector.
 
-    `websearch` is the parser that behaves the way people expect from a search
-    box: quoted phrases, OR, and a leading - to exclude. The alternatives
-    either choke on punctuation (plainto) or demand operator syntax (raw).
-
-    Ranking uses the weights set when the vector was built, so a title match
-    outranks a body match rather than both scoring the same.
+    `websearch` handles quoted phrases and OR the way people expect. Ranking
+    uses the stored weights, so a title match outranks a body match.
     """
     q = SearchQuery(query, search_type="websearch")
     return (
@@ -38,17 +33,14 @@ def _search(queryset, query):
 
 
 def public_board(request):
-    """The board. Reachable once signed in, or after choosing guest access.
-
-    Not open to a bare anonymous visitor: they are sent to sign in, where
-    "Sign in as guest" is the deliberate way in. Guests are authenticated
-    generated accounts, so one check covers both cases.
-    """
+    """The board. Signed-in users and guests only; anonymous goes to sign in."""
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path(), reverse("accounts:login"))
 
     query = request.GET.get("q", "").strip()
     active_tag = request.GET.get("tag", "").strip()
+    date_from = request.GET.get("from", "").strip()
+    date_to = request.GET.get("to", "").strip()
 
     can_manage = can_manage_announcements(request.user)
     is_guest = is_guest_request(request)
@@ -72,6 +64,15 @@ def public_board(request):
         announcements = announcements.filter(tags__slug=active_tag)
         faqs = faqs.filter(tags__slug=active_tag)
 
+    # `__date` so a single day includes items posted during it. A malformed
+    # value parses to None and narrows nothing.
+    parsed_from = parse_date(date_from) if date_from else None
+    parsed_to = parse_date(date_to) if date_to else None
+    if parsed_from:
+        announcements = announcements.filter(published_at__date__gte=parsed_from)
+    if parsed_to:
+        announcements = announcements.filter(published_at__date__lte=parsed_to)
+
     if query:
         announcements = _search(announcements, query)
         faqs = _search(faqs, query)
@@ -85,9 +86,8 @@ def public_board(request):
         .order_by("kind", "label")
     )
 
-    # Suggestions are rendered into a <datalist>, so the browser does the
-    # matching with no request and no JavaScript. Fine at this size; if the
-    # board ever holds thousands of items this should become a lookup instead.
+    # Rendered into a <datalist>. Fine at this size; needs a lookup if the
+    # board ever holds thousands of items.
     suggestions = (
         [t.label for t in chips]
         + list(announcements.values_list("title", flat=True))
@@ -99,6 +99,9 @@ def public_board(request):
         "faqs": faqs,
         "chips": chips,
         "active_tag": active_tag,
+        "date_from": date_from,
+        "date_to": date_to,
+        "date_filtered": bool(parsed_from or parsed_to),
         "query": query,
         "suggestions": suggestions,
         "is_searching": bool(query),
@@ -123,11 +126,8 @@ def can_manage_announcements(user):
 
 
 def _refresh_search_vector(announcement):
-    """Rebuild this row's tsvector so the item is findable straight away.
-
-    Done as an UPDATE rather than in save() because SearchVector is database-
-    side: it has to run against the stored row, after the write.
-    """
+    """Rebuild this row's tsvector. An UPDATE, because SearchVector runs
+    database-side against the stored row."""
     Announcement.objects.filter(pk=announcement.pk).update(
         search_vector=SearchVector("title", weight="A")
         + SearchVector("body", weight="B")
@@ -147,6 +147,16 @@ def announcement_form(request, pk=None):
         instance is not None
         and not request.user.is_superuser
         and instance.author_id != request.user.pk
+    ):
+        return render(request, "accounts/no_access.html", status=403)
+
+    # Lab tags are Department-only, and the form cannot offer one it is not
+    # allowed to keep. Editing here would silently drop the tag, so a lecturer
+    # is stopped instead.
+    if (
+        instance is not None
+        and not request.user.is_superuser
+        and instance.tags.filter(kind=Tag.Kind.LAB).exists()
     ):
         return render(request, "accounts/no_access.html", status=403)
 
@@ -197,8 +207,15 @@ def faq_board(request):
     between the two boards; threads, posting and replies come later.
     """
     is_guest = is_guest_request(request)
+    # Threads are Iteration 5, but the page should not read as broken, so the
+    # published FAQs a reader may see are shown as stand-in threads. They go
+    # through the same visible_to() as everything else, so a guest gets the
+    # public ones and nothing more.
+    threads = Faq.objects.visible_to(request.user, is_guest).prefetch_related("tags")
     return render(request, "announcements/faq_board.html", {
         "is_guest": is_guest,
+        "threads": threads,
+        "open_thread": threads.first(),
         "can_post": request.user.is_authenticated and not is_guest,
         # The countdown follows a guest across both boards.
         "guest_expires_at": (
