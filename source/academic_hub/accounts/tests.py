@@ -2,8 +2,14 @@ from types import SimpleNamespace
 
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+from django.core import mail
+from django.utils import timezone
+from datetime import timedelta
+import hashlib
 
 from .middleware import GUEST_ALLOWED_VIEWS, GUEST_SESSION_KEY, is_guest_request
+from .forms import RegisterForm
+from .models import PasswordResetToken, User
 
 
 @override_settings(
@@ -140,3 +146,86 @@ class GuestAccessTests(TestCase):
         self.assertEqual(
             User.objects.filter(nisit_id__startswith=GUEST_ID_PREFIX).count(), 0
         )
+
+
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class PasswordResetTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            nisit_id="6810545956", email="student@ku.th", password="old-pass-1234",
+            first_name="Student", last_name="Tester", department="ske",
+        )
+        self.forgot_url = reverse("accounts:forgot_password")
+        self.reset_url = reverse("accounts:reset_password")
+
+    def request_reset(self, email="student@ku.th"):
+        return self.client.post(self.forgot_url, {"email": email})
+
+    def test_unknown_email_gets_same_confirmation_without_sending(self):
+        known = self.request_reset()
+        self.assertContains(known, "If an account exists for that email")
+        self.assertEqual(len(mail.outbox), 1)
+        mail.outbox.clear()
+
+        unknown = self.request_reset("nobody@ku.th")
+        self.assertContains(unknown, "If an account exists for that email")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_invalid_email_is_rejected(self):
+        response = self.request_reset("not-an-email")
+        self.assertContains(response, "Use your KU address")
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_token_is_hashed_and_expires(self):
+        self.request_reset()
+        token = PasswordResetToken.objects.get(user=self.user)
+        raw_token = mail.outbox[0].body.split("token=")[1].split()[0]
+        self.assertNotEqual(token.token_hash, raw_token)
+        self.assertEqual(token.token_hash, hashlib.sha256(raw_token.encode()).hexdigest())
+
+        token.expires_at = timezone.now() - timedelta(minutes=1)
+        token.save(update_fields=["expires_at"])
+        response = self.client.get(self.reset_url, {"token": raw_token})
+        self.assertContains(response, "invalid or has expired")
+
+    def test_successful_reset_hashes_password_and_consumes_token(self):
+        self.request_reset()
+        raw_token = mail.outbox[0].body.split("token=")[1].split()[0]
+        response = self.client.post(self.reset_url, {
+            "token": raw_token, "password1": "new-secure-pass-123", "password2": "new-secure-pass-123",
+        })
+        self.assertContains(response, "reset successfully")
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("new-secure-pass-123"))
+        self.assertNotEqual(self.user.password, "new-secure-pass-123")
+        reset_token = PasswordResetToken.objects.get(user=self.user)
+        self.assertIsNotNone(reset_token.used_at)
+
+        reused = self.client.post(self.reset_url, {
+            "token": raw_token, "password1": "another-pass-123", "password2": "another-pass-123",
+        })
+        self.assertContains(reused, "invalid or has expired")
+
+    def test_weak_and_mismatched_passwords_are_rejected(self):
+        self.request_reset()
+        raw_token = mail.outbox[0].body.split("token=")[1].split()[0]
+        response = self.client.post(self.reset_url, {
+            "token": raw_token, "password1": "short", "password2": "different",
+        })
+        self.assertContains(response, "at least 8 characters")
+        self.assertEqual(PasswordResetToken.objects.get(user=self.user).used_at, None)
+
+
+class RegistrationPasswordValidationTests(TestCase):
+    def test_common_password_is_rejected_during_registration(self):
+        form = RegisterForm(data={
+            "first_name": "New",
+            "last_name": "Student",
+            "nisit_id": "6810545957",
+            "department": "ske",
+            "email": "newstudent@ku.th",
+            "password1": "password",
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn("This password is too common.", form.errors["password1"])

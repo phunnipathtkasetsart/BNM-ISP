@@ -137,6 +137,11 @@
       if (!v) return "Please choose a password.";
       if (v.length < 8) return "Password must be at least 8 characters.";
       return "";
+    },
+    passwordmatch: function (v, field) {
+      var other = document.getElementById(field.dataset.match);
+      if (!v) return "Please confirm your password.";
+      return other && v === other.value ? "" : "Passwords do not match.";
     }
   };
 
@@ -144,7 +149,7 @@
     var rule = RULES[field.dataset.rule];
     var input = field.querySelector("input");
     if (!rule || !input) return true;
-    var problem = rule(input.value.trim());
+    var problem = rule(input.value.trim(), field);
     var msg = field.querySelector(".msg");
     // while typing, only ever clear an error — never raise a new one
     if (live && !field.classList.contains("is-invalid")) return !problem;

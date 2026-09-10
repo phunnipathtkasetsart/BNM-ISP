@@ -1,6 +1,7 @@
 import re
 
 from django import forms
+from django.contrib.auth.password_validation import validate_password
 
 from .models import User, ku_email_validator, nisit_id_validator
 
@@ -132,8 +133,7 @@ class RegisterForm(forms.ModelForm):
 
     def clean_password1(self):
         password = self.cleaned_data.get("password1", "")
-        if len(password) < 8:
-            raise forms.ValidationError("Password must be at least 8 characters.")
+        validate_password(password, self.instance)
         return password
 
     def save(self, commit=True):
@@ -166,3 +166,30 @@ class ForgotPasswordForm(forms.Form):
 
     def clean_email(self):
         return normalise_ku_email(self.cleaned_data.get("email"))
+
+
+class ResetPasswordForm(forms.Form):
+    password1 = forms.CharField(
+        label="New password",
+        widget=forms.PasswordInput(attrs={"placeholder": "New password", "autocomplete": "new-password"}),
+    )
+    password2 = forms.CharField(
+        label="Confirm password",
+        widget=forms.PasswordInput(attrs={"placeholder": "Confirm password", "autocomplete": "new-password"}),
+    )
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_password1(self):
+        password = self.cleaned_data.get("password1", "")
+        validate_password(password, self.user)
+        return password
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("password1") and cleaned.get("password2"):
+            if cleaned["password1"] != cleaned["password2"]:
+                self.add_error("password2", "The passwords do not match.")
+        return cleaned
