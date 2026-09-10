@@ -150,6 +150,16 @@ def announcement_form(request, pk=None):
     ):
         return render(request, "accounts/no_access.html", status=403)
 
+    # Lab tags are Department-only, and the form cannot offer one it is not
+    # allowed to keep. Editing here would silently drop the tag, so a lecturer
+    # is stopped instead.
+    if (
+        instance is not None
+        and not request.user.is_superuser
+        and instance.tags.filter(kind=Tag.Kind.LAB).exists()
+    ):
+        return render(request, "accounts/no_access.html", status=403)
+
     if request.method == "POST":
         form = AnnouncementForm(request.POST, instance=instance,
                                 author=request.user)

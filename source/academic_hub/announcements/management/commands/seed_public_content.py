@@ -20,8 +20,7 @@ TAGS = [
     ("department", "Department", Tag.Kind.DEPARTMENT),
     ("syllabus", "Syllabus", Tag.Kind.TOPIC),
     ("scholarship", "Scholarship", Tag.Kind.TOPIC),
-    ("cs101", "CS101", Tag.Kind.COURSE),
-    ("lab-ske", "Lab SKE", Tag.Kind.LAB),
+    ("lab", "Lab", Tag.Kind.LAB),
 ]
 
 ANNOUNCEMENTS = [
@@ -68,7 +67,7 @@ ANNOUNCEMENTS = [
         # as the negative case that proves the guest filter works.
         "author_label": "Lecturer", "audience": Audience.STUDENTS,
         "is_urgent": False, "deadline_in_days": 4,
-        "tags": ["cs101"],
+        "tags": ["lab"],
     },
     {
         "title": "Lab access hours changed for the SKE lab",
@@ -80,7 +79,7 @@ ANNOUNCEMENTS = [
         # second negative case: a guest must not see this either.
         "author_label": "Department", "audience": Audience.STAFF,
         "is_urgent": False, "deadline_in_days": None,
-        "tags": ["lab-ske"],
+        "tags": ["lab"],
     },
 ]
 
