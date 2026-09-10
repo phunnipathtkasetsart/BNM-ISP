@@ -53,6 +53,16 @@ class AnnouncementForm(forms.ModelForm):
         # "everyone, including guests" would put course-level notices on the
         # public board, which is exactly what the guest filter exists to stop.
         if author is not None and not author.is_superuser:
+            # Lab notices are department business, so a lecturer is not even
+            # offered the tag. clean_tags() checks again, since removing an
+            # option from a checkbox list is not a restriction.
+            self.fields["tags"].queryset = Tag.objects.exclude(kind=Tag.Kind.LAB)
+            # Restricting the queryset is what actually rejects a posted lab
+            # tag, so the default "N is not one of the available choices" is
+            # what a lecturer would read. Say why instead.
+            self.fields["tags"].error_messages["invalid_choice"] = (
+                "Only the Department can post a lab announcement."
+            )
             self.fields["audience"].choices = [
                 (value, label) for value, label in Audience.choices
                 if value != Audience.PUBLIC
@@ -67,6 +77,22 @@ class AnnouncementForm(forms.ModelForm):
         if deadline and deadline < timezone.now():
             raise forms.ValidationError("That deadline has already passed.")
         return deadline
+
+    def clean_tags(self):
+        """Only the Department may attach a lab tag.
+
+        The queryset above hides the option, but a checkbox list is posted as
+        plain IDs and anyone can add one. This is the check that holds.
+        """
+        tags = self.cleaned_data.get("tags")
+        if tags is None:
+            return tags
+        if self.author is not None and not self.author.is_superuser:
+            if any(t.kind == Tag.Kind.LAB for t in tags):
+                raise forms.ValidationError(
+                    "Only the Department can post a lab announcement."
+                )
+        return tags
 
     def clean_audience(self):
         """Re-check the restriction; the browser is not a boundary."""

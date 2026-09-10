@@ -1,8 +1,9 @@
 {% extends "accounts/base.html" %}
+{% load static %}
 {% block title %}{% if is_edit %}Edit announcement{% else %}New announcement{% endif %} — KU Student Portal{% endblock %}
+{% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/annform.css' %}">{% endblock %}
 
-{% comment %} Staff-only. The view checks the role independently; this template
-   is never the thing keeping anyone out. {% endcomment %}
+{# Staff-only. The view checks the role independently; this template is never the thing keeping anyone out. #}
 
 {% block topbar_mod %}topbar--signed-in{% endblock %}
 
@@ -64,8 +65,7 @@
     </form>
 
     {% if is_edit %}
-      {% comment %} Its own form, so a stray Enter in the edit fields can never
-         submit a delete. POST only - deleting is not a GET. {% endcomment %}
+      {# Its own form, so a stray Enter in the edit fields can never submit a delete. #}
       <form method="post" action="{% url 'announcements:announcement_delete' instance.pk %}"
             class="annform__danger"
             onsubmit="return confirm('Withdraw this announcement? This cannot be undone.');">

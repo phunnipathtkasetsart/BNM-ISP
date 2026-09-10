@@ -1,0 +1,366 @@
+/* ====================================================================
+   KU Student Portal — one centred card over a washed-out campus photo.
+
+   Sizes are written in --u, "one pixel of the design", so the whole page
+   is the same picture at any window size and never needs scrolling on a
+   desktop. See the note on --u below.
+   ==================================================================== */
+
+:root{
+  /* ---- palette ---- */
+  --ku-green-900:#2E5248;   /* top bar */
+  --ku-green-800:#2C5449;   /* primary button, links */
+  --ku-sage:#6FA890;        /* ribbon, card head */
+  --ku-sage-soft:#A9CDBB;   /* the lighter half of each ribbon */
+  --ku-mint:#DEEDE7;        /* page ground, behind the photo */
+
+  --card:#F0F2EF;           /* card surface */
+  --field:#F8F9F7;
+  --ink:#22303A;
+  --ink-soft:#3F5158;
+  --ink-muted:#7B8A90;
+  --hairline:#DFE4DF;
+  --field-line:#E4E8E3;
+  --danger:#9B3131;
+  --danger-line:#E2A2A2;
+  --danger-bg:#FCEDED;
+  --ok:#2C7A5B;
+
+  /* One design pixel. The page is a single centred card, so its size is
+     driven by window HEIGHT alone — that is the only axis that can force
+     scrolling. There is deliberately no width term: on a narrow-but-tall
+     window there is plenty of room, and scaling on width there just made
+     the type small for no reason. The floor keeps text readable on short
+     windows (Register then scrolls, which is the right trade); the cap
+     stops the card ballooning on a very tall display. */
+  --u:clamp(0.95px, 0.099vh, 1.25px);
+
+  --card-w:calc(440 * var(--u));
+  --r-card:calc(14 * var(--u));
+  --r-field:calc(8 * var(--u));
+  --ease:cubic-bezier(.22,.61,.36,1);
+
+  --font-display:"Plus Jakarta Sans", system-ui, sans-serif;
+  --font-ui:"Public Sans", system-ui, -apple-system, sans-serif;
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  font-family:var(--font-ui);
+  color:var(--ink);
+  background:var(--ku-mint);
+  min-height:100svh;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+}
+
+/* skip link, for keyboard users */
+.skip{
+  position:absolute;left:calc(40 * var(--u));top:calc(-200 * var(--u));
+  z-index:20;background:#fff;color:var(--ku-green-800);
+  padding:calc(10 * var(--u)) calc(16 * var(--u));
+  border-radius:var(--r-field);font-weight:700;font-size:calc(15 * var(--u));
+  text-decoration:none;transition:top .18s var(--ease);
+}
+.skip:focus{top:calc(14 * var(--u))}
+
+/* ============ BACKGROUND ============
+   The campus photo sits at 20% opacity over the mint ground. Drop the
+   file in as accounts/static/accounts/img/ku-campus.jpg and it appears —
+   until then the page is simply flat mint, which is also fine. */
+.bg{position:fixed;inset:0;z-index:0;background:var(--ku-mint);overflow:hidden}
+.bg-photo{
+  position:absolute;inset:0;
+  background-size:cover;
+  background-position:center;
+  opacity:.20;
+}
+
+/* ============ TOP BAR ============ */
+.topbar{
+  position:relative;z-index:5;
+  background:var(--ku-green-900);
+  color:#fff;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:calc(20 * var(--u));
+  padding:calc(26 * var(--u)) calc(40 * var(--u));
+}
+.topbar__logo{
+  font-family:var(--font-display);
+  font-weight:800;font-size:calc(25 * var(--u));letter-spacing:.04em;
+  border-bottom:calc(3 * var(--u)) solid var(--ku-sage);
+  padding-bottom:calc(3 * var(--u));line-height:1;
+  text-decoration:none;color:#fff;
+}
+.topbar__help{
+  color:#EAF3F0;text-decoration:none;
+  font-size:calc(16 * var(--u));font-weight:500;
+  padding:calc(6 * var(--u)) calc(4 * var(--u));border-radius:calc(6 * var(--u));
+}
+.topbar__help:hover{text-decoration:underline}
+.topbar__help:focus-visible,.topbar__logo:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
+/* --- signed-in bar ---
+   The logo and the student's details travel together on the left, so the
+   bar's space-between still has exactly two children and Log out stays
+   pinned right however long the name is. */
+.topbar__left{
+  display:flex;align-items:center;
+  gap:calc(34 * var(--u));
+  min-width:0;                    /* lets a long name shrink instead of pushing */
+}
+/* Everything in the bar sits at the same weight and size as Help, so the bar
+   reads as one row of navigation rather than a headline plus a link. */
+.topbar__me,.topbar__role{
+  font-family:var(--font-ui);
+  font-weight:500;font-size:calc(16 * var(--u));color:#EAF3F0;
+  white-space:nowrap;
+}
+/* When the bar runs out of room the NAME gives way, never the ID. A clipped
+   name is still recognisable ("Name-Suran…"); a clipped ID is worthless, and
+   it is the thing a student is most likely to be reading off the screen. */
+.topbar__me--name{overflow:hidden;text-overflow:ellipsis;min-width:calc(60 * var(--u))}
+.topbar__me--id{flex:none}
+
+.topbar__right{
+  display:flex;align-items:center;
+  gap:calc(20 * var(--u));
+  flex:none;
+}
+.topbar__role{
+  flex:none;
+  color:var(--ku-sage-soft);        /* quieter than the control beside it */
+}
+.topbar__logout-form{margin:0;flex:none}
+.topbar__logout{
+  background:none;border:0;padding:calc(6 * var(--u)) calc(4 * var(--u));
+  font-family:var(--font-ui);
+  font-weight:500;font-size:calc(16 * var(--u));color:#fff;
+  border-radius:calc(6 * var(--u));
+  cursor:pointer;
+}
+.topbar__logout:hover{text-decoration:underline}
+.topbar__logout:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
+/* ============ STAGE ============ */
+.stage{
+  position:relative;z-index:4;
+  flex:1;
+  display:grid;
+  place-items:center;                     /* the card sits dead centre */
+  padding:calc(28 * var(--u)) calc(24 * var(--u));
+}
+
+
+/* ---- buttons ---- */
+.btn{
+  position:relative;
+  overflow:hidden;                /* clips the hover wedge to the radius */
+  isolation:isolate;              /* see the note on the wedge below */
+  width:100%;
+  display:inline-flex;align-items:center;justify-content:center;gap:calc(10 * var(--u));
+  font-family:var(--font-ui);
+  font-size:calc(15.5 * var(--u));font-weight:700;
+  border-radius:var(--r-field);
+  padding:calc(15 * var(--u));
+  cursor:pointer;
+  border:1px solid transparent;
+  text-decoration:none;          /* it is sometimes an <a> */
+  transition:background .16s var(--ease),transform .12s var(--ease),box-shadow .16s var(--ease);
+}
+.btn--primary{background:var(--ku-green-800);color:#fff}
+.btn--primary:hover{background:#24463C;box-shadow:0 calc(4 * var(--u)) calc(14 * var(--u)) rgba(28,60,50,.22)}
+.btn:active{transform:translateY(1px)}
+.btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:3px}
+.btn[disabled]{cursor:not-allowed;opacity:.72}
+
+/* --- the hover wedge ---
+   The bottom ribbon, reaching into the button. Two wedges enter from the
+   right and stay while the pointer is inside; the pale one leads and the
+   stronger one follows a beat later, so they read as one shape opening
+   rather than two blocks arriving. Each polygon reaches further left at
+   the bottom than at the top, so the diagonal leans back and the mass
+   sits low — the same pivot as .ribbon--bottom.
+
+   z-index:-1 rather than a positive index, with isolation:isolate above:
+   negative-index children paint after the button's own background but
+   before its inline content, so the label stays on top without needing a
+   wrapper element. That matters because some buttons are plain text
+   ("Log out", "Back to Sign In") and some wrap their label in a span. */
+.btn::before,.btn::after{
+  content:"";
+  position:absolute;inset:calc(-2 * var(--u));z-index:-1;
+  pointer-events:none;
+  transform:translateX(100%);
+  transition:transform .42s var(--ease);
+}
+.btn::before{                                    /* pale, leads */
+  background:rgba(169,205,187,.20);
+  clip-path:polygon(70% 0,100% 0,100% 100%,48% 100%);
+}
+.btn::after{                                     /* stronger, follows */
+  background:rgba(169,205,187,.34);
+  clip-path:polygon(84% 0,100% 0,100% 100%,62% 100%);
+}
+.btn:hover::before,.btn:focus-visible::before{transform:translateX(0)}
+.btn:hover::after,.btn:focus-visible::after{transform:translateX(0);transition-delay:.07s}
+/* Nothing to promise on a button that cannot be pressed. */
+.btn[disabled]::before,.btn[disabled]::after,
+.btn.is-busy::before,.btn.is-busy::after{display:none}
+
+.btn.is-busy{pointer-events:none}
+.btn .spin{
+  width:calc(15 * var(--u));height:calc(15 * var(--u));
+  border:calc(2 * var(--u)) solid rgba(255,255,255,.45);
+  border-top-color:#fff;border-radius:50%;
+  display:none;animation:spin .7s linear infinite;
+}
+.btn.is-busy .spin{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.or{
+  display:flex;align-items:center;gap:calc(14 * var(--u));
+  margin:calc(20 * var(--u)) 0 calc(16 * var(--u));
+  color:var(--ink-muted);font-size:calc(12.5 * var(--u));
+}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--hairline)}
+
+
+/* ================================================================
+   Right-column panels, guest clock, and the board switcher
+   ================================================================ */
+.board__side{display:flex;flex-direction:column;gap:calc(16 * var(--u))}
+
+.sidepanel{width:auto}
+.sidepanel__head{
+  padding:calc(16 * var(--u)) calc(20 * var(--u)) calc(10 * var(--u));
+  background:#fff;
+}
+.sidepanel__head h2{
+  margin:0;font-family:var(--font-display);font-weight:700;
+  font-size:calc(15.5 * var(--u));color:var(--ink);text-align:center;
+}
+.sidepanel__body{
+  background:#fff;padding:0 calc(20 * var(--u)) calc(20 * var(--u));
+  min-height:calc(96 * var(--u));
+}
+/* Says why a panel is empty, rather than leaving a blank box that reads as
+   broken. */
+.sidepanel__soon{
+  margin:0;font-size:calc(12.5 * var(--u));color:var(--ink-muted);
+  line-height:1.6;text-align:center;padding-top:calc(18 * var(--u));
+}
+
+/* --- guest session clock --- */
+.guestclock{
+  flex:none;font-family:var(--font-ui);font-size:calc(13 * var(--u));
+  font-weight:600;color:var(--ku-sage-soft);
+  background:rgba(255,255,255,.10);
+  padding:calc(3 * var(--u)) calc(10 * var(--u));border-radius:999px;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+/* Last five minutes: warm, not alarming — the session ending is expected. */
+.guestclock--low{color:#F6D9CB;background:rgba(200,120,80,.28)}
+
+/* --- switcher: the round button that flips between the two boards ---
+   A link, so it works with JavaScript off. The page-turn is done on arrival
+   by .board's animation rather than on click, which would need a script and
+   would break the back button. */
+.switcher{
+  position:fixed;right:calc(28 * var(--u));bottom:calc(26 * var(--u));z-index:9;
+  width:calc(56 * var(--u));height:calc(56 * var(--u));border-radius:50%;
+  display:grid;place-items:center;
+  background:#3B49DF;color:#fff;text-decoration:none;
+  font-family:var(--font-ui);font-weight:700;font-size:calc(12.5 * var(--u));
+  box-shadow:0 calc(6 * var(--u)) calc(18 * var(--u)) rgba(28,40,90,.34);
+  transition:transform .18s var(--ease),box-shadow .18s var(--ease);
+}
+.switcher:hover{transform:translateY(calc(-2 * var(--u))) scale(1.04)}
+.switcher:focus-visible{outline:3px solid #fff;outline-offset:3px}
+.switcher--back{background:var(--ku-green-800)}
+
+/* The page-turn: the incoming board lifts in from the corner the button sits
+   in, so pressing it reads as the old page folding away into it. */
+@keyframes board-in{
+  from{opacity:0;transform:translate3d(calc(18 * var(--u)),calc(22 * var(--u)),0) scale(.985)}
+  to{opacity:1;transform:none}
+}
+.board{animation:board-in .34s var(--ease) both;transform-origin:100% 100%}
+@media (prefers-reduced-motion:reduce){
+  .board{animation:none}
+  .switcher{transition:none}
+}
+
+
+@media (max-width:720px){
+  .topbar{padding:16px 20px}
+  .topbar__logo{font-size:20px;border-bottom-width:2px}
+  .topbar__help{font-size:14px}
+  .topbar--signed-in{flex-wrap:wrap;row-gap:10px}
+  .topbar--signed-in .topbar__left{width:100%;gap:12px}
+  .topbar--signed-in .topbar__right{margin-left:auto;gap:14px}
+  .topbar__me,.topbar__role,.topbar__logout{font-size:14px}
+  .stage{padding:24px 20px 36px;align-items:start}
+  .btn{font-size:16px;padding:14px}
+}
+
+
+@media (pointer:coarse){
+  .reveal{min-height:44px;display:flex;align-items:center}
+}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+
+
+/* --- guest button ---
+   A secondary action, so it sits below the primary pair rather than competing
+   with them: a desaturated slate that carries a hint of the page green, so it
+   reads as muted rather than as a second brand colour. Inherits the .btn hover
+   wedge, which keeps it in the same family as Sign In. */
+.btn--guest{
+  background:#6E7A75;
+  color:#fff;
+  margin-top:calc(4 * var(--u));
+}
+.btn--guest:hover{
+  background:#5E6A65;
+  box-shadow:0 calc(4 * var(--u)) calc(14 * var(--u)) rgba(28,60,50,.18);
+}
+
+/* shared surfaces */
+.panel{
+  width:min(calc(760 * var(--u)), 100%);
+  background:var(--card);
+  border-radius:var(--r-card);
+  /* Same shadow as .card, so every raised surface in the product sits at the
+     same apparent height. A panel is a bigger box than the sign-in card, but
+     lifting it further just made the two read as different systems. */
+  box-shadow:0 calc(10 * var(--u)) calc(34 * var(--u)) rgba(28,60,50,.16);
+  overflow:hidden;
+}
+.panel__head{padding:calc(26 * var(--u)) calc(28 * var(--u)) calc(18 * var(--u))}
+.panel__head h1{
+  font-family:var(--font-display);font-weight:800;
+  font-size:calc(23 * var(--u));color:var(--ink);margin:0 0 calc(4 * var(--u));
+}
+.panel__sub{margin:0;color:var(--ink-muted);font-size:calc(13.5 * var(--u))}
+.panel__foot{
+  margin:0;padding:calc(16 * var(--u)) calc(28 * var(--u)) calc(24 * var(--u));
+  color:var(--ink-muted);font-size:calc(12.5 * var(--u));line-height:1.7;
+}
+.banner{
+  margin:0 calc(28 * var(--u)) calc(14 * var(--u));
+  padding:calc(11 * var(--u)) calc(14 * var(--u));
+  border-radius:var(--r-field);font-size:calc(13.5 * var(--u));
+}
+.banner--ok{background:#EAF5EF;border:1px solid #B6D9C5;color:var(--ok)}
+.banner--bad{background:var(--danger-bg);border:1px solid var(--danger-line);color:var(--danger)}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0;
+}

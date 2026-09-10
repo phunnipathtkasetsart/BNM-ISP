@@ -1,11 +1,7 @@
 {% extends "accounts/base.html" %}
+{% load static %}
 {% block title %}FAQ — KU Student Portal{% endblock %}
-
-{% comment %} The FAQ side of the portal. Iteration 2 delivers the route and
-   the switch between the two boards only - threads, posting and replies are
-   US-10 and US-11, which the plan puts in Iteration 5. Left deliberately
-   empty rather than filled with placeholder threads that would later have to
-   be told apart from real ones. {% endcomment %}
+{% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">{% endblock %}
 
 {% block topbar_mod %}topbar--signed-in{% endblock %}
 
@@ -41,26 +37,52 @@
   <section class="board__main panel">
     <div class="faqhead">
       <span class="faqhead__tab faqhead__tab--on">FAQ</span>
-      {% comment %} Guests read only; everyone signed in may post. Disabled
-         rather than hidden, so the difference between "not yet built" and
-         "not allowed" stays visible. {% endcomment %}
+      
       <span class="faqhead__tab faqhead__tab--off" aria-disabled="true"
             title="{% if can_post %}Coming in Iteration 5{% else %}Guests cannot post{% endif %}">Create Post</span>
     </div>
 
     <div class="feed">
+      {% for t in threads %}
+        <article class="post">
+          <div class="post__top">
+            <h2 class="post__title">{{ t.question }}</h2>
+          </div>
+          <p class="post__meta">
+            Department &middot; {{ t.published_at|date:"M j, Y" }}
+            {% if t.audience != "public" %}
+              <span class="post__scope">{{ t.get_audience_display }}</span>
+            {% endif %}
+          </p>
+          <p class="post__body">{{ t.answer|truncatewords:28 }}</p>
+          {% if t.tags.all %}
+            <div class="post__tags">
+              {% for tag in t.tags.all %}<span class="chip chip--sm">#{{ tag.label }}</span>{% endfor %}
+            </div>
+          {% endif %}
+        </article>
+      {% empty %}
+        <p class="feed__empty">Nothing published for you to read yet.</p>
+      {% endfor %}
       <p class="feed__empty">
-        Threads, posting and replies are Iteration&nbsp;5 (US-10, US-11).
-        This page exists so the switch between the two boards works now.
+        Posting and replies are Iteration&nbsp;5 (US-10, US-11). These are the
+        published FAQs shown as threads so the page is not empty.
       </p>
     </div>
   </section>
 
   <aside class="board__side">
     <section class="panel sidepanel">
-      <div class="sidepanel__head"><h2>Title of the thread</h2></div>
+      <div class="sidepanel__head">
+        <h2>{% if open_thread %}{{ open_thread.question }}{% else %}Title of the thread{% endif %}</h2>
+      </div>
       <div class="sidepanel__body">
-        <p class="sidepanel__soon">A thread and its comments will open here.</p>
+        {% if open_thread %}
+          <p class="thread__body">{{ open_thread.answer }}</p>
+          <p class="sidepanel__soon">Comments and replies arrive in Iteration&nbsp;5.</p>
+        {% else %}
+          <p class="sidepanel__soon">A thread and its comments will open here.</p>
+        {% endif %}
       </div>
     </section>
   </aside>
