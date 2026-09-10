@@ -91,8 +91,8 @@ FAQS = [
      "Your KU address, ending in @ku.th. Personal addresses are not accepted.",
      ["department"]),
     ("I forgot my password.",
-     "Use the 'Having Problems?' link on the sign-in page. Password reset by "
-     "email is not available yet, so contact the student office meanwhile.",
+        "Use the 'Having Problems?' link on the sign-in page to request a reset "
+        "link sent to your KU email.",
      ["department"]),
     ("Why can I not see my course announcements?",
      "Course announcements are only visible once you sign in, because they "
@@ -101,7 +101,7 @@ FAQS = [
      "The student office is on the second floor and answers email at "
      "office@ku.th. Opening hours are 09:00 to 16:00 on weekdays.", ["department"]),
     ("Can I sign in with Google?",
-     "Google sign-in is being added. For now, use your Nisit ID and password.",
+     "Yes, you can use your @ku.th email address to sign in with Google.",
      ["department"]),
 ]
 

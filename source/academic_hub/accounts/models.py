@@ -4,6 +4,7 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.core.validators import RegexValidator
 from django.db import models
+from django.utils import timezone
 
 nisit_id_validator = RegexValidator(
     regex=r"^\d{10}$",
@@ -101,3 +102,18 @@ class User(AbstractBaseUser, PermissionsMixin):
     @is_department.setter
     def is_department(self, value):
         self.is_superuser = value
+
+
+class PasswordResetToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_tokens")
+    token_hash = models.CharField(max_length=64, unique=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "password_reset_tokens"
+        indexes = [models.Index(fields=["user", "expires_at"])]
+
+    def is_valid(self):
+        return self.used_at is None and self.expires_at > timezone.now()
