@@ -21,6 +21,7 @@ TAGS = [
     ("syllabus", "Syllabus", Tag.Kind.TOPIC),
     ("scholarship", "Scholarship", Tag.Kind.TOPIC),
     ("cs101", "CS101", Tag.Kind.COURSE),
+    ("lab-ske", "Lab SKE", Tag.Kind.LAB),
 ]
 
 ANNOUNCEMENTS = [
@@ -69,6 +70,18 @@ ANNOUNCEMENTS = [
         "is_urgent": False, "deadline_in_days": 4,
         "tags": ["cs101"],
     },
+    {
+        "title": "Lab access hours changed for the SKE lab",
+        "body": (
+            "The SKE lab now closes at 18:00 on weekdays while the card "
+            "readers are replaced. Out-of-hours access is suspended."
+        ),
+        # Lab notices are internal and department-posted. Kept here as the
+        # second negative case: a guest must not see this either.
+        "author_label": "Department", "audience": Audience.STAFF,
+        "is_urgent": False, "deadline_in_days": None,
+        "tags": ["lab-ske"],
+    },
 ]
 
 FAQS = [
@@ -85,6 +98,9 @@ FAQS = [
     ("Why can I not see my course announcements?",
      "Course announcements are only visible once you sign in, because they "
      "are limited to students enrolled on that course.", ["syllabus"]),
+    ("How do I contact the department office?",
+     "The student office is on the second floor and answers email at "
+     "office@ku.th. Opening hours are 09:00 to 16:00 on weekdays.", ["department"]),
     ("Can I sign in with Google?",
      "Google sign-in is being added. For now, use your Nisit ID and password.",
      ["department"]),

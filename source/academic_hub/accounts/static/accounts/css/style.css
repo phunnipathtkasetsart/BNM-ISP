@@ -1061,3 +1061,35 @@ body{
 @media (max-width:900px){
   .switcher{right:16px;bottom:16px}
 }
+
+/* --- date range filter --- */
+.daterow{
+  display:flex;align-items:center;flex-wrap:wrap;
+  gap:calc(8 * var(--u));
+  margin:0 calc(28 * var(--u)) calc(14 * var(--u));
+  font-size:calc(12.5 * var(--u));color:var(--ink-muted);
+}
+.daterow input[type="date"]{
+  font-family:var(--font-ui);font-size:calc(12.5 * var(--u));color:var(--ink);
+  background:#fff;border:1px solid var(--field-line);
+  border-radius:var(--r-field);padding:calc(6 * var(--u)) calc(9 * var(--u));
+  cursor:pointer;
+}
+.daterow input[type="date"]:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+.daterow__go{
+  font-family:var(--font-ui);font-weight:600;font-size:calc(12.5 * var(--u));
+  color:#fff;background:var(--ku-green-800);border:0;
+  border-radius:var(--r-field);padding:calc(7 * var(--u)) calc(14 * var(--u));
+  cursor:pointer;
+}
+.daterow__clear{color:var(--ink-muted);font-size:calc(12 * var(--u))}
+.daterow__clear:hover{color:var(--ink)}
+@media (max-width:900px){
+  .daterow{margin-left:18px;margin-right:18px}
+}
+
+/* FAQ thread panel body */
+.thread__body{
+  margin:0 0 calc(12 * var(--u));
+  font-size:calc(13 * var(--u));line-height:1.65;color:var(--ink-soft);
+}

@@ -80,6 +80,8 @@
       {% comment %} Keeps the active tag when submitting a search, so the two
          filters combine instead of clearing each other. {% endcomment %}
       {% if active_tag %}<input type="hidden" name="tag" value="{{ active_tag }}">{% endif %}
+      {% if date_from %}<input type="hidden" name="from" value="{{ date_from }}">{% endif %}
+      {% if date_to %}<input type="hidden" name="to" value="{{ date_to }}">{% endif %}
       {% if query %}
         <a class="searchbar__clear" href="{% if active_tag %}?tag={{ active_tag }}{% else %}{% url 'announcements:public_board' %}{% endif %}"
            aria-label="Clear search">&times;</a>
@@ -100,6 +102,23 @@
            href="?tag={{ tag.slug }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">#{{ tag.label }}</a>
       {% endfor %}
     </div>
+
+    {% comment %} Filter by the day an announcement was posted. Its own GET form,
+       so the tag and the query travel with it as hidden fields and the three
+       filters combine instead of clearing each other. {% endcomment %}
+    <form class="daterow" method="get">
+      {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+      {% if active_tag %}<input type="hidden" name="tag" value="{{ active_tag }}">{% endif %}
+      <label for="from">Posted from</label>
+      <input id="from" type="date" name="from" value="{{ date_from }}">
+      <label for="to">to</label>
+      <input id="to" type="date" name="to" value="{{ date_to }}">
+      <button type="submit" class="daterow__go">Apply</button>
+      {% if date_filtered %}
+        <a class="daterow__clear"
+           href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}{% if active_tag %}tag={{ active_tag }}{% endif %}">Clear dates</a>
+      {% endif %}
+    </form>
 
     {% if is_searching %}
       <p class="resultline" role="status">

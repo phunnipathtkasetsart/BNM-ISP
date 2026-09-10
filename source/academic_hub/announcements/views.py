@@ -12,6 +12,7 @@ from django.db.models import F
 from django.contrib.auth.views import redirect_to_login
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
 from accounts.middleware import is_guest_request
@@ -49,6 +50,8 @@ def public_board(request):
 
     query = request.GET.get("q", "").strip()
     active_tag = request.GET.get("tag", "").strip()
+    date_from = request.GET.get("from", "").strip()
+    date_to = request.GET.get("to", "").strip()
 
     can_manage = can_manage_announcements(request.user)
     is_guest = is_guest_request(request)
@@ -71,6 +74,17 @@ def public_board(request):
     if active_tag:
         announcements = announcements.filter(tags__slug=active_tag)
         faqs = faqs.filter(tags__slug=active_tag)
+
+    # Filter by the date an announcement was posted. Parsed rather than passed
+    # straight through, so a malformed value narrows nothing instead of raising.
+    # `to` covers the whole of that day, which is what someone picking a single
+    # date expects; comparing against midnight would silently drop that day.
+    parsed_from = parse_date(date_from) if date_from else None
+    parsed_to = parse_date(date_to) if date_to else None
+    if parsed_from:
+        announcements = announcements.filter(published_at__date__gte=parsed_from)
+    if parsed_to:
+        announcements = announcements.filter(published_at__date__lte=parsed_to)
 
     if query:
         announcements = _search(announcements, query)
@@ -99,6 +113,9 @@ def public_board(request):
         "faqs": faqs,
         "chips": chips,
         "active_tag": active_tag,
+        "date_from": date_from,
+        "date_to": date_to,
+        "date_filtered": bool(parsed_from or parsed_to),
         "query": query,
         "suggestions": suggestions,
         "is_searching": bool(query),
@@ -197,8 +214,15 @@ def faq_board(request):
     between the two boards; threads, posting and replies come later.
     """
     is_guest = is_guest_request(request)
+    # Threads are Iteration 5, but the page should not read as broken, so the
+    # published FAQs a reader may see are shown as stand-in threads. They go
+    # through the same visible_to() as everything else, so a guest gets the
+    # public ones and nothing more.
+    threads = Faq.objects.visible_to(request.user, is_guest).prefetch_related("tags")
     return render(request, "announcements/faq_board.html", {
         "is_guest": is_guest,
+        "threads": threads,
+        "open_thread": threads.first(),
         "can_post": request.user.is_authenticated and not is_guest,
         # The countdown follows a guest across both boards.
         "guest_expires_at": (
