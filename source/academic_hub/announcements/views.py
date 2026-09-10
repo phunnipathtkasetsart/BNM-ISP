@@ -1,9 +1,7 @@
 """Public information layer (US-02, US-03, US-09).
 
-The board is readable without signing in. Everything reaching the template
-comes through `for_guest()`, so the visibility rule lives in one place on the
-queryset rather than being re-stated in each view - including in search, where
-it would be easiest to leak something by forgetting it.
+Every read goes through `visible_to()` so the board and search cannot
+disagree about what a reader may see.
 """
 
 from django.contrib.auth.decorators import login_required
@@ -21,14 +19,10 @@ from .models import Announcement, Faq, Tag
 
 
 def _search(queryset, query):
-    """Rank a queryset against the stored tsvector.
+    """Rank against the stored tsvector.
 
-    `websearch` is the parser that behaves the way people expect from a search
-    box: quoted phrases, OR, and a leading - to exclude. The alternatives
-    either choke on punctuation (plainto) or demand operator syntax (raw).
-
-    Ranking uses the weights set when the vector was built, so a title match
-    outranks a body match rather than both scoring the same.
+    `websearch` handles quoted phrases and OR the way people expect. Ranking
+    uses the stored weights, so a title match outranks a body match.
     """
     q = SearchQuery(query, search_type="websearch")
     return (
@@ -39,12 +33,7 @@ def _search(queryset, query):
 
 
 def public_board(request):
-    """The board. Reachable once signed in, or after choosing guest access.
-
-    Not open to a bare anonymous visitor: they are sent to sign in, where
-    "Sign in as guest" is the deliberate way in. Guests are authenticated
-    generated accounts, so one check covers both cases.
-    """
+    """The board. Signed-in users and guests only; anonymous goes to sign in."""
     if not request.user.is_authenticated:
         return redirect_to_login(request.get_full_path(), reverse("accounts:login"))
 
@@ -75,10 +64,8 @@ def public_board(request):
         announcements = announcements.filter(tags__slug=active_tag)
         faqs = faqs.filter(tags__slug=active_tag)
 
-    # Filter by the date an announcement was posted. Parsed rather than passed
-    # straight through, so a malformed value narrows nothing instead of raising.
-    # `to` covers the whole of that day, which is what someone picking a single
-    # date expects; comparing against midnight would silently drop that day.
+    # `__date` so a single day includes items posted during it. A malformed
+    # value parses to None and narrows nothing.
     parsed_from = parse_date(date_from) if date_from else None
     parsed_to = parse_date(date_to) if date_to else None
     if parsed_from:
@@ -99,9 +86,8 @@ def public_board(request):
         .order_by("kind", "label")
     )
 
-    # Suggestions are rendered into a <datalist>, so the browser does the
-    # matching with no request and no JavaScript. Fine at this size; if the
-    # board ever holds thousands of items this should become a lookup instead.
+    # Rendered into a <datalist>. Fine at this size; needs a lookup if the
+    # board ever holds thousands of items.
     suggestions = (
         [t.label for t in chips]
         + list(announcements.values_list("title", flat=True))
@@ -140,11 +126,8 @@ def can_manage_announcements(user):
 
 
 def _refresh_search_vector(announcement):
-    """Rebuild this row's tsvector so the item is findable straight away.
-
-    Done as an UPDATE rather than in save() because SearchVector is database-
-    side: it has to run against the stored row, after the write.
-    """
+    """Rebuild this row's tsvector. An UPDATE, because SearchVector runs
+    database-side against the stored row."""
     Announcement.objects.filter(pk=announcement.pk).update(
         search_vector=SearchVector("title", weight="A")
         + SearchVector("body", weight="B")

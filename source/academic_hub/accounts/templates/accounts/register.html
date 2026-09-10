@@ -1,5 +1,7 @@
 {% extends "accounts/base.html" %}
+{% load static %}
 {% block title %}Register — KU Student Portal{% endblock %}
+{% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/auth.css' %}">{% endblock %}
 
 {% block content %}
 <section class="card">

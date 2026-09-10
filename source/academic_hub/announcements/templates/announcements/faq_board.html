@@ -1,11 +1,7 @@
 {% extends "accounts/base.html" %}
+{% load static %}
 {% block title %}FAQ — KU Student Portal{% endblock %}
-
-{% comment %} The FAQ side of the portal. Iteration 2 delivers the route and
-   the switch between the two boards only - threads, posting and replies are
-   US-10 and US-11, which the plan puts in Iteration 5. Left deliberately
-   empty rather than filled with placeholder threads that would later have to
-   be told apart from real ones. {% endcomment %}
+{% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">{% endblock %}
 
 {% block topbar_mod %}topbar--signed-in{% endblock %}
 
@@ -41,9 +37,7 @@
   <section class="board__main panel">
     <div class="faqhead">
       <span class="faqhead__tab faqhead__tab--on">FAQ</span>
-      {% comment %} Guests read only; everyone signed in may post. Disabled
-         rather than hidden, so the difference between "not yet built" and
-         "not allowed" stays visible. {% endcomment %}
+      
       <span class="faqhead__tab faqhead__tab--off" aria-disabled="true"
             title="{% if can_post %}Coming in Iteration 5{% else %}Guests cannot post{% endif %}">Create Post</span>
     </div>

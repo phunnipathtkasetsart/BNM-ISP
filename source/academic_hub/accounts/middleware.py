@@ -11,11 +11,7 @@ GUEST_ALLOWED_VIEWS = {
     # Guests read the FAQ board too - they just cannot post on it.
     "announcements:faq_board",
     "accounts:logout",
-    # The way out of guest mode. Blocking these made the "Sign in"
-    # control in the bar bounce straight back to the board, which
-    # left a guest with no route to an account at all. Register is
-    # included because the sign-in page links to it - allowing one
-    # without the other just moves the dead end one click along.
+    # The way out of guest mode; without both, a guest has no route to an account.
     "accounts:login",
     "accounts:register",
 }
@@ -44,9 +40,7 @@ def is_guest_request(request):
 class GuestAccessMiddleware:
     """Keep guest sessions on the public board.
 
-    Guests are deliberately session identities, not rows in the custom Users
-    table. Centralising the restriction here means a guest cannot reach an
-    existing or future application view merely by typing its URL.
+    Centralised here so a guest cannot reach a future view by typing its URL.
     """
 
     def __init__(self, get_response):

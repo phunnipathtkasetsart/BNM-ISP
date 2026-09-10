@@ -1,0 +1,57 @@
+/* --- announcement form --- */
+.board--single{grid-template-columns:minmax(0,1fr);max-width:calc(820 * var(--u))}
+.annform{padding:0 calc(28 * var(--u)) calc(8 * var(--u))}
+.annform__field{margin-bottom:calc(16 * var(--u))}
+.annform__field > label{
+  display:block;margin-bottom:calc(5 * var(--u));
+  font-weight:600;font-size:calc(13 * var(--u));color:var(--ink-soft);
+}
+.annform input[type="text"],
+.annform input[type="datetime-local"],
+.annform textarea,
+.annform select{
+  width:100%;font-family:var(--font-ui);font-size:calc(14 * var(--u));
+  color:var(--ink);background:var(--field);
+  border:1px solid var(--field-line);border-radius:var(--r-field);
+  padding:calc(11 * var(--u)) calc(13 * var(--u));
+}
+.annform textarea{resize:vertical;line-height:1.6}
+.annform input:focus-visible,.annform textarea:focus-visible,.annform select:focus-visible{
+  outline:2px solid var(--ku-green-800);outline-offset:1px;
+}
+/* Tags are a checkbox list, laid out inline so a long list stays scannable.
+   Django 5 renders CheckboxSelectMultiple as nested <div>s rather than a
+   <ul>, so the wrapper is targeted by its id, not by tag name. */
+#id_tags{display:flex;flex-wrap:wrap;gap:calc(8 * var(--u))}
+#id_tags > div{margin:0}
+#id_tags label{
+  display:flex;align-items:center;gap:calc(6 * var(--u));
+  background:#E7EDE9;border-radius:999px;
+  padding:calc(5 * var(--u)) calc(12 * var(--u));
+  font-size:calc(12.5 * var(--u));cursor:pointer;
+  font-weight:500;color:var(--ink-soft);
+}
+#id_tags label:hover{background:#D8E4DC}
+/* Selected tags fill in, so the chosen set reads at a glance. */
+#id_tags label:has(input:checked){background:var(--ku-green-800);color:#fff}
+.annform__field input[type="checkbox"]{width:auto;margin:0}
+.annform__help{margin:calc(5 * var(--u)) 0 0;font-size:calc(12 * var(--u));color:var(--ink-muted)}
+.annform__error{margin:calc(5 * var(--u)) 0 0;font-size:calc(12.5 * var(--u));color:var(--danger)}
+.annform__field--bad input,.annform__field--bad textarea,.annform__field--bad select{
+  border-color:var(--danger-line);background:var(--danger-bg);
+}
+.annform__actions{
+  display:flex;gap:calc(10 * var(--u));align-items:center;
+  padding-top:calc(6 * var(--u));
+}
+.annform__actions .btn{width:auto;padding-left:calc(28 * var(--u));padding-right:calc(28 * var(--u))}
+.annform__danger{
+  margin:0;padding:calc(16 * var(--u)) calc(28 * var(--u)) calc(22 * var(--u));
+  border-top:1px solid var(--hairline);
+}
+.linkbtn--danger{color:var(--danger);font-size:calc(13 * var(--u))}
+
+/* The whole datetime box opens the picker now, so it should look clickable. */
+.annform input[type="datetime-local"]{cursor:pointer}
+.annform input[type="datetime-local"]::-webkit-calendar-picker-indicator{cursor:pointer}
+

@@ -6,46 +6,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#2E5248">
 <title>{% block title %}KU Student Portal{% endblock %}</title>
-{% comment %} The KU mark doubles as the tab icon. Without these the browser
-   asks for /favicon.ico on every page, gets a 404 from Django, and shows the
-   blank-page glyph in the tab. apple-touch-icon is what iOS uses when someone
-   adds the portal to their home screen. {% endcomment %}
+
 <link rel="icon" href="{% static 'accounts/img/ku-logo.png' %}" type="image/png">
 <link rel="apple-touch-icon" href="{% static 'accounts/img/ku-logo.png' %}">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{% static 'accounts/css/style.css' %}">
+<link rel="stylesheet" href="{% static 'accounts/css/base.css' %}">
+{% block page_css %}{% endblock %}
 </head>
 <body>
 
 <a class="skip" href="#main">Skip to content</a>
 
-{% comment %} Campus photo at 20% opacity over the mint ground. Drop the file in as
-   accounts/static/accounts/img/ku-campus.jpg and it shows up here; until
-   then the page is flat mint and nothing looks broken. {% endcomment %}
 <div class="bg" aria-hidden="true">
   <div class="bg-photo" style="background-image:url('{% static "accounts/img/ku-campus.jpg" %}');"></div>
 </div>
 
-{% comment %} Two slots so a page can put its own items in the bar. The
-   signed-out pages leave both alone and get the plain logo; the board fills
-   them with the reader's details and a log-out control. {% endcomment %}
 <header class="topbar {% block topbar_mod %}{% endblock %}">
   <div class="topbar__left">
-    {% comment %} The board is only reachable once you are signed in or have
-       pressed "Sign in as guest". A guest is an authenticated generated
-       account, so one check covers both. Anonymous visitors get the sign-in
-       page, because this link used to walk them straight past the guest
-       button into content they had not asked for. {% endcomment %}
+    {# Only linked into the app once signed in or a guest. #}
     <a class="topbar__logo"
        href="{% if request.user.is_authenticated %}{% url 'announcements:public_board' %}{% else %}{% url 'accounts:login' %}{% endif %}">KU</a>
     {% block topbar_left %}{% endblock %}
   </div>
-  {% comment %} No default. The old "Help" link here pointed at "#" and did
-     nothing, so it was removed rather than left looking clickable. Signed-in
-     pages fill this slot; signed-out pages leave the right side empty. {% endcomment %}
+  
   {% block topbar_right %}{% endblock %}
 </header>
 

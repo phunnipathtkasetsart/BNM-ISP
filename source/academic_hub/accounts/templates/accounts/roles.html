@@ -1,5 +1,7 @@
 {% extends "accounts/base.html" %}
+{% load static %}
 {% block title %}Manage roles — KU Student Portal{% endblock %}
+{% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/roles.css' %}">{% endblock %}
 
 {% comment %} US-05: the Department admin assigns roles. Deliberately not Django
    admin, which gates on is_staff (our isLecturer) and so admits lecturers while
