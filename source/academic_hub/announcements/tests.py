@@ -385,3 +385,140 @@ class LabEditGuardTests(TestCase):
         self.client.post(reverse("accounts:guest_login"))
         response = self.client.get(reverse("announcements:public_board"))
         self.assertNotContains(response, "Own lab post")
+
+
+class ProgrammeTagTests(TestCase):
+    """SKE and CPE posts reach their own programme only.
+
+    The department column holds both "SKE" and "ske", so the match has to be
+    case-insensitive or half the students silently lose their own notices.
+    """
+
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import User
+
+        # Migration 0004 already created these, so fetch rather than
+        # create: the slug is unique.
+        cls.ske, _ = Tag.objects.update_or_create(
+            slug="ske",
+            defaults={"label": "SKE", "kind": Tag.Kind.PROGRAMME},
+        )
+        cls.cpe, _ = Tag.objects.update_or_create(
+            slug="cpe",
+            defaults={"label": "CPE", "kind": Tag.Kind.PROGRAMME},
+        )
+
+        cls.ske_student = User.objects.create_user(
+            nisit_id="7400000001", email="ske@ku.th", password="prog-1234",
+            first_name="Ske", last_name="S", department="SKE",
+        )
+        cls.cpe_student = User.objects.create_user(
+            nisit_id="7400000002", email="cpe@ku.th", password="prog-1234",
+            first_name="Cpe", last_name="S", department="cpe",
+        )
+        cls.department = User.objects.create_user(
+            nisit_id="7400000003", email="dep2@ku.th", password="prog-1234",
+            first_name="Dep", last_name="S", department="ske",
+        )
+        cls.department.is_superuser = True
+        cls.department.save(update_fields=["is_superuser"])
+
+        cls.ske_post = Announcement.objects.create(
+            title="SKE curriculum briefing", body="Third year.",
+            audience=Audience.PUBLIC, is_published=True,
+        )
+        cls.ske_post.tags.add(cls.ske)
+
+        cls.cpe_post = Announcement.objects.create(
+            title="CPE internship placement", body="Now open.",
+            audience=Audience.PUBLIC, is_published=True,
+        )
+        cls.cpe_post.tags.add(cls.cpe)
+
+        cls.untagged = Announcement.objects.create(
+            title="Registration closes Friday", body="Add/drop.",
+            audience=Audience.PUBLIC, is_published=True,
+        )
+
+    def titles_for(self, user, is_guest=False):
+        return set(
+            Announcement.objects.visible_to(user, is_guest)
+            .values_list("title", flat=True)
+        )
+
+    def test_ske_student_sees_only_ske(self):
+        titles = self.titles_for(self.ske_student)
+        self.assertIn("SKE curriculum briefing", titles)
+        self.assertNotIn("CPE internship placement", titles)
+
+    def test_cpe_student_sees_only_cpe(self):
+        titles = self.titles_for(self.cpe_student)
+        self.assertIn("CPE internship placement", titles)
+        self.assertNotIn("SKE curriculum briefing", titles)
+
+    def test_untagged_post_reaches_both(self):
+        for student in (self.ske_student, self.cpe_student):
+            self.assertIn("Registration closes Friday", self.titles_for(student))
+
+    def test_department_sees_every_programme(self):
+        titles = self.titles_for(self.department)
+        self.assertIn("SKE curriculum briefing", titles)
+        self.assertIn("CPE internship placement", titles)
+
+    def test_guest_sees_no_programme_post(self):
+        titles = self.titles_for(self.ske_student, is_guest=True)
+        self.assertNotIn("SKE curriculum briefing", titles)
+        self.assertNotIn("CPE internship placement", titles)
+        self.assertIn("Registration closes Friday", titles)
+
+
+class DepartmentChipTests(TestCase):
+    """SKE and CPE are departments, so the generic #Department filter is
+    redundant for a reader who has one. The posts stay; only the chip goes."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import User
+
+        cls.dept_tag, _ = Tag.objects.update_or_create(
+            slug="department",
+            defaults={"label": "Department", "kind": Tag.Kind.DEPARTMENT},
+        )
+        Tag.objects.update_or_create(
+            slug="ske",
+            defaults={"label": "SKE", "kind": Tag.Kind.PROGRAMME},
+        )
+        cls.notice = Announcement.objects.create(
+            title="Registration closes Friday", body="Add/drop.",
+            audience=Audience.PUBLIC, is_published=True,
+        )
+        cls.notice.tags.add(cls.dept_tag)
+
+        cls.student = User.objects.create_user(
+            nisit_id="7500000001", email="chip@ku.th", password="chip-1234",
+            first_name="Chip", last_name="S", department="SKE",
+        )
+        cls.boss = User.objects.create_user(
+            nisit_id="7500000002", email="chip2@ku.th", password="chip-1234",
+            first_name="Boss", last_name="S", department="ske",
+        )
+        cls.boss.is_superuser = True
+        cls.boss.save(update_fields=["is_superuser"])
+
+    def chips_for(self, user):
+        self.client.force_login(user)
+        response = self.client.get(reverse("announcements:public_board"))
+        return [t.slug for t in response.context["chips"]]
+
+    def test_programme_student_loses_the_department_chip(self):
+        self.assertNotIn("department", self.chips_for(self.student))
+
+    def test_but_keeps_the_posts(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("announcements:public_board"))
+        titles = [a.title for a in response.context["announcements"]]
+        self.assertIn("Registration closes Friday", titles)
+
+    def test_department_role_keeps_the_chip(self):
+        self.assertIn("department", self.chips_for(self.boss))
