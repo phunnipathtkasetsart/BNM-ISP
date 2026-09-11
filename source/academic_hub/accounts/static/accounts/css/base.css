@@ -134,6 +134,16 @@ body{
   flex:none;
   color:var(--ku-sage-soft);        /* quieter than the control beside it */
 }
+.topbar__link{
+  font-family:var(--font-ui);
+  font-weight:500;font-size:calc(16 * var(--u));
+  color:#EAF3F0;text-decoration:none;white-space:nowrap;
+  padding:calc(6 * var(--u)) calc(4 * var(--u));
+  border-radius:calc(6 * var(--u));
+}
+.topbar__link:hover{text-decoration:underline}
+.topbar__link:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
+
 .topbar__logout-form{margin:0;flex:none}
 .topbar__logout{
   background:none;border:0;padding:calc(6 * var(--u)) calc(4 * var(--u));
@@ -302,7 +312,7 @@ body{
   .topbar--signed-in{flex-wrap:wrap;row-gap:10px}
   .topbar--signed-in .topbar__left{width:100%;gap:12px}
   .topbar--signed-in .topbar__right{margin-left:auto;gap:14px}
-  .topbar__me,.topbar__role,.topbar__logout{font-size:14px}
+  .topbar__me,.topbar__role,.topbar__logout,.topbar__link{font-size:14px}
   .stage{padding:24px 20px 36px;align-items:start}
   .btn{font-size:16px;padding:14px}
 }

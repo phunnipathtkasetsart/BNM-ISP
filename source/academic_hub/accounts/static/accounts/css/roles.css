@@ -3,16 +3,6 @@
    A signed-in working page rather than a centred card: it is a list
    to scan and act on, so it gets a wide panel and rows, not a form.
    ================================================================ */
-.topbar__link{
-  font-family:var(--font-ui);
-  font-weight:500;font-size:calc(16 * var(--u));
-  color:#EAF3F0;text-decoration:none;white-space:nowrap;
-  padding:calc(6 * var(--u)) calc(4 * var(--u));
-  border-radius:calc(6 * var(--u));
-}
-.topbar__link:hover{text-decoration:underline}
-.topbar__link:focus-visible{outline:2px solid var(--ku-sage);outline-offset:3px}
-
 .panel__foot strong{color:var(--ink-soft)}
 
 .rolelist{border-top:1px solid var(--hairline)}
