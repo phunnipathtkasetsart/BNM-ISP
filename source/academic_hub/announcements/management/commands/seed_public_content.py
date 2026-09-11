@@ -21,8 +21,8 @@ TAGS = [
     ("syllabus", "Syllabus", Tag.Kind.TOPIC),
     ("scholarship", "Scholarship", Tag.Kind.TOPIC),
     ("lab", "Lab", Tag.Kind.LAB),
-    ("ske", "SKE", Tag.Kind.DEPARTMENT),
-    ("cpe", "CPE", Tag.Kind.DEPARTMENT),
+    ("ske", "SKE", Tag.Kind.PROGRAMME),
+    ("cpe", "CPE", Tag.Kind.PROGRAMME),
 ]
 
 ANNOUNCEMENTS = [

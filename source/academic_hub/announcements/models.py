@@ -35,6 +35,9 @@ class Tag(models.Model):
         # Internal lab notices. US-02 says these stay hidden from
         # unauthenticated readers, and only the Department may post them.
         LAB = "lab", "Lab"
+        # A degree programme. Scopes an item to students of that
+        # programme, the way COURSE scopes to a course.
+        PROGRAMME = "programme", "Programme"
         TOPIC = "topic", "Topic"
 
     slug = models.SlugField(max_length=60, unique=True)
@@ -66,7 +69,8 @@ class PublishedQuerySet(models.QuerySet):
         return (
             self.published()
             .filter(audience=Audience.PUBLIC)
-            .exclude(tags__kind__in=[Tag.Kind.COURSE, Tag.Kind.LAB])
+            .exclude(tags__kind__in=[
+                Tag.Kind.COURSE, Tag.Kind.LAB, Tag.Kind.PROGRAMME])
         )
 
     def visible_to(self, user, is_guest=False):
@@ -94,7 +98,23 @@ class PublishedQuerySet(models.QuerySet):
         allowed = [Audience.PUBLIC, Audience.STUDENTS]
         if user.is_staff:
             allowed.append(Audience.STAFF)
-        return self.published().filter(audience__in=allowed)
+        return (
+            self.published()
+            .filter(audience__in=allowed)
+            .for_programme(user.department)
+        )
+
+    def for_programme(self, department):
+        """Drop items scoped to a programme that is not this reader's.
+
+        Only programme tags are consulted, so an untagged item stays
+        visible to everyone. The department is matched case-insensitively
+        because the column holds both "SKE" and "ske".
+        """
+        other_programmes = Tag.objects.filter(
+            kind=Tag.Kind.PROGRAMME
+        ).exclude(slug__iexact=(department or "").strip())
+        return self.exclude(tags__in=other_programmes)
 
 
 class Audience(models.TextChoices):

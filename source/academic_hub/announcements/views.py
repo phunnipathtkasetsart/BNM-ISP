@@ -32,6 +32,20 @@ def _search(queryset, query):
     )
 
 
+def reader_has_programme(user):
+    """True when this reader belongs to a programme that has its own tag.
+
+    The Department is excluded: it manages every programme, so it keeps
+    the general filter. Matched case-insensitively, because
+    userDepartment holds both "SKE" and "ske".
+    """
+    if not user.is_authenticated or user.is_superuser:
+        return False
+    return Tag.objects.filter(
+        kind=Tag.Kind.PROGRAMME, slug__iexact=(user.department or "").strip()
+    ).exists()
+
+
 def public_board(request):
     """The board. Signed-in users and guests only; anonymous goes to sign in."""
     if not request.user.is_authenticated:
@@ -77,14 +91,21 @@ def public_board(request):
         announcements = _search(announcements, query)
         faqs = _search(faqs, query)
 
-    # Chips come from tags that actually appear on announcements a guest can
-    # see, so the row can never offer a filter that returns nothing.
+    # Chips come from tags that actually appear on announcements this reader
+    # can see, so the row can never offer a filter that returns nothing.
     chips = (
         Tag.objects.filter(announcements__in=Announcement.objects.visible_to(
             request.user, is_guest))
         .distinct()
         .order_by("kind", "label")
     )
+    # SKE and CPE are departments themselves, so the generic #Department
+    # chip is noise once a reader has a programme of their own. The posts
+    # stay on the board - registration and scholarship notices still reach
+    # students - only the filter button goes. A guest keeps it, having no
+    # programme, and so does the Department, which manages the board.
+    if not is_guest and reader_has_programme(request.user):
+        chips = chips.exclude(kind=Tag.Kind.DEPARTMENT)
 
     # Rendered into a <datalist>. Fine at this size; needs a lookup if the
     # board ever holds thousands of items.
