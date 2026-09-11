@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -62,6 +63,21 @@ GOOGLE_OAUTH_REDIRECT_URI = os.getenv(
     "GOOGLE_OAUTH_REDIRECT_URI",
     "http://localhost:8000/accounts/oauth/google/callback/",
 )
+
+PASSWORD_RESET_BASE_URL = os.getenv("PASSWORD_RESET_BASE_URL", "").strip().rstrip("/")
+PASSWORD_RESET_TIMEOUT = timedelta(
+    minutes=int(os.getenv("PASSWORD_RESET_TIMEOUT_MINUTES", "30"))
+)
+PASSWORD_RESET_REQUEST_LIMIT = int(os.getenv("PASSWORD_RESET_REQUEST_LIMIT", "5"))
+PASSWORD_RESET_REQUEST_WINDOW = int(os.getenv("PASSWORD_RESET_REQUEST_WINDOW", "3600"))
+
+EMAIL_BACKEND = os.getenv("EMAIL_BACKEND", "django.core.mail.backends.console.EmailBackend")
+EMAIL_HOST = os.getenv("EMAIL_HOST", "")
+EMAIL_PORT = int(os.getenv("EMAIL_PORT", "587"))
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").strip().lower() not in {"false", "0", "no"}
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "webmaster@localhost")
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
