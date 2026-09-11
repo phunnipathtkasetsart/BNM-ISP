@@ -21,6 +21,8 @@ TAGS = [
     ("syllabus", "Syllabus", Tag.Kind.TOPIC),
     ("scholarship", "Scholarship", Tag.Kind.TOPIC),
     ("lab", "Lab", Tag.Kind.LAB),
+    ("ske", "SKE", Tag.Kind.DEPARTMENT),
+    ("cpe", "CPE", Tag.Kind.DEPARTMENT),
 ]
 
 ANNOUNCEMENTS = [
@@ -80,6 +82,29 @@ ANNOUNCEMENTS = [
         "author_label": "Department", "audience": Audience.STAFF,
         "is_urgent": False, "deadline_in_days": None,
         "tags": ["lab"],
+    },
+
+    {
+        "title": "SKE curriculum briefing for third year",
+        "body": (
+            "The Software and Knowledge Engineering programme will run its "
+            "curriculum briefing for third-year students next week. Bring the "
+            "elective form if you plan to change track."
+        ),
+        "author_label": "Department", "audience": Audience.PUBLIC,
+        "is_urgent": False, "deadline_in_days": 8,
+        "tags": ["department", "ske"],
+    },
+    {
+        "title": "CPE internship placement opens",
+        "body": (
+            "Computer Engineering internship placements are open. Submit your "
+            "preference form through the student office before the closing "
+            "date to be included in the first round."
+        ),
+        "author_label": "Department", "audience": Audience.PUBLIC,
+        "is_urgent": False, "deadline_in_days": 12,
+        "tags": ["department", "cpe"],
     },
 ]
 
