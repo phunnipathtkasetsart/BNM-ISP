@@ -48,6 +48,8 @@ class AnnouncementForm(forms.ModelForm):
         self.author = author
         self.fields["deadline"].input_formats = ["%Y-%m-%dT%H:%M"]
         self.fields["tags"].queryset = Tag.objects.all()
+        # Tag.__str__ is "#slug"; the board chips show the label. Match them.
+        self.fields["tags"].label_from_instance = lambda tag: f"#{tag.label}"
 
         # Only the Department speaks for the department. A lecturer posting to
         # "everyone, including guests" would put course-level notices on the
