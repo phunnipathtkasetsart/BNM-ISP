@@ -87,8 +87,12 @@ class LoginForm(forms.Form):
         max_length=10,
         widget=forms.TextInput(attrs={**LOGIN_ID_ATTRS, "autofocus": True}),
     )
+    # strip=False: a CharField trims whitespace by default, which would
+    # silently alter a password that legitimately begins or ends with a
+    # space. What the user typed is what gets checked.
     password = forms.CharField(
         label="Password",
+        strip=False,
         widget=forms.PasswordInput(attrs={"placeholder": "Password"}),
     )
 
@@ -96,6 +100,7 @@ class LoginForm(forms.Form):
 class RegisterForm(forms.ModelForm):
     password1 = forms.CharField(
         label="Password",
+        strip=False,
         widget=forms.PasswordInput(attrs={"placeholder": "Password"}),
         help_text="At least 8 characters.",
     )
@@ -171,10 +176,12 @@ class ForgotPasswordForm(forms.Form):
 class ResetPasswordForm(forms.Form):
     password1 = forms.CharField(
         label="New password",
+        strip=False,
         widget=forms.PasswordInput(attrs={"placeholder": "New password", "autocomplete": "new-password"}),
     )
     password2 = forms.CharField(
         label="Confirm password",
+        strip=False,
         widget=forms.PasswordInput(attrs={"placeholder": "Confirm password", "autocomplete": "new-password"}),
     )
 

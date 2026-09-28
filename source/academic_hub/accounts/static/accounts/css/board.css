@@ -105,6 +105,9 @@
 }
 .badge--deadline{background:#F6E2DA;color:#9C4A2A;border:1px solid #E2B9A6}
 .badge--urgent{background:var(--danger);color:#fff}
+/* A deadline that has gone by stays on the card, greyed, rather than
+   vanishing: the notice is still true, the date just passed. */
+.badge--closed{background:#ECEFEC;color:var(--ink-muted);border:1px solid var(--hairline)}
 
 .feed__empty{padding:calc(18 * var(--u)) 0;color:var(--ink-muted);font-size:calc(13.5 * var(--u))}
 

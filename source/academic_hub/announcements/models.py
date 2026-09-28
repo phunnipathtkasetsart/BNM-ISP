@@ -18,6 +18,7 @@ from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
+from django.db.models import Count, Q
 from django.utils import timezone
 
 
@@ -111,10 +112,19 @@ class PublishedQuerySet(models.QuerySet):
         visible to everyone. The department is matched case-insensitively
         because the column holds both "SKE" and "ske".
         """
-        other_programmes = Tag.objects.filter(
-            kind=Tag.Kind.PROGRAMME
-        ).exclude(slug__iexact=(department or "").strip())
-        return self.exclude(tags__in=other_programmes)
+        mine = Tag.objects.filter(
+            kind=Tag.Kind.PROGRAMME, slug__iexact=(department or "").strip()
+        )
+        # Counted rather than excluded, because a post can carry several
+        # programme tags. Asking "does it carry someone else's" hid a post
+        # tagged both SKE and CPE from both of them. The rule is: keep it
+        # if it is scoped to no programme, or to one of mine.
+        return self.annotate(
+            programme_tags=Count(
+                "tags", filter=Q(tags__kind=Tag.Kind.PROGRAMME), distinct=True
+            ),
+            my_programme_tags=Count("tags", filter=Q(tags__in=mine), distinct=True),
+        ).filter(Q(programme_tags=0) | Q(my_programme_tags__gt=0))
 
 
 class Audience(models.TextChoices):

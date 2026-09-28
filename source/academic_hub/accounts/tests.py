@@ -8,7 +8,7 @@ from datetime import timedelta
 import hashlib
 
 from .middleware import GUEST_ALLOWED_VIEWS, GUEST_SESSION_KEY, is_guest_request
-from .forms import RegisterForm
+from .forms import LoginForm, RegisterForm, ResetPasswordForm
 from .models import PasswordResetToken, User
 
 
@@ -229,3 +229,50 @@ class RegistrationPasswordValidationTests(TestCase):
 
         self.assertFalse(form.is_valid())
         self.assertIn("This password is too common.", form.errors["password1"])
+
+
+class PasswordWhitespaceTests(TestCase):
+    """A password is whatever the user typed, spaces included.
+
+    forms.CharField trims by default, so every password field silently
+    rewrote what was entered. A password chosen as "  open sesame  " was
+    stored as "open sesame", and nothing told the user.
+    """
+
+    PADDED = "  open sesame  "
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(
+            nisit_id="7600000001", email="pad@ku.th", password=cls.PADDED,
+            first_name="Pad", last_name="S", department="ske",
+        )
+
+    def test_login_field_keeps_the_spaces(self):
+        form = LoginForm(data={"nisit_id": "7600000001", "password": self.PADDED})
+        self.assertTrue(form.is_valid())
+        self.assertEqual(form.cleaned_data["password"], self.PADDED)
+
+    def test_register_field_keeps_the_spaces(self):
+        self.assertFalse(RegisterForm().fields["password1"].strip)
+
+    def test_reset_fields_keep_the_spaces(self):
+        form = ResetPasswordForm()
+        self.assertFalse(form.fields["password1"].strip)
+        self.assertFalse(form.fields["password2"].strip)
+
+    def test_signing_in_with_the_padded_password_works(self):
+        client = Client()
+        response = client.post(
+            reverse("accounts:login"),
+            {"nisit_id": "7600000001", "password": self.PADDED},
+        )
+        self.assertEqual(response.status_code, 302)
+
+    def test_signing_in_with_the_trimmed_password_is_refused(self):
+        client = Client()
+        response = client.post(
+            reverse("accounts:login"),
+            {"nisit_id": "7600000001", "password": self.PADDED.strip()},
+        )
+        self.assertEqual(response.status_code, 200)
