@@ -124,7 +124,14 @@ class PublishedQuerySet(models.QuerySet):
                 "tags", filter=Q(tags__kind=Tag.Kind.PROGRAMME), distinct=True
             ),
             my_programme_tags=Count("tags", filter=Q(tags__in=mine), distinct=True),
-        ).filter(Q(programme_tags=0) | Q(my_programme_tags__gt=0))
+        ).filter(
+            Q(programme_tags=0) | Q(my_programme_tags__gt=0)
+        # An aggregate annotation drops Meta.ordering, so the newest post
+        # sank to the bottom for every role that goes through here.
+        # State the ordering again rather than rely on the default.
+        # for_programme() is shared with Faq, which has no is_urgent, so
+        # re-apply whichever default the model declares.
+        ).order_by(*self.model._meta.ordering)
 
 
 class Audience(models.TextChoices):
