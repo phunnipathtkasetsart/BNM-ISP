@@ -441,6 +441,15 @@ class ProgrammeTagTests(TestCase):
             audience=Audience.PUBLIC, is_published=True,
         )
 
+        # Addressed to both programmes at once. The first version of
+        # for_programme() asked whether a post carried somebody
+        # else's tag, so this reached nobody at all.
+        cls.both = Announcement.objects.create(
+            title="Joint SKE and CPE briefing", body="Both programmes.",
+            audience=Audience.PUBLIC, is_published=True,
+        )
+        cls.both.tags.add(cls.ske, cls.cpe)
+
     def titles_for(self, user, is_guest=False):
         return set(
             Announcement.objects.visible_to(user, is_guest)
@@ -456,6 +465,12 @@ class ProgrammeTagTests(TestCase):
         titles = self.titles_for(self.cpe_student)
         self.assertIn("CPE internship placement", titles)
         self.assertNotIn("SKE curriculum briefing", titles)
+
+    def test_a_post_tagged_for_both_programmes_reaches_both(self):
+        for student in (self.ske_student, self.cpe_student):
+            self.assertIn(
+                "Joint SKE and CPE briefing", self.titles_for(student)
+            )
 
     def test_untagged_post_reaches_both(self):
         for student in (self.ske_student, self.cpe_student):

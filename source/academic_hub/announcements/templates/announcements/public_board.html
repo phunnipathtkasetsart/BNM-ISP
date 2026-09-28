@@ -138,8 +138,11 @@
             <h2 class="post__title">{{ a.title }}</h2>
             {% if a.is_urgent %}
               <span class="badge badge--urgent">URGENT</span>
-            {% elif a.deadline_near %}
-              <span class="badge badge--deadline">DEADLINE NEAR</span>
+            {% endif %}
+            {% if a.deadline %}
+              <span class="badge {% if a.deadline_passed %}badge--closed{% else %}badge--deadline{% endif %}">
+                {% if a.deadline_passed %}CLOSED{% else %}DUE{% endif %} {{ a.deadline|date:"j M, H:i" }}
+              </span>
             {% endif %}
           </div>
 
