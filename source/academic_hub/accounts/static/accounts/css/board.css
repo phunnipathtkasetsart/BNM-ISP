@@ -119,7 +119,7 @@
 }
 .faq__head h2{
   font-family:var(--font-display);font-weight:800;
-  font-size:calc(21 * var(--u));color:#fff;margin:0;
+  font-size:calc(21 * var(--u));color:black;margin:0;
 }
 .faq__list{background:#fff;padding:calc(8 * var(--u)) calc(20 * var(--u)) calc(22 * var(--u));min-height:calc(220 * var(--u))}
 .qa{border-bottom:1px solid var(--hairline)}
