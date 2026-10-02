@@ -1,0 +1,10 @@
+{% extends "course/base.html" %}
+{% block course_content %}
+<div class="course-detail-content">
+<div class="course-top-actions">
+<a class="course-back" href="{% url 'course:dashboard' %}">← All classes</a>
+<div class="course-actions">{% if can_manage %}<a class="course-btn secondary" href="{% url 'course:edit' course.pk %}">Edit class</a>{% endif %}<a class="course-btn" href="{% url 'course:members_page' course.pk %}">{% if can_manage %}Manage members{% else %}View members{% endif %}</a></div>
+</div>
+<section class="course-hero"><p class="eyebrow">CLASSROOM</p><h1>{{ course.name }}</h1>{% if course.section %}<p><span class="course-badge">Sec {{ course.section }}</span></p>{% endif %}<p>{{ course.owner.get_full_name }}</p>{% if can_manage %}<div class="course-code"><div><span>Class code</span><strong id="class-code">{{ course.class_code }}</strong></div><button type="button" class="course-btn secondary" data-copy-code="{{ course.class_code }}">Copy code</button><span role="status" id="copy-status"></span></div>{% endif %}</section>
+</div>
+{% endblock %}

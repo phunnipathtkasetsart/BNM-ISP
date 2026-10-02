@@ -1,0 +1,4 @@
+{% extends "course/form.html" %}
+{% block after_form %}
+<section class="course-danger"><div><h3>Delete class</h3><p>This removes the class and its enrollments. Student accounts are kept.</p></div><form method="post" action="{% url 'course:delete' course.pk %}" data-confirm="Delete this class and all enrollments? This cannot be undone.">{% csrf_token %}<button class="course-btn danger" type="submit">Delete class</button></form></section>
+{% endblock %}
