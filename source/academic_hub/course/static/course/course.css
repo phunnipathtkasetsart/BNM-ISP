@@ -350,3 +350,67 @@
 .course-detail-content {
   min-height: 75vh;
 }
+
+/* Deadline placeholder above the class dashboard. */
+.course-shell.deadline-widget {
+  min-height: 180px;
+}
+.deadline-widget h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+@media (max-width: 650px) {
+  .course-shell.deadline-widget { min-height: 140px; }
+}
+
+/* Compact course cards on mobile. */
+@media (max-width: 650px) {
+  .course-grid { gap: 16px; }
+  .course-grid > .course-card { min-width: 0; }
+  .course-card-title {
+    min-height: 0;
+    padding: 16px 18px;
+  }
+  .course-card-title h2 {
+    font-size: 20px;
+    margin: 6px 0;
+  }
+  .course-card-body {
+    min-height: 0;
+    padding: 16px 18px;
+    overflow-wrap: anywhere;
+  }
+  .course-card-body p:last-child { margin-bottom: 0; }
+  .course-card-foot {
+    padding: 12px 16px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+/* Keep the dashboard action beside My classes on mobile. */
+@media (max-width: 650px) {
+  .course-heading.course-dashboard-heading {
+    flex-direction: row;
+    align-items: flex-end;
+    gap: 10px;
+  }
+  .course-dashboard-heading > div:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+  .course-dashboard-heading > div:last-child { flex-shrink: 0; }
+  .course-dashboard-heading .eyebrow {
+    font-size: 9px;
+    letter-spacing: .08em;
+  }
+  .course-shell .course-dashboard-heading h1 {
+    font-size: clamp(20px, 6vw, 28px);
+    margin-bottom: 0;
+  }
+  .course-dashboard-heading .course-btn {
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+}

@@ -260,7 +260,7 @@ class CourseTests(TestCase):
         self.sign_in(self.student)
         response = self.client.get(self.url("dashboard"))
         self.assertContains(response, "Software Engineering")
-        self.assertContains(response, "2 students")
+        self.assertNotContains(response, "2 students")
         self.assertNotContains(response, "Private class")
         self.assertContains(response, "Join class")
         self.sign_in(self.teacher)

@@ -7,6 +7,7 @@
 {% block topbar_right %}<div class="topbar__right"><span class="topbar__role">{% if request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>{% if request.user.is_superuser %}<a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>{% endif %}<form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="topbar__logout" type="submit">Log out</button></form></div>{% endblock %}
 {% block content %}
 <nav class="subnav" aria-label="Sections"><a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a><a class="subnav__tab subnav__tab--on" href="{% url 'course:dashboard' %}" aria-current="page">Course</a></nav>
+{% block before_course_shell %}{% endblock %}
 <div class="course-shell">
 {% for message in messages %}<div class="course-notice" role="status">{{ message }}</div>{% endfor %}
 {% block course_content %}{% endblock %}

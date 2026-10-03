@@ -2,7 +2,6 @@ import json
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
@@ -55,7 +54,7 @@ def form_error(request, form, title, *, course=None, template="course/form.html"
 @course_access()
 @require_http_methods(["GET"])
 def dashboard(request):
-    courses = visible_courses(request.user).select_related("owner").annotate(member_count=Count("enrollments"))
+    courses = visible_courses(request.user).select_related("owner")
     if api_request(request):
         return JsonResponse({"courses": [course_data(c, request.user) for c in courses]})
     return render(request, "course/dashboard.html", {"courses": courses, "can_create": can_teach(request.user),
