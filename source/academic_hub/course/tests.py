@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
@@ -39,6 +40,92 @@ class CourseTests(TestCase):
     def test_student_cannot_create(self):
         self.sign_in(self.student)
         self.assertEqual(self.client.post(self.url("api_create"), {"section": "001", "name": "No"}).status_code, 403)
+
+    def csv_upload(self, text, name="students.csv"):
+        return SimpleUploadedFile(name, text.encode("utf-8") if isinstance(text, str) else text, content_type="text/csv")
+
+    def test_csv_import_bom_duplicates_existing_and_repeat(self):
+        self.sign_in(self.teacher)
+        Enrollment.objects.create(course=self.course, student=self.student)
+        text = f'\ufeffstudent_id\r\n"{self.student.pk}"\r\n{self.other_student.pk}\r\n{self.other_student.pk}\r\n\r\n'
+        response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload(text)})
+        self.assertEqual(response.json(), {"added": 1, "already_enrolled": 1, "duplicates_skipped": 1})
+        response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload(text)})
+        self.assertEqual(response.json(), {"added": 0, "already_enrolled": 2, "duplicates_skipped": 1})
+        self.assertEqual(self.course.enrollments.count(), 2)
+
+    def test_csv_invalid_files_add_nobody(self):
+        self.sign_in(self.teacher)
+        for content in ["", "student_id\n", "wrong_header\n" + self.student.pk,
+                        f"student_id\n{self.student.pk}\n9999999999",
+                        f"student_id\n{self.student.pk}\n{self.teacher.pk}",
+                        f"student_id\n{self.student.pk}\nnot-an-id",
+                        f"student_id\n{self.student.pk},extra",
+                        'student_id\n"unterminated', b"student_id\n\xff",
+                        "student_id\n" + (self.student.pk + "\n") * 501,
+                        b"x" * (1024 * 1024 + 1)]:
+            with self.subTest(content=str(content)[:60]):
+                response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload(content)})
+                self.assertEqual(response.status_code, 400)
+                self.assertFalse(self.course.enrollments.exists())
+        self.assertEqual(self.client.post(self.url("api_import_csv", self.course.pk), {}).status_code, 400)
+        self.assertEqual(self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n" + self.student.pk, "students.xlsx")}).status_code, 400)
+
+    def test_csv_department_owner_and_html_error_recovery(self):
+        department = self.department_user()
+        owned = create_course(owner=department, name="CSV class")
+        self.sign_in(department)
+        page = self.client.get(self.url("members_page", owned.pk))
+        self.assertContains(page, "Import CSV")
+        self.assertContains(page, 'enctype="multipart/form-data"')
+        response = self.client.post(self.url("import_csv", owned.pk), {"csv_file": self.csv_upload("student_id\nbad")})
+        self.assertEqual(response.status_code, 400)
+        self.assertTemplateUsed(response, "course/members.html")
+        self.assertContains(response, "Line 2", status_code=400)
+        response = self.client.post(self.url("import_csv", owned.pk), {"csv_file": self.csv_upload("nisit_id\n" + self.student.pk)})
+        self.assertRedirects(response, self.url("members_page", owned.pk))
+        self.assertEqual(owned.enrollments.count(), 1)
+
+    def test_csv_permissions_and_csrf(self):
+        for user in [self.other_teacher, self.student, self.department_user()]:
+            self.sign_in(user)
+            response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n" + self.other_student.pk)})
+            self.assertEqual(response.status_code, 404)
+        self.sign_in(self.teacher)
+        self.assertEqual(self.client.get(self.url("import_csv", self.course.pk)).status_code, 405)
+        client = Client(enforce_csrf_checks=True)
+        client.force_login(self.teacher)
+        response = client.post(self.url("import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n" + self.student.pk)})
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(self.course.enrollments.exists())
+
+    def test_csv_preserves_leading_zero_and_rejects_inactive(self):
+        student = get_user_model().objects.create_user(nisit_id="0012345678", email="zero@ku.th", first_name="Zero", last_name="Test", department="ske")
+        self.sign_in(self.teacher)
+        response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n0012345678")})
+        self.assertEqual(response.json()["added"], 1)
+        self.assertTrue(self.course.enrollments.filter(student_id="0012345678").exists())
+        self.third_student.is_active = False
+        self.third_student.save(update_fields=["is_active"])
+        response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n" + self.third_student.pk)})
+        self.assertEqual(response.status_code, 400)
+
+    def test_csv_bulk_add_rolls_back_on_database_failure(self):
+        self.sign_in(self.teacher)
+        original = Enrollment.objects.get_or_create
+        count = 0
+
+        def fail_second(*args, **kwargs):
+            nonlocal count
+            count += 1
+            if count == 2:
+                raise IntegrityError("simulated failure")
+            return original(*args, **kwargs)
+
+        with patch("course.services.Enrollment.objects.get_or_create", side_effect=fail_second):
+            with self.assertRaises(IntegrityError):
+                self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload(f"student_id\n{self.student.pk}\n{self.other_student.pk}")})
+        self.assertFalse(self.course.enrollments.exists())
 
     def test_separate_members_page_and_return_after_mutations(self):
         self.sign_in(self.teacher)

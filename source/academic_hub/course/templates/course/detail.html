@@ -1,4 +1,10 @@
 {% extends "course/base.html" %}
+{% block course_layout %}
+<div class="course-detail-layout">
+  {{ block.super }}
+  {% include "course/_sidebar.html" %}
+</div>
+{% endblock %}
 {% block course_content %}
 <div class="course-detail-content">
 <div class="course-top-actions">

@@ -1,3 +1,5 @@
+import csv
+import io
 import re
 
 from django import forms
@@ -42,3 +44,53 @@ class RosterForm(forms.Form):
         if missing:
             raise forms.ValidationError("No active student account for: " + ", ".join(missing[:10]))
         return list(students)
+
+
+class CsvRosterForm(forms.Form):
+    csv_file = forms.FileField(
+        label="CSV file",
+        help_text="UTF-8 CSV, up to 1 MB / 500 student rows. Header: student_id or nisit_id. One 10-digit ID per row.",
+        widget=forms.ClearableFileInput(attrs={"accept": ".csv,text/csv"}),
+    )
+
+    def clean_csv_file(self):
+        upload = self.cleaned_data["csv_file"]
+        if not upload.name.lower().endswith(".csv"):
+            raise forms.ValidationError("Please upload a .csv file.")
+        limit = 1024 * 1024
+        if upload.size > limit:
+            raise forms.ValidationError("CSV must be no larger than 1 MB.")
+        raw = upload.read(limit + 1)
+        if len(raw) > limit:
+            raise forms.ValidationError("CSV must be no larger than 1 MB.")
+        try:
+            text = raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            raise forms.ValidationError("Save the file as CSV UTF-8 and upload it again.")
+        ids = []
+        header_seen = False
+        try:
+            reader = csv.reader(io.StringIO(text, newline=""), strict=True)
+            for row in reader:
+                if not row or all(not cell.strip() for cell in row):
+                    continue
+                if not header_seen:
+                    if len(row) != 1 or row[0].strip().lower() not in {"student_id", "nisit_id"}:
+                        raise forms.ValidationError("Use one column with the header student_id or nisit_id. Download the template below.")
+                    header_seen = True
+                    continue
+                if len(row) != 1 or not re.fullmatch(r"[0-9]{10}", row[0].strip()):
+                    raise forms.ValidationError(f"Line {reader.line_num}: enter exactly one 10-digit student ID.")
+                ids.append(row[0].strip())
+                if len(ids) > 500:
+                    raise forms.ValidationError("CSV may contain at most 500 student rows.")
+        except csv.Error:
+            raise forms.ValidationError("Invalid CSV format. Use the template and upload it again.")
+        if not ids:
+            raise forms.ValidationError("CSV contains no student IDs.")
+        roster = RosterForm({"student_ids": "\n".join(ids)})
+        if not roster.is_valid():
+            raise forms.ValidationError(roster.errors["student_ids"])
+        self.students = roster.cleaned_data["student_ids"]
+        self.duplicate_count = len(ids) - len(set(ids))
+        return upload

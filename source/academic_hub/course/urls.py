@@ -11,6 +11,7 @@ urlpatterns = [
     path("<int:pk>/delete/", views.delete, name="delete"),
     path("<int:pk>/members/", views.members_page, name="members_page"),
     path("<int:pk>/members/add/", views.import_members, name="import_members"),
+    path("<int:pk>/members/import-csv/", views.import_csv, name="import_csv"),
     path("<int:pk>/members/<str:student_id>/remove/", views.remove_member, name="remove_member"),
     path("api/", views.dashboard, name="api_list"),
     path("api/create/", views.create, name="api_create"),
@@ -20,5 +21,6 @@ urlpatterns = [
     path("api/<int:pk>/delete/", views.delete, name="api_delete"),
     path("api/<int:pk>/members/", views.members, name="api_members"),
     path("api/<int:pk>/members/add/", views.import_members, name="api_import_members"),
+    path("api/<int:pk>/members/import-csv/", views.import_csv, name="api_import_csv"),
     path("api/<int:pk>/members/<str:student_id>/remove/", views.remove_member, name="api_remove_member"),
 ]

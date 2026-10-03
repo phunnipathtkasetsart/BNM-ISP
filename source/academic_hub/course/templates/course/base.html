@@ -8,9 +8,11 @@
 {% block content %}
 <nav class="subnav" aria-label="Sections"><a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a><a class="subnav__tab subnav__tab--on" href="{% url 'course:dashboard' %}" aria-current="page">Course</a></nav>
 {% block before_course_shell %}{% endblock %}
+{% block course_layout %}
 <div class="course-shell">
 {% for message in messages %}<div class="course-notice" role="status">{{ message }}</div>{% endfor %}
 {% block course_content %}{% endblock %}
 </div>
+{% endblock %}
 <script src="{% static 'course/course.js' %}" defer></script>
 {% endblock %}

@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .forms import CourseForm, JoinForm, RosterForm
+from .forms import CourseForm, CsvRosterForm, JoinForm, RosterForm
 from .models import Course, Enrollment
 from .permissions import can_teach, course_access, visible_courses
 from .services import add_students, create_course
@@ -111,13 +111,14 @@ def detail(request, pk):
                   "can_manage": course.owner_id == request.user.pk and can_teach(request.user)})
 
 
-def render_members(request, *, form=None, status=200):
+def render_members(request, *, form=None, csv_form=None, status=200):
     course = request.course
     return render(request, "course/members.html", {
         "course": course,
         "members": course.enrollments.select_related("student"),
         "can_manage": course.owner_id == request.user.pk and can_teach(request.user),
         "roster_form": form if form is not None else RosterForm(),
+        "csv_form": csv_form if csv_form is not None else CsvRosterForm(),
     }, status=status)
 
 
@@ -187,4 +188,23 @@ def remove_member(request, pk, student_id):
     if api_request(request):
         return JsonResponse({"removed": True})
     messages.success(request, "Student removed from the class.")
+    return redirect("course:members_page", pk=pk)
+
+
+@course_access(owner=True)
+@require_POST
+def import_csv(request, pk):
+    form = CsvRosterForm(request.POST, request.FILES)
+    if not form.is_valid():
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        return render_members(request, csv_form=form, status=400)
+    added = add_students(request.course, form.students)
+    result = {"added": added, "already_enrolled": len(form.students) - added,
+              "duplicates_skipped": form.duplicate_count}
+    if api_request(request):
+        return JsonResponse(result)
+    messages.success(request, f"CSV imported: {added} student(s) added; "
+                     f"{result['already_enrolled']} already enrolled; "
+                     f"{result['duplicates_skipped']} duplicate row(s) skipped.")
     return redirect("course:members_page", pk=pk)

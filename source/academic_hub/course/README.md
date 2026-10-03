@@ -38,6 +38,21 @@ section until an owner edits them; no section is guessed during migration.
 
 ## JSON endpoints
 
+### CSV roster import
+
+Owners (Lecturer or Department) can upload a CSV under Manage members → Import
+students from CSV. Download the header-only template and fill one ID per row.
+The file must be UTF-8 (BOM supported), at most 1 MB and 500 nonblank data rows,
+with exactly one column headed `student_id` or `nisit_id`. IDs must be 10 digits;
+keep them as text in spreadsheet software to preserve leading zeros.
+Every ID must belong to an existing active student account. Invalid files add
+nobody. Existing memberships and duplicate rows are skipped and reported.
+Uploaded files are parsed in memory and are not saved by this feature.
+
+The owner-only `POST /course/api/<id>/members/import-csv/` endpoint accepts a
+multipart form upload named `csv_file` with the usual session and CSRF token.
+It returns `added`, `already_enrolled`, and `duplicates_skipped` counts.
+
 All paths are under `/course/api/`, use existing login sessions, and retain Django
 CSRF protection. Send the CSRF token in `X-CSRFToken` for JSON mutations. POST
 bodies may be JSON objects with string values or normal form submissions.
