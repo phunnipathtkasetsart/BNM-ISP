@@ -1,0 +1,25 @@
+{% extends "course/base.html" %}
+{% load static %}
+{% block title %}Class members — {{ course.name }}{% endblock %}
+{% block course_content %}
+<a class="course-back" href="{% url 'course:detail' course.pk %}">← Back to class</a>
+<div class="course-heading"><div><p class="eyebrow">{{ course.name }}{% if course.section %} · Sec {{ course.section }}{% endif %}</p><h1>{% if can_manage %}Manage members{% else %}Class members{% endif %}</h1><p>{{ members|length }} student{{ members|length|pluralize }}</p></div>{% if can_manage %}<a class="course-btn" href="#add-students">+ Add students</a>{% endif %}</div>
+<section class="roster-section"><h3>Lecturer</h3><div class="lecturer-row"><span class="member-avatar" aria-hidden="true">{{ course.owner.first_name|first|upper }}</span><strong>{{ course.owner.get_full_name }}</strong><span class="course-badge">Class owner</span></div></section>
+<section class="roster-section"><h3>Students</h3><div class="table-scroll"><table class="roster"><thead><tr><th scope="col">Name</th><th scope="col">Student ID</th>{% if can_manage %}<th scope="col">Action</th>{% endif %}</tr></thead><tbody>
+{% for member in members %}<tr><td><span class="member-avatar" aria-hidden="true">{{ member.student.first_name|first|upper }}</span>{{ member.student.get_full_name }}</td><td>{{ member.student_id }}</td>{% if can_manage %}<td><form method="post" action="{% url 'course:remove_member' course.pk member.student_id %}" data-confirm="Remove this student from the class?"><!-- Removal does not delete the student's account. -->{% csrf_token %}<button type="submit" class="course-remove" aria-label="Remove {{ member.student.get_full_name }}">Remove</button></form></td>{% endif %}</tr>
+{% empty %}<tr><td colspan="{% if can_manage %}3{% else %}2{% endif %}" class="course-empty">No students yet.{% if can_manage %} Share the class code or add student IDs below.{% endif %}</td></tr>{% endfor %}
+</tbody></table></div></section>
+{% if can_manage %}<section class="course-add" id="add-students"><h2>Add students</h2><p>Students must already have an active account in the portal.</p><form method="post" action="{% url 'course:import_members' course.pk %}">{% csrf_token %}{{ roster_form.as_p }}<button class="course-btn" type="submit">Add students</button></form></section>{% endif %}
+{% if can_manage %}
+<section class="course-add" id="import-csv">
+  <h2>Import students from CSV</h2>
+  <p>Upload student IDs to add existing student accounts to this class. All rows are checked before anyone is added.</p>
+  <p><a class="course-back" href="{% static 'course/student-import-template.csv' %}" download>Download CSV template</a></p>
+  <p>Keep student IDs as text to preserve leading zeros. Existing members and duplicate rows are skipped.</p>
+  <form method="post" enctype="multipart/form-data" action="{% url 'course:import_csv' course.pk %}">
+    {% csrf_token %}{{ csv_form.as_p }}
+    <button type="submit" class="course-btn">Import CSV</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

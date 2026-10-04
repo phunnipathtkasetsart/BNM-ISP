@@ -40,8 +40,7 @@
 
 <nav class="subnav" aria-label="Sections">
   <a class="subnav__tab subnav__tab--on" href="{% url 'announcements:public_board' %}">Home</a>
-  <span class="subnav__tab subnav__tab--off" aria-disabled="true"
-        title="Sign in to see your courses">Course</span>
+  {% if not is_guest %}<a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see your courses">Course</span>{% endif %}
 
   {# Role re-checked in the view; a hidden control is not a permission. #}
   {% if can_manage %}
