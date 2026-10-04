@@ -19,7 +19,7 @@ from announcements.models import Announcement, Audience, Faq, Tag
 TAGS = [
     ("department", "Department", Tag.Kind.DEPARTMENT),
     ("syllabus", "Syllabus", Tag.Kind.TOPIC),
-    ("scholarship", "Scholarship", Tag.Kind.TOPIC),
+    ("scholarship", "Scholarship", Tag.Kind.SCHOLARSHIP),
     ("lab", "Lab", Tag.Kind.LAB),
     ("ske", "SKE", Tag.Kind.PROGRAMME),
     ("cpe", "CPE", Tag.Kind.PROGRAMME),
