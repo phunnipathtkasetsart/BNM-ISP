@@ -9,7 +9,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from .forms import CourseForm, CsvRosterForm, JoinForm, RosterForm
 from .models import Course, Enrollment
 from .permissions import can_teach, course_access, visible_courses
-from .services import add_students, create_course
+from .services import add_students, create_course, update_course
 
 
 def api_request(request):
@@ -111,7 +111,7 @@ def detail(request, pk):
                   "can_manage": course.owner_id == request.user.pk and can_teach(request.user)})
 
 
-def render_members(request, *, form=None, csv_form=None, status=200):
+def render_members(request, *, form=None, csv_form=None, import_report=None, status=200):
     course = request.course
     return render(request, "course/members.html", {
         "course": course,
@@ -119,6 +119,7 @@ def render_members(request, *, form=None, csv_form=None, status=200):
         "can_manage": course.owner_id == request.user.pk and can_teach(request.user),
         "roster_form": form if form is not None else RosterForm(),
         "csv_form": csv_form if csv_form is not None else CsvRosterForm(),
+        "import_report": import_report,
     }, status=status)
 
 
@@ -135,13 +136,15 @@ def edit(request, pk):
     form = bind_form(request, CourseForm) if request.method == "POST" else CourseForm(initial={"name": course.name, "section": course.section})
     if request.method == "POST":
         if form.is_valid():
-            course.name = form.cleaned_data["name"]
-            course.section = form.cleaned_data["section"]
-            course.save(update_fields=["name", "section"])
-            if api_request(request):
-                return JsonResponse(course_data(course, request.user))
-            messages.success(request, "Class updated.")
-            return redirect("course:detail", pk=pk)
+            try:
+                update_course(course, name=form.cleaned_data["name"], section=form.cleaned_data["section"])
+            except ValidationError as error:
+                form.add_error(None, error)
+            else:
+                if api_request(request):
+                    return JsonResponse(course_data(course, request.user))
+                messages.success(request, "Class updated.")
+                return redirect("course:detail", pk=pk)
         return form_error(request, form, "Edit class", course=course, template="course/edit.html")
     return render(request, "course/edit.html", {"form": form, "title": "Edit class", "course": course})
 
@@ -172,12 +175,8 @@ def import_members(request, pk):
         if not api_request(request):
             return render_members(request, form=form, status=400)
         return form_error(request, form, "Add students", course=request.course)
-    students = form.cleaned_data["student_ids"]
-    added = add_students(request.course, students)
-    if api_request(request):
-        return JsonResponse({"added": added, "already_enrolled": len(students) - added})
-    messages.success(request, f"Added {added} student(s); {len(students) - added} already enrolled.")
-    return redirect("course:members_page", pk=pk)
+    return finish_import(request, form, csv=False)
+
 
 
 @course_access(owner=True)
@@ -199,12 +198,19 @@ def import_csv(request, pk):
         if api_request(request):
             return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
         return render_members(request, csv_form=form, status=400)
+    return finish_import(request, form, csv=True)
+
+
+def finish_import(request, form, *, csv):
     added = add_students(request.course, form.students)
     result = {"added": added, "already_enrolled": len(form.students) - added,
-              "duplicates_skipped": form.duplicate_count}
+              "duplicates_skipped": form.duplicate_count, "rejected": form.rejected}
+    status = 200 if form.students else 400
     if api_request(request):
-        return JsonResponse(result)
-    messages.success(request, f"CSV imported: {added} student(s) added; "
-                     f"{result['already_enrolled']} already enrolled; "
+        return JsonResponse(result, status=status)
+    if form.rejected:
+        return render_members(request, import_report=result, status=status,
+                              **({"csv_form": form} if csv else {"form": form}))
+    messages.success(request, f"Added {added} student(s); {result['already_enrolled']} already enrolled; "
                      f"{result['duplicates_skipped']} duplicate row(s) skipped.")
-    return redirect("course:members_page", pk=pk)
+    return redirect("course:members_page", pk=request.course.pk)

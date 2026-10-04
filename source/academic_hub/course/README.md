@@ -28,8 +28,8 @@ section until an owner edits them; no section is guessed during migration.
 - Joining with a lowercase code is accepted. Joining twice is harmless.
 - The owner can copy the code and add/remove students. Codes are hidden from students.
 - Bulk import accepts existing, active students' 10-digit IDs, separated by spaces,
-  newlines, commas or semicolons. At most 500 unique IDs per request. All IDs are
-  validated before any membership is saved; duplicate/existing entries are skipped.
+  newlines, commas or semicolons. At most 500 entries per request. Valid students are added even if other IDs
+  are invalid; rejected entries and reasons are reported. Duplicate/existing entries are skipped.
 - Removing a member immediately revokes course access, but does not delete their
   account. They may join again if they still have the code. Removal is not a ban.
 - Deleting a class removes its enrollments, not user accounts.
@@ -45,13 +45,17 @@ students from CSV. Download the header-only template and fill one ID per row.
 The file must be UTF-8 (BOM supported), at most 1 MB and 500 nonblank data rows,
 with exactly one column headed `student_id` or `nisit_id`. IDs must be 10 digits;
 keep them as text in spreadsheet software to preserve leading zeros.
-Every ID must belong to an existing active student account. Invalid files add
-nobody. Existing memberships and duplicate rows are skipped and reported.
+Valid IDs for active student accounts are imported; invalid IDs are rejected
+individually. Unreadable CSV, wrong headers, encoding errors and oversized files
+are rejected before any students are added. Existing memberships and duplicate rows are skipped and reported.
 Uploaded files are parsed in memory and are not saved by this feature.
 
 The owner-only `POST /course/api/<id>/members/import-csv/` endpoint accepts a
 multipart form upload named `csv_file` with the usual session and CSRF token.
-It returns `added`, `already_enrolled`, and `duplicates_skipped` counts.
+Both import endpoints return `added`, `already_enrolled`, `duplicates_skipped`,
+and a `rejected` list with `row`, `student_id`, and `reason`. A partial success
+returns 200; no valid student rows returns 400. Database failures roll back the
+valid batch, so a retry is safe.
 
 All paths are under `/course/api/`, use existing login sessions, and retain Django
 CSRF protection. Send the CSRF token in `X-CSRFToken` for JSON mutations. POST
@@ -73,3 +77,15 @@ Validation errors return 400; anonymous API requests return 401; prohibited role
 return 403; inaccessible classes return 404. The project's guest middleware sends
 guest sessions to the public board. Created classes/new joins return 201. Repeated
 joins return 200. Bulk additions return `added` and `already_enrolled` counts.
+
+## Availability and duplicate classes
+
+Browser visits to deleted or inaccessible classes return to My classes with a
+neutral explanatory message. API requests still return 404 without revealing
+class details.
+
+An owner cannot create or rename a class to an existing name/section combination,
+ignoring case and surrounding spaces. Different owners and different sections
+are allowed. The database enforces this rule, including concurrent requests.
+Migration 0003 checks for existing duplicates and stops without changing any
+classes if duplicates need to be resolved first.

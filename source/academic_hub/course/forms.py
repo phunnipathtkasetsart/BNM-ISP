@@ -25,25 +25,39 @@ class JoinForm(forms.Form):
         return code
 
 
+def classify_students(rows):
+    """Resolve valid accounts in one query and report every rejected row."""
+    candidates = {value for _, value in rows if re.fullmatch(r"[0-9]{10}", value)}
+    accounts = {u.pk: u for u in get_user_model().objects.filter(
+        pk__in=candidates, is_active=True, is_staff=False, is_superuser=False)}
+    students, rejected, seen = [], [], set()
+    duplicates = 0
+    for line, value in rows:
+        if not re.fullmatch(r"[0-9]{10}", value):
+            rejected.append({"row": line, "student_id": value,
+                             "reason": "Invalid 10-digit IDs: enter one 10-digit student ID."})
+        elif value not in accounts:
+            rejected.append({"row": line, "student_id": value,
+                             "reason": "No active student account for this ID."})
+        elif value in seen:
+            duplicates += 1
+        else:
+            seen.add(value)
+            students.append(accounts[value])
+    return students, rejected, duplicates
+
+
 class RosterForm(forms.Form):
     student_ids = forms.CharField(label="Student IDs", max_length=12000,
-                                 help_text="10-digit IDs separated by commas, spaces or new lines. Up to 500 students.",
+                                 help_text="10-digit IDs separated by commas, spaces or new lines. Up to 500 entries. Valid students are added; rejected IDs are reported.",
                                  widget=forms.Textarea(attrs={"rows": 5, "placeholder": "6610540001\n6610540002"}))
 
     def clean_student_ids(self):
-        ids = list(dict.fromkeys(re.split(r"[\s,;]+", self.cleaned_data["student_ids"].strip())))
+        ids = re.split(r"[\s,;]+", self.cleaned_data["student_ids"].strip())
         if len(ids) > 500:
-            raise forms.ValidationError("Add at most 500 students at a time.")
-        invalid = [value for value in ids if not re.fullmatch(r"[0-9]{10}", value)]
-        if invalid:
-            raise forms.ValidationError("Invalid 10-digit IDs: " + ", ".join(invalid[:10]))
-        students = get_user_model().objects.filter(pk__in=ids, is_active=True,
-                                                   is_staff=False, is_superuser=False)
-        found = set(students.values_list("pk", flat=True))
-        missing = [value for value in ids if value not in found]
-        if missing:
-            raise forms.ValidationError("No active student account for: " + ", ".join(missing[:10]))
-        return list(students)
+            raise forms.ValidationError("Add at most 500 student entries at a time.")
+        self.students, self.rejected, self.duplicate_count = classify_students(list(enumerate(ids, 1)))
+        return self.students
 
 
 class CsvRosterForm(forms.Form):
@@ -79,18 +93,12 @@ class CsvRosterForm(forms.Form):
                         raise forms.ValidationError("Use one column with the header student_id or nisit_id. Download the template below.")
                     header_seen = True
                     continue
-                if len(row) != 1 or not re.fullmatch(r"[0-9]{10}", row[0].strip()):
-                    raise forms.ValidationError(f"Line {reader.line_num}: enter exactly one 10-digit student ID.")
-                ids.append(row[0].strip())
+                ids.append((reader.line_num, row[0].strip() if len(row) == 1 else ",".join(row)))
                 if len(ids) > 500:
                     raise forms.ValidationError("CSV may contain at most 500 student rows.")
         except csv.Error:
             raise forms.ValidationError("Invalid CSV format. Use the template and upload it again.")
         if not ids:
             raise forms.ValidationError("CSV contains no student IDs.")
-        roster = RosterForm({"student_ids": "\n".join(ids)})
-        if not roster.is_valid():
-            raise forms.ValidationError(roster.errors["student_ids"])
-        self.students = roster.cleaned_data["student_ids"]
-        self.duplicate_count = len(ids) - len(set(ids))
+        self.students, self.rejected, self.duplicate_count = classify_students(ids)
         return upload

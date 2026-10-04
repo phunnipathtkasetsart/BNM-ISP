@@ -49,17 +49,14 @@ class CourseTests(TestCase):
         Enrollment.objects.create(course=self.course, student=self.student)
         text = f'\ufeffstudent_id\r\n"{self.student.pk}"\r\n{self.other_student.pk}\r\n{self.other_student.pk}\r\n\r\n'
         response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload(text)})
-        self.assertEqual(response.json(), {"added": 1, "already_enrolled": 1, "duplicates_skipped": 1})
+        self.assertEqual(response.json(), {"added": 1, "already_enrolled": 1, "duplicates_skipped": 1, "rejected": []})
         response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload(text)})
-        self.assertEqual(response.json(), {"added": 0, "already_enrolled": 2, "duplicates_skipped": 1})
+        self.assertEqual(response.json(), {"added": 0, "already_enrolled": 2, "duplicates_skipped": 1, "rejected": []})
         self.assertEqual(self.course.enrollments.count(), 2)
 
     def test_csv_invalid_files_add_nobody(self):
         self.sign_in(self.teacher)
         for content in ["", "student_id\n", "wrong_header\n" + self.student.pk,
-                        f"student_id\n{self.student.pk}\n9999999999",
-                        f"student_id\n{self.student.pk}\n{self.teacher.pk}",
-                        f"student_id\n{self.student.pk}\nnot-an-id",
                         f"student_id\n{self.student.pk},extra",
                         'student_id\n"unterminated', b"student_id\n\xff",
                         "student_id\n" + (self.student.pk + "\n") * 501,
@@ -161,7 +158,7 @@ class CourseTests(TestCase):
         self.assertNotContains(page, "Remove")
         for user in [self.other_teacher, self.other_student]:
             self.sign_in(user)
-            self.assertEqual(self.client.get(self.url("members_page", self.course.pk)).status_code, 404)
+            self.assertRedirects(self.client.get(self.url("members_page", self.course.pk)), self.url("dashboard"))
         department = self.department_user()
         owned = create_course(owner=department, name="Department class", section="001")
         self.sign_in(department)
@@ -277,7 +274,7 @@ class CourseTests(TestCase):
     def test_outsiders_cannot_read_class_or_roster(self):
         for user in [self.student, self.other_teacher]:
             self.sign_in(user)
-            for action in ["api_detail", "api_members", "detail"]:
+            for action in ["api_detail", "api_members"]:
                 self.assertEqual(self.client.get(self.url(action, self.course.pk)).status_code, 404)
 
     def test_student_reads_roster_but_cannot_manage(self):
@@ -303,15 +300,16 @@ class CourseTests(TestCase):
         self.sign_in(self.teacher)
         data = {"student_ids": f"{self.student.pk}, {self.other_student.pk}\n{self.student.pk}"}
         response = self.client.post(self.url("api_import_members", self.course.pk), data)
-        self.assertEqual(response.json(), {"added": 2, "already_enrolled": 0})
-        self.assertEqual(self.client.post(self.url("api_import_members", self.course.pk), data).json(), {"added": 0, "already_enrolled": 2})
+        self.assertEqual(response.json(), {"added": 2, "already_enrolled": 0, "duplicates_skipped": 1, "rejected": []})
+        self.assertEqual(self.client.post(self.url("api_import_members", self.course.pk), data).json(), {"added": 0, "already_enrolled": 2, "duplicates_skipped": 1, "rejected": []})
 
-    def test_bulk_import_all_or_nothing(self):
+    def test_bulk_import_adds_valid_ids_and_reports_invalid(self):
         self.sign_in(self.teacher)
         for invalid in ["9999999999", self.other_teacher.pk, "bad-id"]:
             response = self.client.post(self.url("api_import_members", self.course.pk), {"student_ids": f"{self.student.pk}, {invalid}"})
-            self.assertEqual(response.status_code, 400)
-            self.assertFalse(self.course.enrollments.exists())
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json()["rejected"][0]["student_id"], invalid)
+            self.assertEqual(self.course.enrollments.count(), 1)
 
     def test_inactive_student_rejected(self):
         self.third_student.is_active = False
@@ -390,3 +388,72 @@ class CourseTests(TestCase):
         self.assertContains(self.client.get(self.url("detail", self.course.pk)), self.course.class_code)
         self.sign_in(self.student)
         self.assertEqual(self.client.get(self.url("join")).status_code, 200)
+
+
+    def test_unavailable_class_redirects_without_leaking_class_details(self):
+        enrollment = Enrollment.objects.create(course=self.course, student=self.student)
+        self.sign_in(self.student)
+        enrollment.delete()
+        for action in ["detail", "members_page", "edit"]:
+            response = self.client.get(self.url(action, self.course.pk), follow=True)
+            self.assertRedirects(response, self.url("dashboard"))
+            self.assertContains(response, "This class is no longer available to you")
+            self.assertNotContains(response, self.course.class_code)
+        pk = self.course.pk
+        self.course.delete()
+        self.assertRedirects(self.client.get(self.url("detail", pk)), self.url("dashboard"))
+        self.assertEqual(self.client.get(self.url("api_detail", pk)).status_code, 404)
+
+    def test_csv_49_valid_one_invalid(self):
+        students = [get_user_model().objects.create_user(
+            nisit_id=f"670000{i:04d}", email=f"bulk{i}@ku.th", first_name="Bulk", last_name="Student", department="ske")
+            for i in range(49)]
+        self.sign_in(self.teacher)
+        text = "student_id\n" + "\n".join(u.pk for u in students) + "\ninvalid-id"
+        response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload(text)})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["added"], 49)
+        self.assertEqual(response.json()["rejected"][0]["row"], 51)
+        self.assertEqual(self.course.enrollments.count(), 49)
+
+    def test_partial_import_report_csv_manual_and_retry(self):
+        self.sign_in(self.teacher)
+        for invalid in ["bad", "9999999999", self.teacher.pk]:
+            response = self.client.post(self.url("import_csv", self.course.pk), {"csv_file": self.csv_upload(f"student_id\n{self.student.pk}\n{invalid}")})
+            self.assertContains(response, "Import results")
+            self.assertContains(response, invalid)
+            self.assertEqual(len(response.context["import_report"]["rejected"]), 1)
+        response = self.client.post(self.url("import_members", self.course.pk), {"student_ids": f"{self.other_student.pk},bad"})
+        self.assertContains(response, "Import results")
+        self.assertEqual(response.context["import_report"]["added"], 1)
+        self.assertEqual(self.course.enrollments.count(), 2)
+
+    def test_duplicate_create_edit_and_normalization(self):
+        self.sign_in(self.teacher)
+        course = create_course(owner=self.teacher, name="Algorithms", section="A01")
+        data = {"name": " algorithms ", "section": " a01 "}
+        for action, args in [("create", ()), ("api_create", ()), ("edit", (self.course.pk,)), ("api_edit", (self.course.pk,))]:
+            response = self.client.post(self.url(action, *args), data)
+            self.assertEqual(response.status_code, 400)
+            self.assertContains(response, "You already have a class", status_code=400)
+        self.course.refresh_from_db()
+        self.assertEqual(self.course.name, "Software Engineering")
+        self.assertEqual(self.client.post(self.url("api_edit", course.pk), data).status_code, 200)
+        self.assertEqual(self.client.post(self.url("api_create"), {"name": "Algorithms", "section": "A02"}).status_code, 201)
+        self.sign_in(self.other_teacher)
+        self.assertEqual(self.client.post(self.url("api_create"), data).status_code, 201)
+
+    def test_database_rejects_duplicate_class(self):
+        create_course(owner=self.teacher, name="Databases", section="001")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Course.objects.create(owner=self.teacher, name=" databases ", section="001 ")
+
+    def test_duplicate_race_error_is_a_validation_error(self):
+        from django.core.exceptions import ValidationError
+        from .services import update_course
+        with patch("course.services.duplicate_class", side_effect=[False, True]), patch("course.services.Course.objects.create", side_effect=IntegrityError):
+            with self.assertRaises(ValidationError):
+                create_course(owner=self.teacher, name="Race", section="001")
+        with patch("course.services.duplicate_class", side_effect=[False, True]), patch("django.db.models.query.QuerySet.update", side_effect=IntegrityError):
+            with self.assertRaises(ValidationError):
+                update_course(self.course, name="Race", section="001")
