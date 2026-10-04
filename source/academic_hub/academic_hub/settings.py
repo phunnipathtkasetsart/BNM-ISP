@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.postgres',
     'accounts',
     'announcements',
+    'course',
 ]
 
 AUTH_USER_MODEL = "accounts.User"

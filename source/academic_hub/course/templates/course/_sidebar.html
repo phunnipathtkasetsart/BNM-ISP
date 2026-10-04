@@ -1,0 +1,24 @@
+{# Static placeholders only: no assignment, messaging, forum or group integration. #}
+<aside class="course-sidebar" aria-label="Course tools preview">
+  <div class="course-sidebar__label"><span>COURSE TOOLS</span><span class="course-sidebar__preview">Preview</span></div>
+  <section class="course-tool" aria-labelledby="tool-deadlines">
+    <header class="course-tool__header"><span class="course-tool__icon" aria-hidden="true">▦</span><h2 id="tool-deadlines">Upcoming deadlines</h2></header>
+    <div class="course-tool__body"><p class="course-tool__empty">Assignment deadlines will appear here.</p><div class="course-tool__skeleton" aria-hidden="true"><span></span><span></span></div></div>
+  </section>
+  <section class="course-tool" aria-labelledby="tool-contact">
+    <header class="course-tool__header"><span class="course-tool__icon" aria-hidden="true">✉</span><h2 id="tool-contact">Academic contact</h2></header>
+    <div class="course-tool__body">
+      <div class="course-tool__row"><div><strong>Lecturer</strong><span class="course-tool__muted">Contact information</span></div><button class="course-tool__button" type="button" disabled>Send message</button></div>
+      <div class="course-tool__row"><div><strong>Teaching assistant</strong><span class="course-tool__muted">Contact information</span></div><button class="course-tool__button" type="button" disabled>Ask question</button></div>
+    </div>
+  </section>
+  <section class="course-tool" aria-labelledby="tool-faq">
+    <header class="course-tool__header"><span class="course-tool__icon" aria-hidden="true">?</span><h2 id="tool-faq">FAQ <small>Course forum</small></h2><button class="course-tool__button" type="button" disabled>+ Ask question</button></header>
+    <div class="course-tool__body"><label class="sr-only" for="course-forum-preview">Search course questions (preview)</label><input id="course-forum-preview" class="course-tool__search" type="search" placeholder="Search course questions…" disabled><p class="course-tool__empty">Course questions and answers will appear here.</p></div>
+  </section>
+  <section class="course-tool" aria-labelledby="tool-groups">
+    <header class="course-tool__header"><span class="course-tool__icon" aria-hidden="true">♧</span><h2 id="tool-groups">Group gathering</h2><button class="course-tool__button" type="button" disabled>Join group</button></header>
+    <div class="course-tool__body"><p class="course-tool__empty">Find classmates and project groups here.</p><div class="course-tool__skeleton" aria-hidden="true"><span></span><span></span></div></div>
+  </section>
+  <p class="course-sidebar__note">Coming soon · These tools are not active yet.</p>
+</aside>

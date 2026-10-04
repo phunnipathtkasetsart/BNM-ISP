@@ -1,0 +1,23 @@
+{% extends "course/base.html" %}
+{% block before_course_shell %}
+{% include "course/_deadline_widget.html" %}
+{% endblock %}
+{% block course_layout %}
+<div class="course-detail-layout course-advisor-layout">
+  {{ block.super }}
+  {% include "course/_advisor_dashboard.html" %}
+</div>
+{% endblock %}
+{% block course_content %}
+<div class="course-heading course-dashboard-heading"><div><p class="eyebrow">YOUR LEARNING SPACE</p><h1>My classes</h1></div><div>
+{% if can_create %}<a class="course-btn" href="{% url 'course:create' %}" data-dialog="create-class">+ Create class</a>{% endif %}
+{% if can_join %}<a class="course-btn" href="{% url 'course:join' %}" data-dialog="join-class">+ Join class</a>{% endif %}
+</div></div>
+<div class="course-grid">
+{% for course in courses %}
+<article class="course-card"><a class="course-card-title" href="{% url 'course:detail' course.pk %}"><span class="eyebrow">CLASS</span><h2>{{ course.name }}</h2>{% if course.section %}<span class="course-badge">Sec {{ course.section }}</span>{% endif %}</a><div class="course-card-body"><p class="eyebrow">LECTURER</p><p>{{ course.owner.get_full_name }}</p></div><div class="course-card-foot"><a href="{% url 'course:detail' course.pk %}">Open class <span aria-hidden="true">↗</span></a>{% if course.owner_id == request.user.pk %}<span class="course-badge">Teaching</span>{% else %}<span class="course-badge">Enrolled</span>{% endif %}</div></article>
+{% empty %}<div class="course-empty"><div class="empty-icon" aria-hidden="true">▤</div><h2>Your first class starts here</h2><p>{% if can_create %}Create a class, then share its code to invite students.{% elif can_join %}Ask your lecturer for a class code to get started.{% else %}Your classes will appear here when available.{% endif %}</p></div>{% endfor %}
+</div>
+{% if can_create %}<dialog class="course-dialog" id="create-class" aria-labelledby="create-title"><div class="dialog-heading"><h2 id="create-title">Create class</h2><button type="button" data-close-dialog aria-label="Close">×</button></div><p>Enter your class name and section. A unique class code is created for you.</p><form method="post" action="{% url 'course:create' %}">{% csrf_token %}{{ create_form.as_p }}<div class="course-actions"><button class="course-btn secondary" type="button" data-close-dialog>Cancel</button><button class="course-btn" type="submit">Create class</button></div></form></dialog>{% endif %}
+{% if can_join %}<dialog class="course-dialog" id="join-class" aria-labelledby="join-title"><div class="dialog-heading"><h2 id="join-title">Join class</h2><button type="button" data-close-dialog aria-label="Close">×</button></div><p>Enter the 6-character code shared by your lecturer.</p><form method="post" action="{% url 'course:join' %}">{% csrf_token %}{{ join_form.as_p }}<div class="course-actions"><button class="course-btn secondary" type="button" data-close-dialog>Cancel</button><button class="course-btn" type="submit">Join class</button></div></form></dialog>{% endif %}
+{% endblock %}

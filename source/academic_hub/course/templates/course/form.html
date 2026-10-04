@@ -1,0 +1,5 @@
+{% extends "course/base.html" %}
+{% block course_content %}
+<a class="course-back" href="{% if course %}{% url 'course:detail' course.pk %}{% else %}{% url 'course:dashboard' %}{% endif %}">← Back</a>
+<section class="course-form-panel"><p class="eyebrow">COURSE</p><h1>{{ title }}</h1><form method="post">{% csrf_token %}{{ form.as_p }}<div class="course-actions"><a class="course-btn secondary" href="{% if course %}{% url 'course:detail' course.pk %}{% else %}{% url 'course:dashboard' %}{% endif %}">Cancel</a><button class="course-btn" type="submit">{{ title }}</button></div></form>{% block after_form %}{% endblock %}</section>
+{% endblock %}
