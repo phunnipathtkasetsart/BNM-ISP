@@ -1,9 +1,10 @@
 from functools import wraps
 
+from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
 from django.db.models import Q
 from django.http import Http404, JsonResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 
 from accounts.middleware import is_guest_request
 from .models import Course, Enrollment
@@ -46,7 +47,8 @@ def course_access(*, owner=False, lecturer=False, student=False):
                 except Http404:
                     if api:
                         return JsonResponse({"error": "Class not found."}, status=404)
-                    raise
+                    messages.warning(request, "This class is no longer available to you. It may have been deleted or your access may have changed. Please contact your lecturer if you need help.")
+                    return redirect("course:dashboard")
             return view(request, *args, **kwargs)
         return wrapped
     return decorate

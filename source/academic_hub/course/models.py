@@ -3,6 +3,7 @@ import secrets
 from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
+from django.db.models.functions import Lower, Trim
 
 
 def generate_class_code():
@@ -21,6 +22,10 @@ class Course(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-pk"]
+        constraints = [models.UniqueConstraint(
+            models.F("owner"), Lower(Trim("name")), Lower(Trim("section")),
+            name="unique_owner_class_section",
+        )]
 
     def __str__(self):
         return self.name
