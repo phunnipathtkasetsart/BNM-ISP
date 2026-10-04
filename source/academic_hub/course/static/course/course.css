@@ -510,3 +510,17 @@
 @media (max-width: 650px) {
   .course-detail-layout { width: calc(100% - 20px); margin: 12px auto; gap: 16px; }
 }
+
+/* Advisor contact preview on the class selection dashboard. */
+.advisor-dashboard {
+  min-height: 0;
+}
+.advisor-dashboard .course-tool__row {
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+/* Align the deadline panel with the dashboard's two-column layout. */
+.stage:has(.course-advisor-layout) > .deadline-widget {
+  max-width: 1600px;
+}

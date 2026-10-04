@@ -1,5 +1,13 @@
 {% extends "course/base.html" %}
-{% block before_course_shell %}{% include "course/_deadline_widget.html" %}{% endblock %}
+{% block before_course_shell %}
+{% include "course/_deadline_widget.html" %}
+{% endblock %}
+{% block course_layout %}
+<div class="course-detail-layout course-advisor-layout">
+  {{ block.super }}
+  {% include "course/_advisor_dashboard.html" %}
+</div>
+{% endblock %}
 {% block course_content %}
 <div class="course-heading course-dashboard-heading"><div><p class="eyebrow">YOUR LEARNING SPACE</p><h1>My classes</h1></div><div>
 {% if can_create %}<a class="course-btn" href="{% url 'course:create' %}" data-dialog="create-class">+ Create class</a>{% endif %}
