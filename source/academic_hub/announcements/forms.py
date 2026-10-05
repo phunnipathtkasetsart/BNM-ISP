@@ -47,7 +47,20 @@ class AnnouncementForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.author = author
         self.fields["deadline"].input_formats = ["%Y-%m-%dT%H:%M"]
-        self.fields["tags"].queryset = Tag.objects.all()
+        # Who may tag what, decided by kind rather than a list of slugs,
+        # so a new scholarship or programme tag reaches the right role
+        # without touching this file. Syllabus is TOPIC and is offered to
+        # nobody here: it belongs to a course, which is a later iteration.
+        if author is not None and author.is_superuser:
+            allowed = [
+                Tag.Kind.DEPARTMENT,
+                Tag.Kind.SCHOLARSHIP,
+                Tag.Kind.LAB,
+                Tag.Kind.PROGRAMME,
+            ]
+        else:
+            allowed = [Tag.Kind.LAB, Tag.Kind.PROGRAMME]
+        self.fields["tags"].queryset = Tag.objects.filter(kind__in=allowed)
         # Tag.__str__ is "#slug"; the board chips show the label. Match them.
         self.fields["tags"].label_from_instance = lambda tag: f"#{tag.label}"
 
@@ -55,15 +68,11 @@ class AnnouncementForm(forms.ModelForm):
         # "everyone, including guests" would put course-level notices on the
         # public board, which is exactly what the guest filter exists to stop.
         if author is not None and not author.is_superuser:
-            # Lab notices are department business, so a lecturer is not even
-            # offered the tag. clean_tags() checks again, since removing an
-            # option from a checkbox list is not a restriction.
-            self.fields["tags"].queryset = Tag.objects.exclude(kind=Tag.Kind.LAB)
-            # Restricting the queryset is what actually rejects a posted lab
-            # tag, so the default "N is not one of the available choices" is
-            # what a lecturer would read. Say why instead.
+            # Narrowing the queryset is what rejects a tag a lecturer may
+            # not use, so the default "N is not one of the available
+            # choices" is what they would read. Say why instead.
             self.fields["tags"].error_messages["invalid_choice"] = (
-                "Only the Department can post a lab announcement."
+                "Lecturers can tag Lab, SKE and CPE only."
             )
             self.fields["audience"].choices = [
                 (value, label) for value, label in Audience.choices
@@ -80,19 +89,25 @@ class AnnouncementForm(forms.ModelForm):
             raise forms.ValidationError("That deadline has already passed.")
         return deadline
 
-    def clean_tags(self):
-        """Only the Department may attach a lab tag.
+    # A lecturer may tag Lab, SKE and CPE. The Department may also tag
+    # Department and Scholarship. Nobody tags Syllabus here; that belongs to
+    # a course and arrives with the course engine.
+    LECTURER_KINDS = {Tag.Kind.LAB, Tag.Kind.PROGRAMME}
 
-        The queryset above hides the option, but a checkbox list is posted as
+    def clean_tags(self):
+        """Re-check the tags a lecturer is allowed to use.
+
+        The queryset above hides the options, but a checkbox list is posted as
         plain IDs and anyone can add one. This is the check that holds.
         """
         tags = self.cleaned_data.get("tags")
         if tags is None:
             return tags
         if self.author is not None and not self.author.is_superuser:
-            if any(t.kind == Tag.Kind.LAB for t in tags):
+            refused = [t for t in tags if t.kind not in self.LECTURER_KINDS]
+            if refused:
                 raise forms.ValidationError(
-                    "Only the Department can post a lab announcement."
+                    "Lecturers can tag Lab, SKE and CPE only."
                 )
         return tags
 

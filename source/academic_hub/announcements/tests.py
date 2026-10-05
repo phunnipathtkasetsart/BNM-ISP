@@ -219,10 +219,12 @@ class RoleVisibilityTests(TestCase):
 
 
 class LabTagTests(TestCase):
-    """Lab notices are department business and never public.
+    """Who may attach which tag, and what a guest may still not see.
 
-    US-02 says internal lab posts stay hidden from unauthenticated readers,
-    and the team's rule is that only the Department may post one.
+    A lecturer may tag Lab, SKE and CPE. The Department may also tag
+    Department and Scholarship. Nobody posts Syllabus from this form.
+    US-02 still holds separately: a lab post never reaches a guest,
+    whoever wrote it.
     """
 
     @classmethod
@@ -252,14 +254,13 @@ class LabTagTests(TestCase):
         )
         cls.lab_post.tags.set([cls.lab])
 
-    def test_a_lecturer_cannot_post_a_lab_tag(self):
+    def test_a_lecturer_can_post_a_lab_tag(self):
         form = AnnouncementForm(
             data={"title": "x", "body": "y", "audience": Audience.STAFF,
                   "tags": [self.lab.pk]},
             author=self.lecturer,
         )
-        self.assertFalse(form.is_valid())
-        self.assertIn("Department", form.errors["tags"][0])
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_the_department_can_post_a_lab_tag(self):
         form = AnnouncementForm(
@@ -269,13 +270,31 @@ class LabTagTests(TestCase):
         )
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test_a_lecturer_may_still_use_an_ordinary_tag(self):
+    def test_a_lecturer_cannot_post_a_department_tag(self):
         form = AnnouncementForm(
             data={"title": "x", "body": "y", "audience": Audience.STUDENTS,
                   "tags": [self.dept_tag.pk]},
             author=self.lecturer,
         )
-        self.assertTrue(form.is_valid(), form.errors)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Lab, SKE and CPE", form.errors["tags"][0])
+
+    def test_only_the_department_is_offered_scholarship(self):
+        money = Tag.objects.create(
+            slug="scholarship-5a", label="5A", kind=Tag.Kind.SCHOLARSHIP
+        )
+        offered = AnnouncementForm(author=self.lecturer).fields["tags"].queryset
+        self.assertNotIn(money, offered)
+        offered = AnnouncementForm(author=self.department).fields["tags"].queryset
+        self.assertIn(money, offered)
+
+    def test_syllabus_is_offered_to_nobody(self):
+        syllabus = Tag.objects.create(
+            slug="syllabus", label="Syllabus", kind=Tag.Kind.TOPIC
+        )
+        for who in (self.lecturer, self.department):
+            offered = AnnouncementForm(author=who).fields["tags"].queryset
+            self.assertNotIn(syllabus, offered)
 
     def test_a_public_item_tagged_lab_is_still_hidden_from_guests(self):
         """Belt and braces: mistagging must not leak an internal notice."""

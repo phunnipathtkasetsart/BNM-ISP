@@ -1,239 +1,243 @@
-"""Announcements, FAQs and the tags that decide who sees what.
-
-Visibility in this app is tag-driven rather than hard-coded per role. An
-announcement carries an audience (who it is addressed to) and any number of
-tags (what it is about). A reader sees an item when their role clears the
-audience and, for course-scoped items, when they are enrolled on the tagged
-course.
-
-Course enrolment does not exist yet - the Course & Class Code engine is
-Iteration 3 - so `Announcement.visible_to()` currently resolves the guest and
-department cases fully and leaves a single, clearly marked hook for course
-membership. Nothing else needs to change when IT-3 lands.
-"""
-
-from datetime import timedelta
-
-from django.conf import settings
-from django.contrib.postgres.indexes import GinIndex
-from django.contrib.postgres.search import SearchVectorField
-from django.db import models
-from django.db.models import Count, Q
-from django.utils import timezone
-
-
-class Tag(models.Model):
-    """A label. `kind` is what makes tag-based visibility possible.
-
-    DEPARTMENT and TOPIC tags are open to everyone. COURSE tags scope an item
-    to the students enrolled on that course, which is why the kind has to be
-    stored rather than inferred from the name.
-    """
-
-    class Kind(models.TextChoices):
-        DEPARTMENT = "department", "Department"
-        COURSE = "course", "Course"
-        # Internal lab notices. US-02 says these stay hidden from
-        # unauthenticated readers, and only the Department may post them.
-        LAB = "lab", "Lab"
-        # A degree programme. Scopes an item to students of that
-        # programme, the way COURSE scopes to a course.
-        PROGRAMME = "programme", "Programme"
-        TOPIC = "topic", "Topic"
-
-    slug = models.SlugField(max_length=60, unique=True)
-    label = models.CharField(max_length=80)
-    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.TOPIC)
-
-    class Meta:
-        ordering = ["kind", "label"]
-
-    def __str__(self):
-        return f"#{self.slug}"
-
-
-class PublishedQuerySet(models.QuerySet):
-    """Shared by both content models - they answer the same two questions."""
-
-    def published(self):
-        return self.filter(is_published=True, published_at__lte=timezone.now())
-
-    def for_guest(self):
-        """What someone who is not signed in may read.
-
-        Deliberately strict: public audience only, and never anything carrying
-        a course or lab tag. A guest cannot be enrolled on a course, and US-02
-        says internal lab posts stay hidden from unauthenticated readers, so
-        the tag is excluded here as well as the audience. Belt and braces:
-        mistagging a public item should not leak it.
-        """
-        return (
-            self.published()
-            .filter(audience=Audience.PUBLIC)
-            .exclude(tags__kind__in=[
-                Tag.Kind.COURSE, Tag.Kind.LAB, Tag.Kind.PROGRAMME])
-        )
-
-    def visible_to(self, user, is_guest=False):
-        """Everything this reader may see, widening by role.
-
-        One method, used by the board and by search, so the two cannot
-        disagree about what someone is allowed to read.
-
-            guest / anonymous  public only
-            student            public + students
-            lecturer           public + students + staff
-            department         everything, including unpublished drafts
-
-        A guest is signed in as a generated account, so `is_guest` has to be
-        passed in - the flags on the row are identical to a student's.
-        """
-        if is_guest or not user.is_authenticated:
-            return self.for_guest()
-
-        # The department owns the board and has to be able to reach a draft in
-        # order to publish it, so it is the only role not filtered by state.
-        if user.is_superuser:
-            return self.all()
-
-        allowed = [Audience.PUBLIC, Audience.STUDENTS]
-        if user.is_staff:
-            allowed.append(Audience.STAFF)
-        return (
-            self.published()
-            .filter(audience__in=allowed)
-            .for_programme(user.department)
-        )
-
-    def for_programme(self, department):
-        """Drop items scoped to a programme that is not this reader's.
-
-        Only programme tags are consulted, so an untagged item stays
-        visible to everyone. The department is matched case-insensitively
-        because the column holds both "SKE" and "ske".
-        """
-        mine = Tag.objects.filter(
-            kind=Tag.Kind.PROGRAMME, slug__iexact=(department or "").strip()
-        )
-        # Counted rather than excluded, because a post can carry several
-        # programme tags. Asking "does it carry someone else's" hid a post
-        # tagged both SKE and CPE from both of them. The rule is: keep it
-        # if it is scoped to no programme, or to one of mine.
-        return self.annotate(
-            programme_tags=Count(
-                "tags", filter=Q(tags__kind=Tag.Kind.PROGRAMME), distinct=True
-            ),
-            my_programme_tags=Count("tags", filter=Q(tags__in=mine), distinct=True),
-        ).filter(
-            Q(programme_tags=0) | Q(my_programme_tags__gt=0)
-        # An aggregate annotation drops Meta.ordering, so the newest post
-        # sank to the bottom for every role that goes through here.
-        # State the ordering again rather than rely on the default.
-        # for_programme() is shared with Faq, which has no is_urgent, so
-        # re-apply whichever default the model declares.
-        ).order_by(*self.model._meta.ordering)
-
-
-class Audience(models.TextChoices):
-    """Who an item is addressed to, widest first."""
-
-    PUBLIC = "public", "Everyone, including guests"
-    STUDENTS = "students", "Signed-in students"
-    STAFF = "staff", "Lecturers and department only"
-
-
-class Announcement(models.Model):
-    title = models.CharField(max_length=200)
-    body = models.TextField()
-
-    audience = models.CharField(
-        max_length=20, choices=Audience.choices, default=Audience.PUBLIC
-    )
-    tags = models.ManyToManyField(Tag, blank=True, related_name="announcements")
-
-    # Pinned above everything else in its list. Kept separate from ordering by
-    # date so an old but still-critical notice does not sink out of sight.
-    is_urgent = models.BooleanField(default=False)
-    # A soft deadline shown as "DEADLINE NEAR" once it is close.
-    deadline = models.DateTimeField(null=True, blank=True)
-
-    author = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="announcements",
-        # The Users table is unmanaged and lives in another Postgres schema, so
-        # the database-level constraint is left off. Django still resolves the
-        # relation; it just does not ask Postgres to enforce it across schemas.
-        db_constraint=False,
-    )
-    # Shown as the byline. Stored rather than derived from `author` so an
-    # announcement keeps its attribution if the account is later removed.
-    author_label = models.CharField(max_length=80, default="Department")
-
-    is_published = models.BooleanField(default=True)
-    published_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    search_vector = SearchVectorField(null=True, editable=False)
-
-    objects = PublishedQuerySet.as_manager()
-
-    class Meta:
-        ordering = ["-is_urgent", "-published_at"]
-        indexes = [
-            GinIndex(fields=["search_vector"], name="ann_search_gin"),
-            models.Index(fields=["audience", "-published_at"], name="ann_audience_date"),
-        ]
-
-    def __str__(self):
-        return self.title
-
-    # Seven days, because a week is the shortest span in which a student can
-    # realistically still act on a deadline they have just noticed.
-    DEADLINE_WARNING_DAYS = 7
-
-    @property
-    def deadline_near(self):
-        """True when the deadline is close but has not passed."""
-        if not self.deadline:
-            return False
-        remaining = self.deadline - timezone.now()
-        return timedelta(0) <= remaining <= timedelta(days=self.DEADLINE_WARNING_DAYS)
-
-    @property
-    def deadline_passed(self):
-        return bool(self.deadline) and self.deadline < timezone.now()
-
-
-class Faq(models.Model):
-    question = models.CharField(max_length=250)
-    answer = models.TextField()
-
-    audience = models.CharField(
-        max_length=20, choices=Audience.choices, default=Audience.PUBLIC
-    )
-    tags = models.ManyToManyField(Tag, blank=True, related_name="faqs")
-
-    # FAQs are read in a curated order, not by date, so position is explicit.
-    position = models.PositiveIntegerField(default=0)
-
-    is_published = models.BooleanField(default=True)
-    published_at = models.DateTimeField(default=timezone.now)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    search_vector = SearchVectorField(null=True, editable=False)
-
-    objects = PublishedQuerySet.as_manager()
-
-    class Meta:
-        ordering = ["position", "id"]
-        verbose_name = "FAQ"
-        verbose_name_plural = "FAQs"
-        indexes = [
-            GinIndex(fields=["search_vector"], name="faq_search_gin"),
-        ]
-
-    def __str__(self):
-        return self.question
+"""Announcements, FAQs and the tags that decide who sees what.
+
+Visibility in this app is tag-driven rather than hard-coded per role. An
+announcement carries an audience (who it is addressed to) and any number of
+tags (what it is about). A reader sees an item when their role clears the
+audience and, for course-scoped items, when they are enrolled on the tagged
+course.
+
+Course enrolment does not exist yet - the Course & Class Code engine is
+Iteration 3 - so `Announcement.visible_to()` currently resolves the guest and
+department cases fully and leaves a single, clearly marked hook for course
+membership. Nothing else needs to change when IT-3 lands.
+"""
+
+from datetime import timedelta
+
+from django.conf import settings
+from django.contrib.postgres.indexes import GinIndex
+from django.contrib.postgres.search import SearchVectorField
+from django.db import models
+from django.db.models import Count, Q
+from django.utils import timezone
+
+
+class Tag(models.Model):
+    """A label. `kind` is what makes tag-based visibility possible.
+
+    DEPARTMENT and TOPIC tags are open to everyone. COURSE tags scope an item
+    to the students enrolled on that course, which is why the kind has to be
+    stored rather than inferred from the name.
+    """
+
+    class Kind(models.TextChoices):
+        DEPARTMENT = "department", "Department"
+        COURSE = "course", "Course"
+        # Internal lab notices. US-02 says these stay hidden from
+        # unauthenticated readers, and only the Department may post them.
+        LAB = "lab", "Lab"
+        # A degree programme. Scopes an item to students of that
+        # programme, the way COURSE scopes to a course.
+        PROGRAMME = "programme", "Programme"
+        # Scholarships are department business and need their own kind:
+        # they used to be TOPIC, which made them indistinguishable from
+        # syllabus tags when deciding who may post what.
+        SCHOLARSHIP = "scholarship", "Scholarship"
+        TOPIC = "topic", "Topic"
+
+    slug = models.SlugField(max_length=60, unique=True)
+    label = models.CharField(max_length=80)
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.TOPIC)
+
+    class Meta:
+        ordering = ["kind", "label"]
+
+    def __str__(self):
+        return f"#{self.slug}"
+
+
+class PublishedQuerySet(models.QuerySet):
+    """Shared by both content models - they answer the same two questions."""
+
+    def published(self):
+        return self.filter(is_published=True, published_at__lte=timezone.now())
+
+    def for_guest(self):
+        """What someone who is not signed in may read.
+
+        Deliberately strict: public audience only, and never anything carrying
+        a course or lab tag. A guest cannot be enrolled on a course, and US-02
+        says internal lab posts stay hidden from unauthenticated readers, so
+        the tag is excluded here as well as the audience. Belt and braces:
+        mistagging a public item should not leak it.
+        """
+        return (
+            self.published()
+            .filter(audience=Audience.PUBLIC)
+            .exclude(tags__kind__in=[
+                Tag.Kind.COURSE, Tag.Kind.LAB, Tag.Kind.PROGRAMME])
+        )
+
+    def visible_to(self, user, is_guest=False):
+        """Everything this reader may see, widening by role.
+
+        One method, used by the board and by search, so the two cannot
+        disagree about what someone is allowed to read.
+
+            guest / anonymous  public only
+            student            public + students
+            lecturer           public + students + staff
+            department         everything, including unpublished drafts
+
+        A guest is signed in as a generated account, so `is_guest` has to be
+        passed in - the flags on the row are identical to a student's.
+        """
+        if is_guest or not user.is_authenticated:
+            return self.for_guest()
+
+        # The department owns the board and has to be able to reach a draft in
+        # order to publish it, so it is the only role not filtered by state.
+        if user.is_superuser:
+            return self.all()
+
+        allowed = [Audience.PUBLIC, Audience.STUDENTS]
+        if user.is_staff:
+            allowed.append(Audience.STAFF)
+        return (
+            self.published()
+            .filter(audience__in=allowed)
+            .for_programme(user.department)
+        )
+
+    def for_programme(self, department):
+        """Drop items scoped to a programme that is not this reader's.
+
+        Only programme tags are consulted, so an untagged item stays
+        visible to everyone. The department is matched case-insensitively
+        because the column holds both "SKE" and "ske".
+        """
+        mine = Tag.objects.filter(
+            kind=Tag.Kind.PROGRAMME, slug__iexact=(department or "").strip()
+        )
+        # Counted rather than excluded, because a post can carry several
+        # programme tags. Asking "does it carry someone else's" hid a post
+        # tagged both SKE and CPE from both of them. The rule is: keep it
+        # if it is scoped to no programme, or to one of mine.
+        return self.annotate(
+            programme_tags=Count(
+                "tags", filter=Q(tags__kind=Tag.Kind.PROGRAMME), distinct=True
+            ),
+            my_programme_tags=Count("tags", filter=Q(tags__in=mine), distinct=True),
+        ).filter(
+            Q(programme_tags=0) | Q(my_programme_tags__gt=0)
+        # An aggregate annotation drops Meta.ordering, so the newest post
+        # sank to the bottom for every role that goes through here.
+        # State the ordering again rather than rely on the default.
+        # for_programme() is shared with Faq, which has no is_urgent, so
+        # re-apply whichever default the model declares.
+        ).order_by(*self.model._meta.ordering)
+
+
+class Audience(models.TextChoices):
+    """Who an item is addressed to, widest first."""
+
+    PUBLIC = "public", "Everyone, including guests"
+    STUDENTS = "students", "Signed-in students"
+    STAFF = "staff", "Lecturers and department only"
+
+
+class Announcement(models.Model):
+    title = models.CharField(max_length=200)
+    body = models.TextField()
+
+    audience = models.CharField(
+        max_length=20, choices=Audience.choices, default=Audience.PUBLIC
+    )
+    tags = models.ManyToManyField(Tag, blank=True, related_name="announcements")
+
+    # Pinned above everything else in its list. Kept separate from ordering by
+    # date so an old but still-critical notice does not sink out of sight.
+    is_urgent = models.BooleanField(default=False)
+    # A soft deadline shown as "DEADLINE NEAR" once it is close.
+    deadline = models.DateTimeField(null=True, blank=True)
+
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="announcements",
+        # The Users table is unmanaged and lives in another Postgres schema, so
+        # the database-level constraint is left off. Django still resolves the
+        # relation; it just does not ask Postgres to enforce it across schemas.
+        db_constraint=False,
+    )
+    # Shown as the byline. Stored rather than derived from `author` so an
+    # announcement keeps its attribution if the account is later removed.
+    author_label = models.CharField(max_length=80, default="Department")
+
+    is_published = models.BooleanField(default=True)
+    published_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    search_vector = SearchVectorField(null=True, editable=False)
+
+    objects = PublishedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-is_urgent", "-published_at"]
+        indexes = [
+            GinIndex(fields=["search_vector"], name="ann_search_gin"),
+            models.Index(fields=["audience", "-published_at"], name="ann_audience_date"),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    # Seven days, because a week is the shortest span in which a student can
+    # realistically still act on a deadline they have just noticed.
+    DEADLINE_WARNING_DAYS = 7
+
+    @property
+    def deadline_near(self):
+        """True when the deadline is close but has not passed."""
+        if not self.deadline:
+            return False
+        remaining = self.deadline - timezone.now()
+        return timedelta(0) <= remaining <= timedelta(days=self.DEADLINE_WARNING_DAYS)
+
+    @property
+    def deadline_passed(self):
+        return bool(self.deadline) and self.deadline < timezone.now()
+
+
+class Faq(models.Model):
+    question = models.CharField(max_length=250)
+    answer = models.TextField()
+
+    audience = models.CharField(
+        max_length=20, choices=Audience.choices, default=Audience.PUBLIC
+    )
+    tags = models.ManyToManyField(Tag, blank=True, related_name="faqs")
+
+    # FAQs are read in a curated order, not by date, so position is explicit.
+    position = models.PositiveIntegerField(default=0)
+
+    is_published = models.BooleanField(default=True)
+    published_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    search_vector = SearchVectorField(null=True, editable=False)
+
+    objects = PublishedQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["position", "id"]
+        verbose_name = "FAQ"
+        verbose_name_plural = "FAQs"
+        indexes = [
+            GinIndex(fields=["search_vector"], name="faq_search_gin"),
+        ]
+
+    def __str__(self):
+        return self.question
