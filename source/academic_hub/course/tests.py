@@ -187,7 +187,7 @@ class CourseTests(TestCase):
 
     def test_section_is_required_and_limited_on_create_and_edit(self):
         self.sign_in(self.teacher)
-        for section in [None, "", "   ", "x" * 21]:
+        for section in [None, "", "   ", "1" * 21, "A01", "1.5", "-1", "+1", "1e3", "0 01", "๑๒๓", "１２３"]:
             data = {"name": "Valid name"}
             if section is not None:
                 data["section"] = section
@@ -430,8 +430,8 @@ class CourseTests(TestCase):
 
     def test_duplicate_create_edit_and_normalization(self):
         self.sign_in(self.teacher)
-        course = create_course(owner=self.teacher, name="Algorithms", section="A01")
-        data = {"name": " algorithms ", "section": " a01 "}
+        course = create_course(owner=self.teacher, name="Algorithms", section="001")
+        data = {"name": " algorithms ", "section": " 001 "}
         for action, args in [("create", ()), ("api_create", ()), ("edit", (self.course.pk,)), ("api_edit", (self.course.pk,))]:
             response = self.client.post(self.url(action, *args), data)
             self.assertEqual(response.status_code, 400)
@@ -439,7 +439,7 @@ class CourseTests(TestCase):
         self.course.refresh_from_db()
         self.assertEqual(self.course.name, "Software Engineering")
         self.assertEqual(self.client.post(self.url("api_edit", course.pk), data).status_code, 200)
-        self.assertEqual(self.client.post(self.url("api_create"), {"name": "Algorithms", "section": "A02"}).status_code, 201)
+        self.assertEqual(self.client.post(self.url("api_create"), {"name": "Algorithms", "section": "002"}).status_code, 201)
         self.sign_in(self.other_teacher)
         self.assertEqual(self.client.post(self.url("api_create"), data).status_code, 201)
 
