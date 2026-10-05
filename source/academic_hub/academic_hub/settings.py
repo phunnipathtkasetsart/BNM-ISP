@@ -154,6 +154,12 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+#media files (user-uploaded content)
+MEDIA_ROOT = BASE_DIR / "media"
+MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "50"))
+MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+
+
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
