@@ -4,7 +4,8 @@ import re
 
 from django import forms
 from django.contrib.auth import get_user_model
-
+from .models import CoursePost
+from .validators import validate_upload_size
 
 class CourseForm(forms.Form):
     section = forms.RegexField(
@@ -107,3 +108,22 @@ class CsvRosterForm(forms.Form):
             raise forms.ValidationError("CSV contains no student IDs.")
         self.students, self.rejected, self.duplicate_count = classify_students(ids)
         return upload
+
+
+
+class CoursePostForm(forms.ModelForm):
+    attachment = forms.FileField(
+        required=False,
+        label="File attachment",
+        help_text="Optional file (up to 50 MB)",
+        validators=[validate_upload_size],
+        widget=forms.FileInput(attrs={"class": "form-control"}),
+    )
+
+    class Meta:
+        model = CoursePost
+        fields = ["title", "body"]
+        widgets = {
+            "title": forms.TextInput(attrs={"placeholder": "Announcement Title", "class": "form-control"}),
+            "body": forms.Textarea(attrs={"placeholder": "Write your announcement content here...", "rows": 4, "class": "form-control"}),
+        }

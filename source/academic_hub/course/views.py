@@ -2,12 +2,13 @@ import json
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.db import transaction
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .forms import CourseForm, CsvRosterForm, JoinForm, RosterForm
-from .models import Course, Enrollment
+from .forms import CourseForm, CoursePostForm, CsvRosterForm, JoinForm, RosterForm
+from .models import Course, CoursePost, Enrollment, PostAttachment
 from .permissions import can_teach, course_access, visible_courses
 from .services import add_students, create_course, update_course
 
@@ -101,14 +102,29 @@ def join(request):
     return render(request, "course/form.html", {"form": form, "title": "Join class"})
 
 
+def detail_context(request, post_form=None):
+    course = request.course
+    if post_form is None and request.can_manage_content:
+        post_form = CoursePostForm()
+    return {
+        "course": course,
+        "posts": course.posts.select_related("author").prefetch_related("attachments"),
+        "post_form": post_form,
+        "can_manage": request.can_manage_roster,
+        "can_manage_content": request.can_manage_content,
+        "can_delete_any": request.is_owner or request.is_dept_override,
+    }
+
+
 @course_access()
 @require_http_methods(["GET"])
 def detail(request, pk):
-    course = request.course
     if api_request(request):
-        return JsonResponse(course_data(course, request.user))
-    return render(request, "course/detail.html", {"course": course,
-                  "can_manage": course.owner_id == request.user.pk and can_teach(request.user)})
+        data = course_data(request.course, request.user)
+        data["can_manage_content"] = request.can_manage_content
+        data["can_manage_roster"] = request.can_manage_roster
+        return JsonResponse(data)
+    return render(request, "course/detail.html", detail_context(request))
 
 
 def render_members(request, *, form=None, csv_form=None, import_report=None, status=200):
@@ -116,7 +132,7 @@ def render_members(request, *, form=None, csv_form=None, import_report=None, sta
     return render(request, "course/members.html", {
         "course": course,
         "members": course.enrollments.select_related("student"),
-        "can_manage": course.owner_id == request.user.pk and can_teach(request.user),
+        "can_manage": request.can_manage_roster,
         "roster_form": form if form is not None else RosterForm(),
         "csv_form": csv_form if csv_form is not None else CsvRosterForm(),
         "import_report": import_report,
@@ -178,7 +194,6 @@ def import_members(request, pk):
     return finish_import(request, form, csv=False)
 
 
-
 @course_access(owner=True)
 @require_POST
 def remove_member(request, pk, student_id):
@@ -214,3 +229,58 @@ def finish_import(request, form, *, csv):
     messages.success(request, f"Added {added} student(s); {result['already_enrolled']} already enrolled; "
                      f"{result['duplicates_skipped']} duplicate row(s) skipped.")
     return redirect("course:members_page", pk=request.course.pk)
+
+
+# --- Task 4.3: announcements and attachments ---------------------------------
+
+@course_access(manage_content=True)
+@require_POST
+def create_post(request, pk):
+    form = CoursePostForm(request.POST, request.FILES)
+    if not form.is_valid():
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        return render(request, "course/detail.html", detail_context(request, form), status=400)
+
+    with transaction.atomic():
+        post = form.save(commit=False)
+        post.course = request.course
+        post.author = request.user
+        post.save()
+        upload = form.cleaned_data.get("attachment")
+        if upload:
+            PostAttachment.objects.create(post=post, file=upload)
+
+    if api_request(request):
+        return JsonResponse({"id": post.pk, "title": post.title}, status=201)
+    messages.success(request, "Announcement posted.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access(manage_content=True)
+@require_POST
+def delete_post(request, pk, post_id):
+    post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
+    if not (request.is_owner or request.is_dept_override) and post.author_id != request.user.pk:
+        if api_request(request):
+            return JsonResponse({"error": "You can only delete your own announcements."}, status=403)
+        messages.error(request, "You can only delete your own announcements.")
+        return redirect("course:detail", pk=pk)
+    post.delete()
+    if api_request(request):
+        return JsonResponse({"deleted": True})
+    messages.success(request, "Announcement deleted.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access()
+@require_http_methods(["GET"])
+def download_attachment(request, pk, attachment_id):
+    attachment = get_object_or_404(PostAttachment, pk=attachment_id, post__course=request.course)
+    if not attachment.file or not attachment.file.storage.exists(attachment.file.name):
+        raise Http404("Attachment file does not exist on disk.")
+    return FileResponse(
+        attachment.file.open("rb"),
+        as_attachment=True,
+        filename=attachment.original_name or attachment.file.name.split("/")[-1],
+    )

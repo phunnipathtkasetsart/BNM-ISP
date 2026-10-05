@@ -1,16 +1,128 @@
 {% extends "course/base.html" %}
+{% load static course_extras %}
+
+{% block page_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'course/course-content.css' %}">{% endblock %}
+
 {% block course_layout %}
 <div class="course-detail-layout">
   {{ block.super }}
   {% include "course/_sidebar.html" %}
 </div>
 {% endblock %}
+
 {% block course_content %}
 <div class="course-detail-content">
-<div class="course-top-actions">
-<a class="course-back" href="{% url 'course:dashboard' %}">← All classes</a>
-<div class="course-actions">{% if can_manage %}<a class="course-btn secondary" href="{% url 'course:edit' course.pk %}">Edit class</a>{% endif %}<a class="course-btn" href="{% url 'course:members_page' course.pk %}">{% if can_manage %}Manage members{% else %}View members{% endif %}</a></div>
+  <div class="course-top-actions">
+    <a class="course-back" href="{% url 'course:dashboard' %}">← All classes</a>
+    <div class="course-actions">
+      {% if can_manage %}
+        <a class="course-btn secondary" href="{% url 'course:edit' course.pk %}">Edit class</a>
+      {% endif %}
+      <a class="course-btn" href="{% url 'course:members_page' course.pk %}">{% if can_manage %}Manage members{% else %}View members{% endif %}</a>
+    </div>
+  </div>
+
+  <section class="course-hero">
+    <p class="eyebrow">CLASSROOM</p>
+    <h1>{{ course.name }}</h1>
+    {% if course.section %}<p><span class="course-badge">Sec {{ course.section }}</span></p>{% endif %}
+    <p>{{ course.owner.get_full_name }}</p>
+    {% if can_manage %}
+      <div class="course-code">
+        <div><span>Class code</span><strong id="class-code">{{ course.class_code }}</strong></div>
+        <button type="button" class="course-btn secondary" data-copy-code="{{ course.class_code }}">Copy code</button>
+        <span role="status" id="copy-status"></span>
+      </div>
+    {% endif %}
+  </section>
+
+  {# Lecturer and TA choose between reading the course and managing it. Students only see the course. #}
+  {% if can_manage_content %}
+    <div class="cc-tabs" role="tablist" aria-label="Course sections" data-cc-tabs data-storage-key="course-tab-{{ course.pk }}">
+      <button type="button" class="cc-tab" role="tab" id="tab-content" data-panel="panel-content" aria-controls="panel-content" aria-selected="true">Course Content</button>
+      <button type="button" class="cc-tab" role="tab" id="tab-manage" data-panel="panel-manage" aria-controls="panel-manage" aria-selected="false" tabindex="-1">Manage Content</button>
+    </div>
+  {% endif %}
+
+  {# ---- Course Content: what students read ---- #}
+  <section class="cc-panel" id="panel-content" {% if can_manage_content %}role="tabpanel" aria-labelledby="tab-content"{% endif %}>
+    <div class="cc-section">
+      <h2 class="cc-section-title">Announcements <span class="cc-count">{{ posts|length }}</span></h2>
+      {% for post in posts %}
+        {% include "course/_post_card.html" with manage=False %}
+      {% empty %}
+        <p class="cc-empty">No announcements have been posted yet.</p>
+      {% endfor %}
+    </div>
+
+    <div class="cc-section">
+      <h2 class="cc-section-title">Course Materials</h2>
+      <div class="cc-placeholder">
+        <p>Files your lecturer shares, grouped by topic, will appear here.</p>
+        <div class="cc-skeleton" aria-hidden="true"><span></span><span></span></div>
+      </div>
+    </div>
+  </section>
+
+  {# ---- Manage Content: lecturer and TA only ---- #}
+  {% if can_manage_content %}
+    <section class="cc-panel" id="panel-manage" role="tabpanel" aria-labelledby="tab-manage">
+      <div class="cc-section">
+        <h2 class="cc-section-title">New announcement</h2>
+        <form class="cc-form" action="{% url 'course:create_post' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose data-max-mb="50">
+          {% csrf_token %}
+          {% if post_form.errors %}
+  <div class="errorlist" role="alert">
+    {% for errs in post_form.errors.values %}{% for e in errs %}<p>{{ e }}</p>{% endfor %}{% endfor %}
+  </div>
+{% endif %}
+          <div class="cc-field">
+            <label for="{{ post_form.title.id_for_label }}">Title</label>
+            {{ post_form.title }}
+          </div>
+          <div class="cc-field">
+            <label for="{{ post_form.body.id_for_label }}">Message</label>
+            {{ post_form.body }}
+          </div>
+          <div class="cc-field">
+            <label for="{{ post_form.attachment.id_for_label }}">Attach a file <span class="cc-optional">(optional)</span></label>
+            <div class="cc-filebox">
+              <label class="cc-pick" for="{{ post_form.attachment.id_for_label }}">Choose file</label>
+              {{ post_form.attachment }}
+              <span class="cc-names" data-file-names>No file chosen</span>
+            </div>
+            <p class="cc-hint">Students download it from the announcement. Up to 50 MB.</p>
+            <p class="cc-error" data-file-error role="alert" hidden></p>
+          </div>
+          <div class="cc-form__actions">
+            <button type="submit" class="course-btn" data-submit-label="Posting…">Post announcement</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="cc-section">
+        <h2 class="cc-section-title">Posted announcements <span class="cc-count">{{ posts|length }}</span></h2>
+        {% for post in posts %}
+          {% include "course/_post_card.html" with manage=True %}
+        {% empty %}
+          <p class="cc-empty">Nothing posted yet. Your first announcement will show up here.</p>
+        {% endfor %}
+      </div>
+
+      <div class="cc-section">
+        <h2 class="cc-section-title">Course Materials <span class="cc-pill">Coming soon</span></h2>
+        <div class="cc-placeholder">
+          <label for="cc-material-topic">Topic</label>
+          <select id="cc-material-topic" disabled><option>Select or create a topic</option></select>
+          <div class="cc-filebox cc-filebox--disabled">
+            <span class="cc-pick">Choose files</span>
+            <span class="cc-names">No file chosen</span>
+          </div>
+          <button type="button" class="course-btn" disabled>Add material</button>
+        </div>
+      </div>
+    </section>
+  {% endif %}
 </div>
-<section class="course-hero"><p class="eyebrow">CLASSROOM</p><h1>{{ course.name }}</h1>{% if course.section %}<p><span class="course-badge">Sec {{ course.section }}</span></p>{% endif %}<p>{{ course.owner.get_full_name }}</p>{% if can_manage %}<div class="course-code"><div><span>Class code</span><strong id="class-code">{{ course.class_code }}</strong></div><button type="button" class="course-btn secondary" data-copy-code="{{ course.class_code }}">Copy code</button><span role="status" id="copy-status"></span></div>{% endif %}</section>
-</div>
+<script src="{% static 'course/course-tabs.js' %}" defer></script>
 {% endblock %}

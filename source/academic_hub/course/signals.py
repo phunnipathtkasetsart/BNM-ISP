@@ -2,7 +2,7 @@ from django.db import transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
-from .models import Material, PostAttachment
+from .models import CourseTA, Enrollment, Material, PostAttachment
 
 
 def _remove_file(instance):
@@ -13,8 +13,7 @@ def _remove_file(instance):
         transaction.on_commit(lambda: storage.delete(name))
 
 
-@receiver(post_delete, sender=Material)
-@receiver(post_delete, sender=PostAttachment)
-def delete_file_with_row(sender, instance, **kwargs):
-    """Django never removes files itself; deleting a row would orphan it."""
-    _remove_file(instance)
+@receiver(post_delete, sender=Enrollment)
+def drop_ta_with_enrollment(sender, instance, **kwargs):
+    """Removed student loses TA role. Rejoin must not revive it."""
+    CourseTA.objects.filter(course_id=instance.course_id, user_id=instance.student_id).delete()

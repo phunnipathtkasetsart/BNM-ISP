@@ -1,0 +1,263 @@
+/* Announcements and the Course Content / Manage Content switch on the course
+   page. Colours reuse the palette already in course.css. Selectors start from
+   .course-detail-content so they win over the generic .course-shell rules. */
+
+/* ---- tabs ---- */
+.course-detail-content .cc-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 28px 0 24px;
+  border-bottom: 2px solid #e2ebe6;
+  overflow-x: auto;
+}
+.course-detail-content .cc-tab {
+  margin-bottom: -2px;
+  padding: 11px 18px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: #587064;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.course-detail-content .cc-tab:hover { color: #176c5d; }
+.course-detail-content .cc-tab[aria-selected="true"] {
+  color: #176c5d;
+  border-bottom-color: #176c5d;
+}
+.course-detail-content .cc-tab:focus-visible,
+.course-detail-content .cc-icon-btn:focus-visible,
+.course-detail-content .cc-chip:focus-visible {
+  outline: 3px solid #176c5d;
+  outline-offset: 2px;
+}
+.course-detail-content .cc-panel[hidden] { display: none; }
+.course-detail-content .cc-panel { display: grid; gap: 32px; margin-top: 28px; }
+.course-detail-content .cc-tabs + .cc-panel { margin-top: 0; }
+
+/* ---- section headings ---- */
+.course-detail-content .cc-section { display: grid; gap: 14px; }
+.course-detail-content .cc-section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: #4f6a60;
+}
+.course-detail-content .cc-count,
+.course-detail-content .cc-pill {
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: #edf3ef;
+  font-size: 11px;
+  letter-spacing: 0;
+  color: #4f6a60;
+}
+.course-detail-content .cc-empty {
+  margin: 0;
+  padding: 26px 16px;
+  border: 1px dashed #c9dbd2;
+  border-radius: 12px;
+  text-align: center;
+  color: #60776c;
+}
+
+/* ---- announcement card ---- */
+.course-detail-content .cc-post {
+  display: grid;
+  gap: 10px;
+  padding: 20px;
+  border: 1px solid #d8e5df;
+  border-radius: 12px;
+  background: #fff;
+}
+.course-detail-content .cc-post__top { display: flex; align-items: center; gap: 12px; }
+.course-detail-content .cc-avatar {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #e1f0e9;
+  color: #26684f;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.course-detail-content .cc-post__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 8px;
+}
+.course-detail-content .cc-post__name { font-weight: 700; overflow-wrap: anywhere; }
+.course-detail-content .cc-role {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: #60776c;
+}
+.course-detail-content .cc-role--ta { color: #54397d; }
+.course-detail-content .cc-post__when { flex-basis: 100%; font-size: 12px; color: #60776c; }
+.course-detail-content .cc-post__title { margin: 4px 0 0; font-size: 18px; line-height: 1.35; overflow-wrap: anywhere; }
+.course-detail-content .cc-post__body { color: #3f5158; line-height: 1.6; overflow-wrap: anywhere; }
+
+.course-detail-content .cc-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: #183e35;
+  cursor: pointer;
+}
+.course-detail-content .cc-icon-btn:hover { background: #edf5f1; }
+.course-detail-content .cc-icon-btn--danger { color: #a32e36; }
+.course-detail-content .cc-icon-btn--danger:hover { background: #fff0f0; }
+.course-detail-content .cc-icon-btn svg { width: 19px; height: 19px; fill: currentColor; }
+
+/* ---- attachments ---- */
+.course-detail-content .cc-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.course-detail-content .cc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid #d8e5df;
+  border-radius: 10px;
+  background: #f4f8f6;
+  color: #183e35;
+  font-size: 13px;
+  text-decoration: none;
+}
+.course-detail-content .cc-chip:hover { border-color: #176c5d; background: #edf6f2; }
+.course-detail-content .cc-chip__name { font-weight: 600; overflow-wrap: anywhere; }
+.course-detail-content .cc-chip__size { color: #60776c; font-size: 12px; white-space: nowrap; }
+.course-detail-content .cc-chip__dl { color: #176c5d; font-weight: 700; font-size: 12px; }
+.course-detail-content .cc-ext {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid currentColor;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  background: #fff;
+}
+.course-detail-content .cc-ext--pdf { color: #b3412f; }
+.course-detail-content .cc-ext--zip { color: #b07a1c; }
+.course-detail-content .cc-ext--doc { color: #2f5f9e; }
+.course-detail-content .cc-ext--img { color: #7a4a9e; }
+.course-detail-content .cc-ext--txt { color: #5b6b70; }
+
+/* ---- compose form ---- */
+.course-detail-content .cc-form {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid #d8e5df;
+  border-radius: 12px;
+  background: #f4f8f6;
+}
+.course-detail-content .cc-field { display: grid; gap: 0; }
+.course-detail-content .cc-field > label { margin-bottom: 8px; }
+.course-detail-content .cc-optional { font-weight: 400; color: #60776c; }
+.course-detail-content .cc-form textarea { min-height: 120px; }
+.course-detail-content .cc-hint { margin: 8px 0 0; font-size: 12px; color: #587064; }
+.course-detail-content .cc-error { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: #a32e36; }
+.course-detail-content .cc-error[hidden] { display: none; }
+.course-detail-content .cc-form__actions { display: flex; justify-content: flex-end; }
+.course-detail-content .cc-form .course-btn[disabled] { opacity: .6; cursor: progress; }
+
+.course-detail-content .cc-filebox {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 5px;
+  border: 1px solid #aec8be;
+  border-radius: 999px;
+  background: #fff;
+}
+.course-detail-content .cc-filebox .cc-pick {
+  flex: none;
+  margin: 0;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #176c5d;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.course-detail-content .cc-filebox .cc-pick:hover { background: #105348; }
+.course-detail-content .cc-filebox input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+.course-detail-content .cc-filebox:focus-within { outline: 3px solid #176c5d; outline-offset: 2px; }
+.course-detail-content .cc-names {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  color: #60776c;
+}
+
+/* ---- placeholders (materials arrive in a later task) ---- */
+.course-detail-content .cc-placeholder {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  border: 1px dashed #c9dbd2;
+  border-radius: 12px;
+  background: #fbfdfc;
+}
+.course-detail-content .cc-placeholder p { margin: 0; color: #6a7c73; font-size: 13px; }
+.course-detail-content .cc-placeholder select { padding: 12px; }
+.course-detail-content .cc-placeholder .course-btn { justify-self: start; }
+.course-detail-content .cc-placeholder .course-btn[disabled] { opacity: .45; cursor: not-allowed; }
+.course-detail-content .cc-filebox--disabled { opacity: .55; }
+.course-detail-content .cc-filebox--disabled .cc-pick { background: #7aa398; cursor: not-allowed; }
+.course-detail-content .cc-skeleton { display: grid; gap: 8px; }
+.course-detail-content .cc-skeleton span { display: block; height: 8px; width: 85%; border-radius: 4px; background: #eef3f0; }
+.course-detail-content .cc-skeleton span:last-child { width: 55%; }
+
+/* ---- narrow screens ---- */
+@media (max-width: 650px) {
+  .course-detail-content .cc-post,
+  .course-detail-content .cc-form { padding: 16px; }
+  .course-detail-content .cc-tab { padding: 10px 12px; font-size: 14px; }
+  .course-detail-content .cc-form__actions .course-btn { width: 100%; }
+  .course-detail-content .cc-chip { flex-wrap: wrap; }
+}
