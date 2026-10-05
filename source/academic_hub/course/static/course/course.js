@@ -1,5 +1,18 @@
 (() => {
   'use strict';
+  document.querySelectorAll('[data-numeric-section]').forEach(input => {
+    input.addEventListener('input', () => {
+      const caret = input.selectionStart;
+      const before = input.value;
+      const cleaned = before.replace(/[^0-9]/g, '');
+      if (cleaned === before) return;
+      input.value = cleaned;
+      if (caret !== null) {
+        const position = before.slice(0, caret).replace(/[^0-9]/g, '').length;
+        input.setSelectionRange(position, position);
+      }
+    });
+  });
   document.querySelectorAll('[data-dialog]').forEach(link => {
     link.addEventListener('click', event => {
       const dialog = document.getElementById(link.dataset.dialog);

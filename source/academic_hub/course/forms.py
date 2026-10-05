@@ -7,8 +7,13 @@ from django.contrib.auth import get_user_model
 
 
 class CourseForm(forms.Form):
-    section = forms.CharField(label="Section (Sec)", max_length=20,
-                              widget=forms.TextInput(attrs={"placeholder": "e.g. 001"}))
+    section = forms.RegexField(
+        label="Section (Sec)", regex=r"^[0-9]+$", max_length=20,
+        error_messages={"invalid": "Section must contain digits 0–9 only."},
+        widget=forms.TextInput(attrs={"placeholder": "e.g. 001", "inputmode": "numeric",
+                                      "pattern": "[0-9]+", "data-numeric-section": "",
+                                      "title": "Use digits 0–9 only."}),
+    )
     name = forms.CharField(label="Class name", max_length=120,
                           widget=forms.TextInput(attrs={"placeholder": "e.g. Software Engineering", "autofocus": True}))
     field_order = ["name", "section"]
