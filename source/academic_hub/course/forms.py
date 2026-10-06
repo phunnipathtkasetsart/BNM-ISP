@@ -127,3 +127,66 @@ class CoursePostForm(forms.ModelForm):
             "title": forms.TextInput(attrs={"placeholder": "Announcement Title", "class": "form-control"}),
             "body": forms.Textarea(attrs={"placeholder": "Write your announcement content here...", "rows": 4, "class": "form-control"}),
         }
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        clean_one = super().clean
+        if isinstance(data, (list, tuple)):
+            return [clean_one(item, initial) for item in data]
+        return [clean_one(data, initial)] if data else []
+
+
+def topic_choices(course):
+    return [(str(t.pk), t.title) for t in course.topics.order_by("-pk")]
+
+
+class MaterialUploadForm(forms.Form):
+    NEW_TOPIC = "__new"
+
+    topic = forms.ChoiceField(
+        label="Topic category",
+        error_messages={"required": "Choose a topic or create a new one."},
+        widget=forms.Select(attrs={"data-topic-select": ""}),
+    )
+    new_topic = forms.CharField(
+        label="New topic name", max_length=120, required=False,
+        widget=forms.TextInput(attrs={"placeholder": "e.g. Lectures"}),
+    )
+    files = MultipleFileField(label="Files", validators=[validate_upload_size])
+
+    def __init__(self, *args, course, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["topic"].choices = (
+            [("", "Select or create a topic")] + topic_choices(course)
+            + [(self.NEW_TOPIC, "+ Create new topic…")]
+        )
+
+    def clean_files(self):
+        files = self.cleaned_data["files"]
+        if not files:
+            raise forms.ValidationError("Choose at least one file.")
+        return files
+
+    def clean(self):
+        data = super().clean()
+        if data.get("topic") == self.NEW_TOPIC and not (data.get("new_topic") or "").strip():
+            self.add_error("new_topic", "Enter a name for the new topic.")
+        return data
+
+
+class MaterialEditForm(forms.Form):
+    title = forms.CharField(label="Name", max_length=150)
+    topic = forms.ChoiceField(label="Topic", required=False)
+
+    def __init__(self, *args, course, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["topic"].choices = [("", "No topic")] + topic_choices(course)

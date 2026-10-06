@@ -7,10 +7,12 @@ from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 
-from .forms import CourseForm, CoursePostForm, CsvRosterForm, JoinForm, RosterForm
-from .models import Course, CoursePost, Enrollment, PostAttachment
+from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
+                    MaterialEditForm, MaterialUploadForm, RosterForm)
+from .models import Course, CoursePost, Enrollment, Material, PostAttachment
 from .permissions import can_teach, course_access, visible_courses
-from .services import add_students, create_course, update_course
+from .services import (add_materials, add_students, create_course,
+                       get_or_create_topic, update_course)
 
 
 def api_request(request):
@@ -102,16 +104,36 @@ def join(request):
     return render(request, "course/form.html", {"form": form, "title": "Join class"})
 
 
-def detail_context(request, post_form=None):
+def topic_groups(course):
+    """Materials grouped by topic, newest topic first. Files with no topic last."""
+    by_topic = {}
+    for material in course.materials.order_by("-created_at", "-pk"):
+        by_topic.setdefault(material.topic_id, []).append(material)
+    groups = [{"title": t.title, "materials": by_topic[t.pk]}
+              for t in course.topics.order_by("-pk") if t.pk in by_topic]
+    if None in by_topic:
+        groups.append({"title": "No topic", "materials": by_topic[None]})
+    return groups
+
+
+def detail_context(request, post_form=None, material_form=None):
     course = request.course
-    if post_form is None and request.can_manage_content:
+    manage = request.can_manage_content
+    if manage and post_form is None:
         post_form = CoursePostForm()
+    if manage and material_form is None:
+        material_form = MaterialUploadForm(course=course, auto_id="material_%s")
+    groups = topic_groups(course)
     return {
         "course": course,
         "posts": course.posts.select_related("author").prefetch_related("attachments"),
         "post_form": post_form,
+        "material_form": material_form,
+        "topic_groups": groups,
+        "material_count": sum(len(g["materials"]) for g in groups),
+        "topics": list(course.topics.order_by("-pk")) if manage else [],
         "can_manage": request.can_manage_roster,
-        "can_manage_content": request.can_manage_content,
+        "can_manage_content": manage,
         "can_delete_any": request.is_owner or request.is_dept_override,
     }
 
@@ -273,14 +295,82 @@ def delete_post(request, pk, post_id):
     return redirect("course:detail", pk=pk)
 
 
+def file_download(item):
+    if not item.file or not item.file.storage.exists(item.file.name):
+        raise Http404("File does not exist on disk.")
+    return FileResponse(
+        item.file.open("rb"),
+        as_attachment=True,
+        filename=item.original_name or item.file.name.split("/")[-1],
+    )
+
+
 @course_access()
 @require_http_methods(["GET"])
 def download_attachment(request, pk, attachment_id):
     attachment = get_object_or_404(PostAttachment, pk=attachment_id, post__course=request.course)
-    if not attachment.file or not attachment.file.storage.exists(attachment.file.name):
-        raise Http404("Attachment file does not exist on disk.")
-    return FileResponse(
-        attachment.file.open("rb"),
-        as_attachment=True,
-        filename=attachment.original_name or attachment.file.name.split("/")[-1],
-    )
+    return file_download(attachment)
+
+
+# --- Task 4.4: materials ------------------------------------------------------
+
+@course_access(manage_content=True)
+@require_POST
+def upload_materials(request, pk):
+    course = request.course
+    form = MaterialUploadForm(request.POST, request.FILES, course=course, auto_id="material_%s")
+    if not form.is_valid():
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        return render(request, "course/detail.html",
+                      detail_context(request, material_form=form), status=400)
+
+    choice = form.cleaned_data["topic"]
+    if choice == MaterialUploadForm.NEW_TOPIC:
+        topic = get_or_create_topic(course, form.cleaned_data["new_topic"])
+    else:
+        topic = get_object_or_404(course.topics, pk=choice)
+    created = add_materials(course, topic, form.cleaned_data["files"], request.user)
+
+    if api_request(request):
+        return JsonResponse({"added": len(created), "topic": topic.title}, status=201)
+    messages.success(request, f"{len(created)} file(s) added to {topic.title}.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access(manage_content=True)
+@require_POST
+def edit_material(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    form = MaterialEditForm(request.POST, course=request.course)
+    if not form.is_valid():
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        messages.error(request, "Could not update the material. Check the name and topic.")
+        return redirect("course:detail", pk=pk)
+    topic_id = form.cleaned_data["topic"]
+    material.title = form.cleaned_data["title"].strip()
+    material.topic = get_object_or_404(request.course.topics, pk=topic_id) if topic_id else None
+    material.save(update_fields=["title", "topic", "updated_at"])
+    if api_request(request):
+        return JsonResponse({"id": material.pk, "title": material.title})
+    messages.success(request, "Material updated.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access(manage_content=True)
+@require_POST
+def delete_material(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    material.delete()  # signals.py removes the file after commit
+    if api_request(request):
+        return JsonResponse({"deleted": True})
+    messages.success(request, "Material deleted.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access()
+@require_http_methods(["GET"])
+def download_material(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    return file_download(material)

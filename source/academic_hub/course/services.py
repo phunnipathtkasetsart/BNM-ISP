@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower, Trim
 
-from .models import Course, Enrollment, generate_class_code
+from .models import Course, Enrollment, Material, Topic, generate_class_code
 
 DUPLICATE_CLASS = "You already have a class with this name and section. Use a different name or section."
 
@@ -52,3 +52,35 @@ def add_students(course, students):
         _, created = Enrollment.objects.get_or_create(course=course, student=student)
         added += int(created)
     return added
+
+def _topic_match(course, title):
+    return (Topic.objects.annotate(key=Lower(Trim("title")))
+            .filter(course=course, key=title.lower()).first())
+
+
+def get_or_create_topic(course, title):
+    title = " ".join(title.split())[:120]
+    found = _topic_match(course, title)
+    if found:
+        return found
+    try:
+        with transaction.atomic():
+            return Topic.objects.create(course=course, title=title)
+    except IntegrityError:  # another request created it first
+        return _topic_match(course, title)
+
+
+def add_materials(course, topic, files, user):
+    created = []
+    try:
+        with transaction.atomic():
+            for upload in files:
+                created.append(Material.objects.create(
+                    course=course, topic=topic, file=upload,
+                    title=upload.name[:150], created_by=user))
+    except Exception:
+        # Rows rolled back; remove the files already written to disk.
+        for material in created:
+            material.file.storage.delete(material.file.name)
+        raise
+    return created

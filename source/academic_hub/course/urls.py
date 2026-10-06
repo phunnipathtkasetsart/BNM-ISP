@@ -19,6 +19,13 @@ urlpatterns = [
     path("<int:pk>/posts/<int:post_id>/delete/", views.delete_post, name="delete_post"),
     path("<int:pk>/attachments/<int:attachment_id>/download/", views.download_attachment, name="download_attachment"),
 
+    # Task 4.4: materials
+    path("<int:pk>/materials/upload/", views.upload_materials, name="upload_materials"),
+    path("<int:pk>/materials/<int:material_id>/edit/", views.edit_material, name="edit_material"),
+    path("<int:pk>/materials/<int:material_id>/delete/", views.delete_material, name="delete_material"),
+    path("<int:pk>/materials/<int:material_id>/download/", views.download_material, name="download_material"),
+
+
     # API routes
     path("api/", views.dashboard, name="api_list"),
     path("api/create/", views.create, name="api_create"),
@@ -32,4 +39,8 @@ urlpatterns = [
     path("api/<int:pk>/members/<str:student_id>/remove/", views.remove_member, name="api_remove_member"),
     path("api/<int:pk>/posts/create/", views.create_post, name="api_create_post"),
     path("api/<int:pk>/posts/<int:post_id>/delete/", views.delete_post, name="api_delete_post"),
+
+    path("api/<int:pk>/materials/upload/", views.upload_materials, name="api_upload_materials"),
+    path("api/<int:pk>/materials/<int:material_id>/edit/", views.edit_material, name="api_edit_material"),
+    path("api/<int:pk>/materials/<int:material_id>/delete/", views.delete_material, name="api_delete_material"),
 ]
