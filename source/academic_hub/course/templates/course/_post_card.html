@@ -1,42 +1,77 @@
 {% load course_extras %}
-{# One announcement. Pass manage=True to show the delete control. #}
-<article class="cc-post" id="post-{{ post.pk }}">
-  <header class="cc-post__top">
-    <span class="cc-avatar" aria-hidden="true">{% if post.author %}{{ post.author.first_name|slice:":1" }}{{ post.author.last_name|slice:":1" }}{% else %}?{% endif %}</span>
-    <div class="cc-post__who">
-      <span class="cc-post__name">{{ post.author.get_full_name|default:"Former member" }}</span>
-      {% if post.author_id == course.owner_id %}<span class="cc-role">Lecturer</span>
-      {% elif post.author.is_superuser %}<span class="cc-role">Department</span>
-      {% elif post.author %}<span class="cc-role cc-role--ta">TA</span>{% endif %}
-      <time class="cc-post__when" datetime="{{ post.created_at|date:'c' }}" title="{{ post.created_at|date:'N j, Y, P' }}">{{ post.created_at|timesince }} ago</time>
+
+<article class="cc-post-card" id="post-{{ post.pk }}" {% if post.deadline %}data-deadline-time="{{ post.deadline|date:'c' }}"{% endif %}>
+  <header class="cc-post__header">
+    <div class="cc-post__author-block">
+      <span class="cc-avatar" aria-hidden="true">
+        {% if post.author %}{{ post.author.first_name|slice:":1" }}{{ post.author.last_name|slice:":1" }}{% else %}?{% endif %}
+      </span>
+      <div class="cc-post__meta">
+        <div class="cc-post__author-row">
+          <span class="cc-post__name">{{ post.author.get_full_name|default:"Former member" }}</span>
+          {% if post.author_id == course.owner_id %}
+            <span class="cc-role">Lecturer</span>
+          {% elif post.author.is_superuser %}
+            <span class="cc-role">Department</span>
+          {% elif post.author %}
+            <span class="cc-role cc-role--ta">TA</span>
+          {% endif %}
+        </div>
+
+        {% if post.deadline %}
+          <div class="cc-post__due-badge">
+            <svg viewBox="0 0 24 24" class="cc-post__due-icon" aria-hidden="true">
+              <path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+            </svg>
+            <span class="cc-post__due-text">Due {{ post.deadline|date:"M j, Y @ H:i" }}</span>
+          </div>
+        {% else %}
+          <time class="cc-post__when" datetime="{{ post.created_at|date:'c' }}">
+            {{ post.created_at|date:"M j" }}
+          </time>
+        {% endif %}
+      </div>
     </div>
+
     {% if manage and can_delete_any or manage and post.author_id == request.user.pk %}
-      <form method="post" action="{% url 'course:delete_post' course.pk post.pk %}" data-confirm="Delete this announcement? Its attachments will be removed too.">
-        {% csrf_token %}
-        <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete announcement: {{ post.title }}">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>
-      </form>
+      <div class="cc-post__actions">
+        <form method="post" action="{% url 'course:delete_post' course.pk post.pk %}" data-confirm="Delete this announcement? Its attachments will be removed too.">
+          {% csrf_token %}
+          <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete announcement">
+            {# Trash Bin Icon #}
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+          </button>
+        </form>
+      </div>
     {% endif %}
   </header>
 
-  <h3 class="cc-post__title">{{ post.title }}</h3>
-  {% if post.body %}<div class="cc-post__body">{{ post.body|linebreaksbr }}</div>{% endif %}
-
-  {% with files=post.attachments.all %}
-    {% if files %}
-      <ul class="cc-chips" aria-label="Attachments">
-        {% for att in files %}
-          <li>
-            <a class="cc-chip" href="{% url 'course:download_attachment' course.pk att.pk %}">
-              <span class="cc-ext cc-ext--{{ att.original_name|file_kind }}" aria-hidden="true">{{ att.original_name|file_ext }}</span>
-              <span class="cc-chip__name">{{ att.original_name|default:"Attachment" }}</span>
-              <span class="cc-chip__size">{{ att.size|filesizeformat }}</span>
-              <span class="cc-chip__dl">Download</span>
-            </a>
-          </li>
-        {% endfor %}
-      </ul>
+  <div class="cc-post__content">
+    {% if post.title %}
+      <h3 class="cc-post__title">{{ post.title }}</h3>
     {% endif %}
-  {% endwith %}
+
+    {% if post.body %}
+      <div class="cc-post__body">{{ post.body|urlize|linebreaksbr }}</div>
+    {% endif %}
+
+    {% with files=post.attachments.all %}
+      {% if files %}
+        <ul class="cc-chips" aria-label="Attachments">
+          {% for att in files %}
+            <li>
+              <a class="cc-chip" href="{% url 'course:download_attachment' course.pk att.pk %}">
+                <span class="cc-ext cc-ext--{{ att.original_name|file_kind }}" aria-hidden="true">{{ att.original_name|file_ext }}</span>
+                <span class="cc-chip__name">{{ att.original_name|default:"Attachment" }}</span>
+                <span class="cc-chip__size">{{ att.size|filesizeformat }}</span>
+                <span class="cc-chip__dl">Download</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
 </article>

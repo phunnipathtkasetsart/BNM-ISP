@@ -113,6 +113,12 @@
             <label for="{{ post_form.body.id_for_label }}">Message</label>
             {{ post_form.body }}
           </div>
+          <!-- ADD THIS DEADLINE FIELD HERE -->
+          <div class="cc-field">
+            <label for="{{ post_form.deadline.id_for_label }}">Deadline <span class="cc-optional">(optional)</span></label>
+            {{ post_form.deadline }}
+          </div>
+          
           <div class="cc-field">
             <label for="{{ post_form.attachment.id_for_label }}">Attach a file <span class="cc-optional">(optional)</span></label>
             <div class="cc-filebox">
@@ -221,6 +227,7 @@
       </div>
     </section>
   {% endif %}
+  
 </div>
 <script src="{% static 'course/course-tabs.js' %}" defer></script>
 {% endblock %}

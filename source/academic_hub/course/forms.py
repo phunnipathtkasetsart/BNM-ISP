@@ -110,7 +110,6 @@ class CsvRosterForm(forms.Form):
         return upload
 
 
-
 class CoursePostForm(forms.ModelForm):
     attachment = forms.FileField(
         required=False,
@@ -122,12 +121,12 @@ class CoursePostForm(forms.ModelForm):
 
     class Meta:
         model = CoursePost
-        fields = ["title", "body"]
+        fields = ["title", "body", "deadline"] # Added deadline
         widgets = {
             "title": forms.TextInput(attrs={"placeholder": "Announcement Title", "class": "form-control"}),
             "body": forms.Textarea(attrs={"placeholder": "Write your announcement content here...", "rows": 4, "class": "form-control"}),
+            "deadline": forms.DateTimeInput(attrs={"type": "datetime-local", "class": "form-control"}), # HTML5 datetime picker
         }
-
 
 class MultipleFileInput(forms.ClearableFileInput):
     allow_multiple_selected = True

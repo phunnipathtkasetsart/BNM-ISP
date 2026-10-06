@@ -129,15 +129,14 @@ class Material(StoredFile):
 
 
 class CoursePost(models.Model):
-    """An announcement in the course feed."""
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="posts")
-    author = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
-                               related_name="+")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     title = models.CharField(max_length=150)
     body = models.TextField(blank=True, default="")
+    deadline = models.DateTimeField(null=True, blank=True, help_text="Optional deadline for this announcement") # New field
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
+    
     class Meta:
         ordering = ["-created_at", "-pk"]
 

@@ -32,7 +32,7 @@
       : tabs.find(t => t.dataset.panel === saved) || tabs[0];
     show(start);
   });
-  
+
     // Compose forms: show chosen file names, refuse oversize files early, and
   // stop double submits on slow uploads. The server still enforces the limit.
   document.querySelectorAll('[data-cc-compose]').forEach(form => {
@@ -109,4 +109,7 @@
 
 
 
+
+
 })();
+

@@ -14,7 +14,7 @@ env
 
 # Python Cache & IDE
 __pycache__/
-*.py
+*.pyc
 .vscode/
 .idea/
 

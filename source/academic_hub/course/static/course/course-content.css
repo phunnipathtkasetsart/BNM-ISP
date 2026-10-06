@@ -8,7 +8,6 @@
   gap: 6px;
   margin: 28px 0 24px;
   border-bottom: 2px solid #e2ebe6;
-  overflow-x: auto;
 }
 .course-detail-content .cc-tab {
   margin-bottom: -2px;
@@ -311,3 +310,137 @@
 .course-detail-content .cc-edit > div { flex: 1 1 200px; }
 .course-detail-content .cc-edit > .cc-edit__actions { display: flex; flex: 0 0 auto; gap: 8px; }
 .course-detail-content [data-new-topic][hidden] { display: none; }
+
+/* ==========================================================================
+   Google Classroom Style Post Card
+   ========================================================================== */
+.cc-post-card {
+  background: #ffffff;
+  border: 1px solid #dadce0;
+  border-radius: 8px;
+  padding: 20px 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.08);
+}
+
+.cc-post__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.cc-post__author-block {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.cc-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #176c5d;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.cc-post__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cc-post__author-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cc-post__name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #202124;
+  line-height: 1.2;
+}
+
+.cc-role {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: #e8f0fe;
+  color: #1a73e8;
+  text-transform: uppercase;
+}
+
+.cc-role--ta {
+  background-color: #fce8e6;
+  color: #c5221f;
+}
+
+.cc-post__when {
+  font-size: 13px;
+  color: #5f6368;
+}
+
+/* Deadline badge placed below the name/date */
+.cc-post__due-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  background-color: #f1f3f4;
+  color: #3c4043;
+  font-size: 13px;
+  font-weight: 500;
+  width: fit-content;
+}
+
+.cc-post__due-icon {
+  width: 15px;
+  height: 15px;
+  color: #5f6368;
+}
+
+/* Past due override styles */
+.cc-post__due-badge.cc-post__due-badge--past {
+  background-color: #fce8e6;
+  color: #d93025;
+}
+
+.cc-post__due-badge.cc-post__due-badge--past .cc-post__due-icon {
+  color: #d93025;
+}
+
+/* Post Content Body */
+.cc-post__title {
+  font-size: 17px;
+  font-weight: 600;
+  color: #202124;
+  margin: 0 0 10px 0;
+}
+
+.cc-post__body {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #3c4043;
+  margin-bottom: 16px;
+}
+
+.cc-post__body a {
+  color: #1a73e8;
+  text-decoration: underline;
+}
+
+.cc-post__body a:hover {
+  color: #1557b0;
+}

@@ -115,6 +115,7 @@ def topic_groups(course):
         groups.append({"title": "No topic", "materials": by_topic[None]})
     return groups
 
+from django.utils import timezone
 
 def detail_context(request, post_form=None, material_form=None):
     course = request.course
@@ -124,9 +125,17 @@ def detail_context(request, post_form=None, material_form=None):
     if manage and material_form is None:
         material_form = MaterialUploadForm(course=course, auto_id="material_%s")
     groups = topic_groups(course)
+    
+    # Query upcoming deadlines
+    upcoming_deadlines = course.posts.filter(
+        deadline__isnull=False, 
+        deadline__gte=timezone.now()
+    ).order_by("deadline")
+
     return {
         "course": course,
         "posts": course.posts.select_related("author").prefetch_related("attachments"),
+        "upcoming_deadlines": upcoming_deadlines, # Add this to the context
         "post_form": post_form,
         "material_form": material_form,
         "topic_groups": groups,
