@@ -72,7 +72,7 @@
 
   // "Create new topic" name box shows only when that option is selected.
   document.querySelectorAll('[data-topic-select]').forEach(select => {
-    const box = document.querySelector('[data-new-topic]');
+        const box = select.closest('form').querySelector('[data-new-topic]');
     const sync = () => { box.hidden = select.value !== '__new'; };
     select.addEventListener('change', sync);
     sync();
@@ -108,8 +108,25 @@
   });
 
 
+  // Announcement form: offer "Add to Materials" only when a file is attached.
+  document.querySelectorAll('[data-cc-compose]').forEach(form => {
+    const toggle = form.querySelector('[data-share-toggle]');
+    if (!toggle) return;
+    const fields = form.querySelector('[data-share-fields]');
+    const input = form.querySelector('input[type="file"]');
+    const box = form.querySelector('input[name="add_to_materials"]');
+    const sync = () => {
+      const has = input.files.length > 0;
+      if (!has) box.checked = false;
+      toggle.hidden = !has;
+      fields.hidden = !(has && box.checked);
+    };
+    input.addEventListener('change', sync);
+    box.addEventListener('change', sync);
+    sync();
+  });
 
 
-
+  
 })();
 

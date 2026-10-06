@@ -5,12 +5,19 @@ from django.dispatch import receiver
 from .models import CourseTA, Enrollment, Material, PostAttachment
 
 
+
 def _remove_file(instance):
+    if not getattr(instance, "file", None) or not instance.file.name:
+        return
     storage, name = instance.file.storage, instance.file.name
-    if name:
-        # After commit, so a rolled-back delete never loses a file that is
-        # still referenced by a surviving row.
-        transaction.on_commit(lambda: storage.delete(name))
+
+    def cleanup():
+        if (Material.objects.filter(file=name).exists()
+                or PostAttachment.objects.filter(file=name).exists()):
+            return
+        storage.delete(name)
+
+    transaction.on_commit(cleanup)
 
 
 @receiver(post_delete, sender=Material)

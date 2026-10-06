@@ -119,6 +119,40 @@ class CoursePostForm(forms.ModelForm):
         widget=forms.FileInput(attrs={"class": "form-control"}),
     )
 
+
+    add_to_materials = forms.BooleanField(
+        required=False, label="Add attachment to Materials",
+        widget=forms.CheckboxInput(attrs={"style": "width:auto;display:inline-block;margin-right:8px"}),
+    )
+    topic = forms.ChoiceField(
+        required=False, label="Topic category",
+        widget=forms.Select(attrs={"data-topic-select": ""}),
+    )
+    new_topic = forms.CharField(
+        required=False, max_length=120, label="New topic name",
+        widget=forms.TextInput(attrs={"placeholder": "e.g. Exams"}),
+    )
+
+    def __init__(self, *args, course=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["topic"].choices = (
+            [("", "Select or create a topic")]
+            + (topic_choices(course) if course else [])
+            + [(MaterialUploadForm.NEW_TOPIC, "+ Create new topic…")]
+        )
+
+    def clean(self):
+        data = super().clean()
+        if data.get("add_to_materials"):
+            if not data.get("attachment"):
+                self.add_error("add_to_materials", "Attach a file to add it to Materials.")
+            choice = data.get("topic")
+            if not choice:
+                self.add_error("topic", "Choose a topic or create a new one.")
+            elif choice == MaterialUploadForm.NEW_TOPIC and not (data.get("new_topic") or "").strip():
+                self.add_error("new_topic", "Enter a name for the new topic.")
+        return data
+
     class Meta:
         model = CoursePost
         fields = ["title", "body", "deadline"] # Added deadline

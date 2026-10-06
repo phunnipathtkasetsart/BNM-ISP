@@ -6,6 +6,7 @@ from django.db import transaction
 from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
+from django.utils import timezone
 
 from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
                     MaterialEditForm, MaterialUploadForm, RosterForm)
@@ -115,13 +116,13 @@ def topic_groups(course):
         groups.append({"title": "No topic", "materials": by_topic[None]})
     return groups
 
-from django.utils import timezone
+
 
 def detail_context(request, post_form=None, material_form=None):
     course = request.course
     manage = request.can_manage_content
     if manage and post_form is None:
-        post_form = CoursePostForm()
+        post_form = CoursePostForm(course=course)
     if manage and material_form is None:
         material_form = MaterialUploadForm(course=course, auto_id="material_%s")
     groups = topic_groups(course)
@@ -267,7 +268,7 @@ def finish_import(request, form, *, csv):
 @course_access(manage_content=True)
 @require_POST
 def create_post(request, pk):
-    form = CoursePostForm(request.POST, request.FILES)
+    form = CoursePostForm(request.POST, request.FILES, course=request.course)
     if not form.is_valid():
         if api_request(request):
             return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
@@ -280,13 +281,23 @@ def create_post(request, pk):
         post.save()
         upload = form.cleaned_data.get("attachment")
         if upload:
-            PostAttachment.objects.create(post=post, file=upload)
+            attachment = PostAttachment.objects.create(post=post, file=upload)
+            if form.cleaned_data.get("add_to_materials"):
+                choice = form.cleaned_data["topic"]
+                if choice == MaterialUploadForm.NEW_TOPIC:
+                    topic = get_or_create_topic(request.course, form.cleaned_data["new_topic"])
+                else:
+                    topic = get_object_or_404(request.course.topics, pk=choice)
+                # Same stored file, second row: no copy on disk.
+                Material.objects.create(
+                    course=request.course, topic=topic, created_by=request.user,
+                    title=attachment.original_name[:150], file=attachment.file.name,
+                    original_name=attachment.original_name, size=attachment.size)
 
     if api_request(request):
         return JsonResponse({"id": post.pk, "title": post.title}, status=201)
     messages.success(request, "Announcement posted.")
     return redirect("course:detail", pk=pk)
-
 
 @course_access(manage_content=True)
 @require_POST
@@ -387,15 +398,24 @@ def download_material(request, pk, material_id):
 
 
 
+# ✅ FIX IN views_3.py
 @require_POST
 @course_access(manage_content=True)
 def edit_post(request, pk, post_id):
-    # request.course is provided by your @course_access decorator
     post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
     
-    form = CoursePostForm(request.POST, instance=post)
+    # Enforce same author check as delete_post
+    if not (request.is_owner or request.is_dept_override) and post.author_id != request.user.pk:
+        if api_request(request):
+            return JsonResponse({"error": "You can only edit your own announcements."}, status=403)
+        messages.error(request, "You can only edit your own announcements.")
+        return redirect("course:detail", pk=pk)
+        
+    form = CoursePostForm(request.POST, instance=post, course=request.course)
     if form.is_valid():
         form.save()
+        messages.success(request, "Announcement updated.")
+    else:
+        messages.error(request, "Failed to update announcement. Check form fields.")
         
-    # Redirect back to the content management or course detail page
     return redirect(request.META.get('HTTP_REFERER', '/'))

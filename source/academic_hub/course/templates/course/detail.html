@@ -94,6 +94,7 @@
   </section>
 
   {# ---- Manage Content: lecturer and TA only ---- #}
+  
   {% if can_manage_content %}
     <section class="cc-panel" id="panel-manage" role="tabpanel" aria-labelledby="tab-manage" hidden>
       <div class="cc-section">
@@ -113,7 +114,7 @@
             <label for="{{ post_form.body.id_for_label }}">Message</label>
             {{ post_form.body }}
           </div>
-          <!-- ADD THIS DEADLINE FIELD HERE -->
+
           <div class="cc-field">
             <label for="{{ post_form.deadline.id_for_label }}">Deadline <span class="cc-optional">(optional)</span></label>
             {{ post_form.deadline }}
@@ -129,6 +130,24 @@
             <p class="cc-hint">Students download it from the announcement. Up to 50 MB.</p>
             <p class="cc-error" data-file-error role="alert" hidden></p>
           </div>
+
+            <div data-share-toggle hidden>
+            <div class="cc-field">
+              <label for="{{ post_form.add_to_materials.id_for_label }}">{{ post_form.add_to_materials }} Add attachment to Materials</label>
+              <p class="cc-hint">Also lists the file under a Materials topic. The file is stored once.</p>
+            </div>
+          </div>
+          <div data-share-fields hidden>
+            <div class="cc-field">
+              <label for="{{ post_form.topic.id_for_label }}">Topic category</label>
+              {{ post_form.topic }}
+            </div>
+            <div class="cc-field" data-new-topic style="margin-top:18px">
+              <label for="{{ post_form.new_topic.id_for_label }}">New topic name</label>
+              {{ post_form.new_topic }}
+            </div>
+          </div>
+
           <div class="cc-form__actions">
             <button type="submit" class="course-btn" data-submit-label="Posting…">Post announcement</button>
           </div>
@@ -229,5 +248,8 @@
   {% endif %}
   
 </div>
+
+
+
 <script src="{% static 'course/course-tabs.js' %}" defer></script>
 {% endblock %}
