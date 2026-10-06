@@ -34,11 +34,19 @@
     </div>
 
     {% if manage and can_delete_any or manage and post.author_id == request.user.pk %}
-      <div class="cc-post__actions">
+      <div class="cc-post__actions" style="display: flex; gap: 0.5rem; align-items: center;">
+        
+        <!-- EDIT BUTTON -->
+        <button type="button" class="cc-icon-btn" aria-label="Edit announcement" onclick="document.getElementById('display-post-{{ post.pk }}').style.display='none'; document.getElementById('edit-post-{{ post.pk }}').style.display='block';">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+          </svg>
+        </button>
+
+        <!-- DELETE BUTTON -->
         <form method="post" action="{% url 'course:delete_post' course.pk post.pk %}" data-confirm="Delete this announcement? Its attachments will be removed too.">
           {% csrf_token %}
           <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete announcement">
-            {# Trash Bin Icon #}
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
             </svg>
@@ -48,7 +56,8 @@
     {% endif %}
   </header>
 
-  <div class="cc-post__content">
+  <!-- POST DISPLAY CONTENT -->
+  <div id="display-post-{{ post.pk }}" class="cc-post__content">
     {% if post.title %}
       <h3 class="cc-post__title">{{ post.title }}</h3>
     {% endif %}
@@ -74,4 +83,37 @@
       {% endif %}
     {% endwith %}
   </div>
+
+  <!-- HIDDEN EDIT FORM -->
+  {% if manage and can_delete_any or manage and post.author_id == request.user.pk %}
+    <form id="edit-post-{{ post.pk }}" 
+          action="{% url 'course:edit_post' pk=course.pk post_id=post.pk %}" 
+          method="post" 
+          style="display: none; padding: 0 1.25rem 1.25rem 1.25rem;">
+      {% csrf_token %}
+      
+      <div style="margin-bottom: 1rem;">
+        <label for="id_title_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Title</label>
+        <input type="text" id="id_title_{{ post.pk }}" name="title" value="{{ post.title }}" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px;">
+      </div>
+      
+      <div style="margin-bottom: 1rem;">
+        <label for="id_body_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Message</label>
+        <textarea id="id_body_{{ post.pk }}" name="body" rows="4" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; resize: vertical;">{{ post.body }}</textarea>
+      </div>
+      
+      <div style="margin-bottom: 1.25rem;">
+        <label for="id_deadline_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Deadline (Optional)</label>
+        <input type="datetime-local" id="id_deadline_{{ post.pk }}" name="deadline" 
+               value="{% if post.deadline %}{{ post.deadline|date:'Y-m-d\TH:i' }}{% endif %}" 
+               style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit;">
+      </div>
+      
+      <div style="display: flex; gap: 0.5rem;">
+        <button type="submit" style="padding: 0.5rem 1rem; background-color: #0f766e; color: white; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;">Save Changes</button>
+        <button type="button" onclick="document.getElementById('edit-post-{{ post.pk }}').style.display='none'; document.getElementById('display-post-{{ post.pk }}').style.display='block';" style="padding: 0.5rem 1rem; background-color: #e5e7eb; color: #374151; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;">Cancel</button>
+      </div>
+    </form>
+  {% endif %}
+
 </article>

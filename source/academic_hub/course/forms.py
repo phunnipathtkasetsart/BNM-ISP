@@ -125,7 +125,7 @@ class CoursePostForm(forms.ModelForm):
         widgets = {
             "title": forms.TextInput(attrs={"placeholder": "Announcement Title", "class": "form-control"}),
             "body": forms.Textarea(attrs={"placeholder": "Write your announcement content here...", "rows": 4, "class": "form-control"}),
-            "deadline": forms.DateTimeInput(attrs={"type": "datetime-local", "class": "form-control"}), # HTML5 datetime picker
+           "deadline": forms.DateTimeInput(format="%Y-%m-%dT%H:%M", attrs={"type": "datetime-local", "class": "form-control"}),
         }
 
 class MultipleFileInput(forms.ClearableFileInput):

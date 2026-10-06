@@ -383,3 +383,19 @@ def delete_material(request, pk, material_id):
 def download_material(request, pk, material_id):
     material = get_object_or_404(Material, pk=material_id, course=request.course)
     return file_download(material)
+
+
+
+
+@require_POST
+@course_access(manage_content=True)
+def edit_post(request, pk, post_id):
+    # request.course is provided by your @course_access decorator
+    post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
+    
+    form = CoursePostForm(request.POST, instance=post)
+    if form.is_valid():
+        form.save()
+        
+    # Redirect back to the content management or course detail page
+    return redirect(request.META.get('HTTP_REFERER', '/'))

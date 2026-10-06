@@ -43,4 +43,6 @@ urlpatterns = [
     path("api/<int:pk>/materials/upload/", views.upload_materials, name="api_upload_materials"),
     path("api/<int:pk>/materials/<int:material_id>/edit/", views.edit_material, name="api_edit_material"),
     path("api/<int:pk>/materials/<int:material_id>/delete/", views.delete_material, name="api_delete_material"),
+
+    path("<int:pk>/posts/<int:post_id>/edit/", views.edit_post, name="edit_post"),
 ]
