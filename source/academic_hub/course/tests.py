@@ -84,10 +84,15 @@ class CourseTests(TestCase):
         self.assertEqual(owned.enrollments.count(), 1)
 
     def test_csv_permissions_and_csrf(self):
-        for user in [self.other_teacher, self.student, self.department_user()]:
+        for user in [self.other_teacher, self.student]:
             self.sign_in(user)
             response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n" + self.other_student.pk)})
             self.assertEqual(response.status_code, 404)
+        self.sign_in(self.department_user())
+        response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n" + self.other_student.pk)})
+        self.assertEqual(response.status_code, 403)
+        self.assertFalse(self.course.enrollments.exists())
+
         self.sign_in(self.teacher)
         self.assertEqual(self.client.get(self.url("import_csv", self.course.pk)).status_code, 405)
         client = Client(enforce_csrf_checks=True)
@@ -237,10 +242,10 @@ class CourseTests(TestCase):
     def test_department_cannot_manage_other_owners_or_join_as_student(self):
         self.sign_in(self.department_user())
         for action in ["api_detail", "api_members"]:
-            self.assertEqual(self.client.get(self.url(action, self.course.pk)).status_code, 404)
+            self.assertEqual(self.client.get(self.url(action, self.course.pk)).status_code, 200)
         for action in ["api_edit", "api_delete", "api_import_members"]:
-            self.assertEqual(self.client.post(self.url(action, self.course.pk), {}).status_code, 404)
-        self.assertEqual(self.client.post(self.url("api_remove_member", self.course.pk, self.student.pk)).status_code, 404)
+            self.assertEqual(self.client.post(self.url(action, self.course.pk), {}).status_code, 403)
+        self.assertEqual(self.client.post(self.url("api_remove_member", self.course.pk, self.student.pk)).status_code, 403)
         self.assertEqual(self.client.post(self.url("api_join"), {"code": self.course.class_code}).status_code, 403)
 
     def test_blank_and_overlong_names_rejected(self):
@@ -288,8 +293,8 @@ class CourseTests(TestCase):
         self.assertNotContains(html, self.course.class_code)
         self.assertNotContains(html, "Add students")
         for action in ["api_edit", "api_delete", "api_import_members"]:
-            self.assertEqual(self.client.post(self.url(action, self.course.pk), {"section": "001", "name": "No"}).status_code, 404)
-        self.assertEqual(self.client.post(self.url("api_remove_member", self.course.pk, self.student.pk)).status_code, 404)
+            self.assertEqual(self.client.post(self.url(action, self.course.pk), {"section": "001", "name": "No"}).status_code, 403)
+        self.assertEqual(self.client.post(self.url("api_remove_member", self.course.pk, self.student.pk)).status_code, 403)
 
     def test_other_lecturer_cannot_manage(self):
         self.sign_in(self.other_teacher)

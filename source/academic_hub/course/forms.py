@@ -9,7 +9,7 @@ from .validators import validate_upload_size
 
 class CourseForm(forms.Form):
     section = forms.RegexField(
-        label="Section (Sec)", regex=r"^[0-9]+$", max_length=20,
+        label="Section (Sec)", regex=r"^[0-9]+$", max_length=20, strip=True,
         error_messages={"invalid": "Section must contain digits 0–9 only."},
         widget=forms.TextInput(attrs={"placeholder": "e.g. 001", "inputmode": "numeric",
                                       "pattern": "[0-9]+", "data-numeric-section": "",

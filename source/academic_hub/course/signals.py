@@ -13,6 +13,13 @@ def _remove_file(instance):
         transaction.on_commit(lambda: storage.delete(name))
 
 
+@receiver(post_delete, sender=Material)
+@receiver(post_delete, sender=PostAttachment)
+def delete_file_with_row(sender, instance, **kwargs):
+    """Django never removes files itself; deleting a row would orphan it."""
+    _remove_file(instance)
+
+
 @receiver(post_delete, sender=Enrollment)
 def drop_ta_with_enrollment(sender, instance, **kwargs):
     """Removed student loses TA role. Rejoin must not revive it."""

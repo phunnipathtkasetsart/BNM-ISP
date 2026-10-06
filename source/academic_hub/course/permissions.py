@@ -73,7 +73,7 @@ def course_access(
                 is_owner = course.owner_id == user.pk and can_teach(user)
                 is_ta = not is_owner and CourseTA.objects.filter(course=course, user=user).exists()
                 same_dept = (user.department or "").strip().lower() == (course.owner.department or "").strip().lower()
-                is_dept_override = user.is_superuser and user.is_active and same_dept
+                is_dept_override = bool(user.is_superuser and user.is_active and (user.department or "").strip() and same_dept)
 
                 can_manage_roster = is_owner
                 can_manage_content = is_owner or is_ta or is_dept_override
