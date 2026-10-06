@@ -46,14 +46,6 @@
 
   {# ---- Course Content: what students read ---- #}
   <section class="cc-panel" id="panel-content" {% if can_manage_content %}role="tabpanel" aria-labelledby="tab-content"{% endif %}>
-    <div class="cc-section">
-      <h2 class="cc-section-title">Announcements <span class="cc-count">{{ posts|length }}</span></h2>
-      {% for post in posts %}
-        {% include "course/_post_card.html" with manage=False %}
-      {% empty %}
-        <p class="cc-empty">No announcements have been posted yet.</p>
-      {% endfor %}
-    </div>
 
     <div class="cc-section">
       <h2 class="cc-section-title">Course Materials <span class="cc-count">{{ material_count }}</span></h2>
@@ -70,7 +62,7 @@
             <button type="button" class="course-btn secondary" data-collapse-all>Collapse all</button>
           </div>
           {% for g in topic_groups %}
-            <details class="cc-topic" data-topic="t{{ forloop.counter }}" open>
+            <details class="cc-topic" data-topic="t{{ forloop.counter }}">
               <summary class="cc-topic__head"><span>{{ g.title }}</span><span class="cc-count">{{ g.materials|length }}</span></summary>
               <ul class="cc-files">
                 {% for m in g.materials %}
@@ -91,159 +83,217 @@
         <p class="cc-empty">No materials have been shared yet.</p>
       {% endif %}
     </div>
+
+
+        <div class="cc-section">
+      <h2 class="cc-section-title">Announcements <span class="cc-count">{{ posts|length }}</span></h2>
+      {% for post in posts %}
+        {% include "course/_post_card.html" with manage=False %}
+      {% empty %}
+        <p class="cc-empty">No announcements have been posted yet.</p>
+      {% endfor %}
+    </div>
   </section>
 
   {# ---- Manage Content: lecturer and TA only ---- #}
-  
+
   {% if can_manage_content %}
     <section class="cc-panel" id="panel-manage" role="tabpanel" aria-labelledby="tab-manage" hidden>
-      <div class="cc-section">
-        <h2 class="cc-section-title">New announcement</h2>
-        <form class="cc-form" action="{% url 'course:create_post' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose data-max-mb="50">
-          {% csrf_token %}
-          {% if post_form.errors %}
-  <div class="errorlist" role="alert">
-    {% for errs in post_form.errors.values %}{% for e in errs %}<p>{{ e }}</p>{% endfor %}{% endfor %}
-  </div>
-{% endif %}
-          <div class="cc-field">
-            <label for="{{ post_form.title.id_for_label }}">Title</label>
-            {{ post_form.title }}
-          </div>
-          <div class="cc-field">
-            <label for="{{ post_form.body.id_for_label }}">Message</label>
-            {{ post_form.body }}
-          </div>
-
-          <div class="cc-field">
-            <label for="{{ post_form.deadline.id_for_label }}">Deadline <span class="cc-optional">(optional)</span></label>
-            {{ post_form.deadline }}
-          </div>
-          
-          <div class="cc-field">
-            <label for="{{ post_form.attachment.id_for_label }}">Attach a file <span class="cc-optional">(optional)</span></label>
-            <div class="cc-filebox">
-              <label class="cc-pick" for="{{ post_form.attachment.id_for_label }}">Choose file</label>
-              {{ post_form.attachment }}
-              <span class="cc-names" data-file-names>No file chosen</span>
-            </div>
-            <p class="cc-hint">Students download it from the announcement. Up to 50 MB.</p>
-            <p class="cc-error" data-file-error role="alert" hidden></p>
-          </div>
-
-            <div data-share-toggle hidden>
-            <div class="cc-field">
-              <label for="{{ post_form.add_to_materials.id_for_label }}">{{ post_form.add_to_materials }} Add attachment to Materials</label>
-              <p class="cc-hint">Also lists the file under a Materials topic. The file is stored once.</p>
-            </div>
-          </div>
-          <div data-share-fields hidden>
-            <div class="cc-field">
-              <label for="{{ post_form.topic.id_for_label }}">Topic category</label>
-              {{ post_form.topic }}
-            </div>
-            <div class="cc-field" data-new-topic style="margin-top:18px">
-              <label for="{{ post_form.new_topic.id_for_label }}">New topic name</label>
-              {{ post_form.new_topic }}
-            </div>
-          </div>
-
-          <div class="cc-form__actions">
-            <button type="submit" class="course-btn" data-submit-label="Posting…">Post announcement</button>
-          </div>
-        </form>
+      
+      <!-- SUB-TABS -->
+      <div class="manage-subtabs">
+        <button type="button" class="subtab-btn active" data-subtab="announcements">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="m3 11 18-5v12L3 13v-2z"/>
+  <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
+</svg>
+ Announcements
+        </button>
+        <button type="button" class="subtab-btn" data-subtab="materials">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L8.6 3.3A2 2 0 0 0 7.1 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>
+</svg>
+ Course Materials
+        </button>
       </div>
 
-      <div class="cc-section">
-        <h2 class="cc-section-title">Posted announcements <span class="cc-count">{{ posts|length }}</span></h2>
-        {% for post in posts %}
-          {% include "course/_post_card.html" with manage=True %}
-        {% empty %}
-          <p class="cc-empty">Nothing posted yet. Your first announcement will show up here.</p>
-        {% endfor %}
+      <!-- ANNOUNCEMENTS SUB-PANEL -->
+      <div id="subpanel-announcements" class="manage-tab-content">
+        
+        <!-- Collapsible Announcement Form -->
+        <details class="creation-card">
+          <summary class="creation-card-header">
+            <span style="align-items: center;display: flex;gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <circle cx="12" cy="12" r="10"/>
+  <path d="M8 12h8"/>
+  <path d="M12 8v8"/>
+</svg>
+ Create New Announcement</span>
+            <svg class="chevron" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <div class="creation-card-body">
+            <form class="cc-form" action="{% url 'course:create_post' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose data-max-mb="50">
+              {% csrf_token %}
+              {% if post_form.errors %}
+                <div class="errorlist" role="alert">
+                  {% for errs in post_form.errors.values %}{% for e in errs %}<p>{{ e }}</p>{% endfor %}{% endfor %}
+                </div>
+              {% endif %}
+              <div class="cc-field">
+                <label for="{{ post_form.title.id_for_label }}">Title</label>
+                {{ post_form.title }}
+              </div>
+              <div class="cc-field">
+                <label for="{{ post_form.body.id_for_label }}">Message</label>
+                {{ post_form.body }}
+              </div>
+              <div class="cc-field">
+                <label for="{{ post_form.deadline.id_for_label }}">Deadline <span class="cc-optional">(optional)</span></label>
+                {{ post_form.deadline }}
+              </div>
+              
+              <div class="cc-field">
+                <label for="{{ post_form.attachment.id_for_label }}">Attach a file <span class="cc-optional">(optional)</span></label>
+                <div class="cc-filebox">
+                  <label class="cc-pick" for="{{ post_form.attachment.id_for_label }}">Choose file</label>
+                  {{ post_form.attachment }}
+                  <span class="cc-names" data-file-names>No file chosen</span>
+                </div>
+                <p class="cc-hint">Students download it from the announcement. Up to 50 MB.</p>
+                <p class="cc-error" data-file-error role="alert" hidden></p>
+              </div>
+
+              <div data-share-toggle hidden>
+                <div class="cc-field">
+                  <label for="{{ post_form.add_to_materials.id_for_label }}">{{ post_form.add_to_materials }} Add attachment to Materials</label>
+                  <p class="cc-hint">Also lists the file under a Materials topic. The file is stored once.</p>
+                </div>
+              </div>
+              <div data-share-fields hidden>
+                <div class="cc-field">
+                  <label for="{{ post_form.topic.id_for_label }}">Topic category</label>
+                  {{ post_form.topic }}
+                </div>
+                <div class="cc-field" data-new-topic style="margin-top:18px">
+                  <label for="{{ post_form.new_topic.id_for_label }}">New topic name</label>
+                  {{ post_form.new_topic }}
+                </div>
+              </div>
+
+              <div class="cc-form__actions">
+                <button type="submit" class="course-btn" data-submit-label="Posting…">Post announcement</button>
+              </div>
+            </form>
+          </div>
+        </details>
+
+        <div class="cc-section">
+          <h2 class="cc-section-title">Posted announcements <span class="cc-count">{{ posts|length }}</span></h2>
+          {% for post in posts %}
+            {% include "course/_post_card.html" with manage=True %}
+          {% empty %}
+            <p class="cc-empty">Nothing posted yet. Your first announcement will show up here.</p>
+          {% endfor %}
+        </div>
       </div>
 
-           <div class="cc-section">
-        <h2 class="cc-section-title">Upload material</h2>
-        <form class="cc-form" action="{% url 'course:upload_materials' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose data-max-mb="50">
-          {% csrf_token %}
-          {% if material_form.errors %}
-            <div class="errorlist" role="alert">
-              {% for errs in material_form.errors.values %}{% for e in errs %}<p>{{ e }}</p>{% endfor %}{% endfor %}
-            </div>
-          {% endif %}
-          <div class="cc-field">
-            <label for="{{ material_form.topic.id_for_label }}">Topic category</label>
-            {{ material_form.topic }}
+      <!-- MATERIALS SUB-PANEL -->
+      <div id="subpanel-materials" class="manage-tab-content" hidden>
+        
+        <!-- Collapsible Material Form -->
+        <details class="creation-card">
+          <summary class="creation-card-header">
+            <span style="align-items: center;display: flex;gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  <circle cx="12" cy="12" r="10"/>
+  <path d="M8 12h8"/>
+  <path d="M12 8v8"/>
+</svg>
+ Upload New Material</span>
+            <svg class="chevron" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <div class="creation-card-body">
+            <form class="cc-form" action="{% url 'course:upload_materials' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose data-max-mb="50">
+              {% csrf_token %}
+              {% if material_form.errors %}
+                <div class="errorlist" role="alert">
+                  {% for errs in material_form.errors.values %}{% for e in errs %}<p>{{ e }}</p>{% endfor %}{% endfor %}
+                </div>
+              {% endif %}
+              <div class="cc-field">
+                <label for="{{ material_form.topic.id_for_label }}">Topic category</label>
+                {{ material_form.topic }}
+              </div>
+              <div class="cc-field" data-new-topic>
+                <label for="{{ material_form.new_topic.id_for_label }}">New topic name</label>
+                {{ material_form.new_topic }}
+              </div>
+              <div class="cc-field">
+                <label for="{{ material_form.files.id_for_label }}">Files</label>
+                <div class="cc-filebox">
+                  <label class="cc-pick" for="{{ material_form.files.id_for_label }}">Choose files</label>
+                  {{ material_form.files }}
+                  <span class="cc-names" data-file-names>No file chosen</span>
+                </div>
+                <p class="cc-hint">Select one or more files. Up to 50 MB each.</p>
+                <p class="cc-error" data-file-error role="alert" hidden></p>
+              </div>
+              <div class="cc-form__actions">
+                <button type="submit" class="course-btn" data-submit-label="Uploading…">Add material</button>
+              </div>
+            </form>
           </div>
-          <div class="cc-field" data-new-topic>
-            <label for="{{ material_form.new_topic.id_for_label }}">New topic name</label>
-            {{ material_form.new_topic }}
-          </div>
-          <div class="cc-field">
-            <label for="{{ material_form.files.id_for_label }}">Files</label>
-            <div class="cc-filebox">
-              <label class="cc-pick" for="{{ material_form.files.id_for_label }}">Choose files</label>
-              {{ material_form.files }}
-              <span class="cc-names" data-file-names>No file chosen</span>
-            </div>
-            <p class="cc-hint">Select one or more files. Up to 50 MB each.</p>
-            <p class="cc-error" data-file-error role="alert" hidden></p>
-          </div>
-          <div class="cc-form__actions">
-            <button type="submit" class="course-btn" data-submit-label="Uploading…">Add material</button>
-          </div>
-        </form>
-      </div>
+        </details>
 
-      <div class="cc-section">
-        <h2 class="cc-section-title">Manage materials <span class="cc-count">{{ material_count }}</span></h2>
-        {% for g in topic_groups %}
-          <div class="cc-card">
-            <h3 class="cc-subtitle">{{ g.title }}</h3>
-            <ul class="cc-files">
-              {% for m in g.materials %}
-                <li class="cc-file" id="material-{{ m.pk }}">
-                  <span class="cc-ext cc-ext--{{ m.original_name|file_kind }}" aria-hidden="true">{{ m.original_name|file_ext }}</span>
-                  <div class="cc-file__main">
-                    <span class="cc-file__name">{{ m.title }}</span>
-                    <span class="cc-file__meta">{{ m.size|filesizeformat }} · Posted {{ m.created_at|date:"M j" }}</span>
-                  </div>
-                  <button type="button" class="cc-icon-btn" data-edit-toggle="edit-{{ m.pk }}" aria-label="Edit {{ m.title }}">
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                  </button>
-                  <form method="post" action="{% url 'course:delete_material' course.pk m.pk %}" data-confirm="Delete {{ m.title }}? The file will be removed.">
-                    {% csrf_token %}
-                    <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete {{ m.title }}">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+        <div class="cc-section">
+          <h2 class="cc-section-title">Manage materials <span class="cc-count">{{ material_count }}</span></h2>
+          {% for g in topic_groups %}
+            <div class="cc-card">
+              <h3 class="cc-subtitle">{{ g.title }}</h3>
+              <ul class="cc-files">
+                {% for m in g.materials %}
+                  <li class="cc-file" id="material-{{ m.pk }}">
+                    <span class="cc-ext cc-ext--{{ m.original_name|file_kind }}" aria-hidden="true">{{ m.original_name|file_ext }}</span>
+                    <div class="cc-file__main">
+                      <span class="cc-file__name">{{ m.title }}</span>
+                      <span class="cc-file__meta">{{ m.size|filesizeformat }} · Posted {{ m.created_at|date:"M j" }}</span>
+                    </div>
+                    <button type="button" class="cc-icon-btn" data-edit-toggle="edit-{{ m.pk }}" aria-label="Edit {{ m.title }}">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </button>
-                  </form>
-                  <form class="cc-edit" id="edit-{{ m.pk }}" method="post" action="{% url 'course:edit_material' course.pk m.pk %}" hidden>
-                    {% csrf_token %}
-                    <div>
-                      <label for="edit-title-{{ m.pk }}">Name</label>
-                      <input id="edit-title-{{ m.pk }}" name="title" value="{{ m.title }}" maxlength="150" required>
-                    </div>
-                    <div>
-                      <label for="edit-topic-{{ m.pk }}">Topic</label>
-                      <select id="edit-topic-{{ m.pk }}" name="topic">
-                        <option value="">No topic</option>
-                        {% for t in topics %}<option value="{{ t.pk }}"{% if t.pk == m.topic_id %} selected{% endif %}>{{ t.title }}</option>{% endfor %}
-                      </select>
-                    </div>
-                    <div class="cc-edit__actions">
-                      <button type="submit" class="course-btn">Save</button>
-                      <button type="button" class="course-btn secondary" data-edit-cancel>Cancel</button>
-                    </div>
-                  </form>
-                </li>
-              {% endfor %}
-            </ul>
-          </div>
-        {% empty %}
-          <p class="cc-empty">Nothing uploaded yet. Add your first material above.</p>
-        {% endfor %}
+                    <form method="post" action="{% url 'course:delete_material' course.pk m.pk %}" data-confirm="Delete {{ m.title }}? The file will be removed.">
+                      {% csrf_token %}
+                      <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete {{ m.title }}">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                      </button>
+                    </form>
+                    <form class="cc-edit" id="edit-{{ m.pk }}" method="post" action="{% url 'course:edit_material' course.pk m.pk %}" hidden>
+                      {% csrf_token %}
+                      <div>
+                        <label for="edit-title-{{ m.pk }}">Name</label>
+                        <input id="edit-title-{{ m.pk }}" name="title" value="{{ m.title }}" maxlength="150" required>
+                      </div>
+                      <div>
+                        <label for="edit-topic-{{ m.pk }}">Topic</label>
+                        <select id="edit-topic-{{ m.pk }}" name="topic">
+                          <option value="">No topic</option>
+                          {% for t in topics %}<option value="{{ t.pk }}"{% if t.pk == m.topic_id %} selected{% endif %}>{{ t.title }}</option>{% endfor %}
+                        </select>
+                      </div>
+                      <div class="cc-edit__actions">
+                        <button type="submit" class="course-btn">Save</button>
+                        <button type="button" class="course-btn secondary" data-edit-cancel>Cancel</button>
+                      </div>
+                    </form>
+                  </li>
+                {% endfor %}
+              </ul>
+            </div>
+          {% empty %}
+            <p class="cc-empty">Nothing uploaded yet. Add your first material above.</p>
+          {% endfor %}
+        </div>
       </div>
+
     </section>
   {% endif %}
   

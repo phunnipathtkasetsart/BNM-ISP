@@ -37,8 +37,8 @@
       <div class="cc-post__actions" style="display: flex; gap: 0.5rem; align-items: center;">
         
         <!-- EDIT BUTTON -->
-        <button type="button" class="cc-icon-btn" aria-label="Edit announcement" onclick="document.getElementById('display-post-{{ post.pk }}').style.display='none'; document.getElementById('edit-post-{{ post.pk }}').style.display='block';">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
+              <button type="button" class="cc-icon-btn" aria-label="Edit announcement" data-post-edit>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
             <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
           </svg>
         </button>
@@ -57,7 +57,7 @@
   </header>
 
   <!-- POST DISPLAY CONTENT -->
-  <div id="display-post-{{ post.pk }}" class="cc-post__content">
+     <div class="cc-post__content" data-post-display>
     {% if post.title %}
       <h3 class="cc-post__title">{{ post.title }}</h3>
     {% endif %}
@@ -86,10 +86,7 @@
 
   <!-- HIDDEN EDIT FORM -->
   {% if manage and can_delete_any or manage and post.author_id == request.user.pk %}
-    <form id="edit-post-{{ post.pk }}" 
-          action="{% url 'course:edit_post' pk=course.pk post_id=post.pk %}" 
-          method="post" 
-          style="display: none; padding: 0 1.25rem 1.25rem 1.25rem;">
+   <form action="{% url 'course:edit_post' pk=course.pk post_id=post.pk %}" method="post" data-post-editform hidden style="padding: 0 1.25rem 1.25rem 1.25rem;">
       {% csrf_token %}
       
       <div style="margin-bottom: 1rem;">
@@ -111,7 +108,7 @@
       
       <div style="display: flex; gap: 0.5rem;">
         <button type="submit" style="padding: 0.5rem 1rem; background-color: #0f766e; color: white; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;">Save Changes</button>
-        <button type="button" onclick="document.getElementById('edit-post-{{ post.pk }}').style.display='none'; document.getElementById('display-post-{{ post.pk }}').style.display='block';" style="padding: 0.5rem 1rem; background-color: #e5e7eb; color: #374151; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;">Cancel</button>
+        <button type="button" data-post-edit-cancel>Cancel</button>
       </div>
     </form>
   {% endif %}

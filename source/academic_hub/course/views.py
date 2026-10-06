@@ -398,9 +398,8 @@ def download_material(request, pk, material_id):
 
 
 
-# ✅ FIX IN views_3.py
-@require_POST
 @course_access(manage_content=True)
+@require_POST
 def edit_post(request, pk, post_id):
     post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
     
@@ -411,11 +410,15 @@ def edit_post(request, pk, post_id):
         messages.error(request, "You can only edit your own announcements.")
         return redirect("course:detail", pk=pk)
         
-    form = CoursePostForm(request.POST, instance=post, course=request.course)
+    form = CoursePostForm(request.POST, request.FILES, instance=post, course=request.course)
     if form.is_valid():
         form.save()
+        if api_request(request):
+            return JsonResponse({"id": post.pk, "title": post.title})
         messages.success(request, "Announcement updated.")
     else:
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
         messages.error(request, "Failed to update announcement. Check form fields.")
         
-    return redirect(request.META.get('HTTP_REFERER', '/'))
+    return redirect("course:detail", pk=pk)

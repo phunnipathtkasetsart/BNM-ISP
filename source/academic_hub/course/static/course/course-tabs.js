@@ -83,6 +83,10 @@
     const sections = Array.from(root.querySelectorAll('.cc-topic'));
     const filter = root.querySelector('[data-topic-filter]');
     const toggle = root.querySelector('[data-collapse-all]');
+    // Collapse all sections on initial load
+  sections.forEach(s => { s.open = false; });
+  if (toggle) toggle.textContent = 'Expand all';
+
     filter.addEventListener('change', () => {
       sections.forEach(s => { s.hidden = Boolean(filter.value) && s.dataset.topic !== filter.value; });
     });
@@ -126,7 +130,49 @@
     sync();
   });
 
+// Manage Content Sub-Tabs
+  document.querySelectorAll('.subtab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Remove active class from all sub-tab buttons
+      document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
+      // Hide all sub-panels
+      document.querySelectorAll('.manage-tab-content').forEach(p => p.hidden = true);
+      
+      // Activate clicked button and show corresponding panel
+      btn.classList.add('active');
+      try { sessionStorage.setItem('course-subtab-' + location.pathname, btn.dataset.subtab); } catch (e) {}
+      const targetPanel = document.getElementById('subpanel-' + btn.dataset.subtab);
+      if (targetPanel) targetPanel.hidden = false;
+    });
+  });
 
+  // Auto-expand creation card if the server returns form validation errors
+       try {
+       const savedSub = sessionStorage.getItem('course-subtab-' + location.pathname);
+       const subBtn = savedSub && document.querySelector(`.subtab-btn[data-subtab="${savedSub}"]`);
+       if (subBtn) subBtn.click();
+     } catch (e) {}
+  document.querySelectorAll('.creation-card').forEach(card => {
+    if (card.querySelector('.errorlist')) {
+      card.open = true;
+      
+      // If the error is in the materials form, switch to the materials tab automatically
+      if (card.closest('#subpanel-materials')) {
+        document.querySelector('.subtab-btn[data-subtab="materials"]').click();
+      }
+    }
+  });
   
+
+     // Announcement edit: swap the card content for its edit form.
+     document.addEventListener('click', e => {
+       const open = e.target.closest('[data-post-edit]');
+       const cancel = e.target.closest('[data-post-edit-cancel]');
+       if (!open && !cancel) return;
+       const card = e.target.closest('.cc-post-card');
+       card.querySelector('[data-post-display]').hidden = Boolean(open);
+       card.querySelector('[data-post-editform]').hidden = !open;
+     });
+
 })();
 
