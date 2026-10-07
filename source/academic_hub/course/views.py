@@ -313,25 +313,38 @@ def create_post(request, pk):
             return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
         return render(request, "course/detail.html", detail_context(request, form), status=400)
 
+    topic = None
+    if form.cleaned_data.get("attachment") and form.cleaned_data.get("add_to_materials"):
+        choice = form.cleaned_data["topic"]
+        if choice == MaterialUploadForm.NEW_TOPIC:
+            topic = get_or_create_topic(request.course, form.cleaned_data["new_topic"])
+        else:
+            topic = get_object_or_404(request.course.topics, pk=choice)
+
+            
+    # Topic check outside atomic block to prevent orphan files on 404
+    existing_topic = None
+    if form.cleaned_data.get("attachment") and form.cleaned_data.get("add_to_materials"):
+        choice = form.cleaned_data["topic"]
+        if choice != MaterialUploadForm.NEW_TOPIC:
+            existing_topic = get_object_or_404(request.course.topics, pk=choice)
+
     with transaction.atomic():
         post = form.save(commit=False)
         post.course = request.course
         post.author = request.user
         post.save()
+
         upload = form.cleaned_data.get("attachment")
         if upload:
             attachment = PostAttachment.objects.create(post=post, file=upload)
             if form.cleaned_data.get("add_to_materials"):
-                choice = form.cleaned_data["topic"]
-                if choice == MaterialUploadForm.NEW_TOPIC:
-                    topic = get_or_create_topic(request.course, form.cleaned_data["new_topic"])
-                else:
-                    topic = get_object_or_404(request.course.topics, pk=choice)
-                # Same stored file, second row: no copy on disk.
+                topic = existing_topic or get_or_create_topic(request.course, form.cleaned_data["new_topic"])
                 Material.objects.create(
                     course=request.course, topic=topic, created_by=request.user,
                     title=attachment.original_name[:150], file=attachment.file.name,
-                    original_name=attachment.original_name, size=attachment.size)
+                    original_name=attachment.original_name, size=attachment.size
+                )
 
     if api_request(request):
         return JsonResponse({"id": post.pk, "title": post.title}, status=201)
@@ -354,14 +367,22 @@ def delete_post(request, pk, post_id):
     return redirect("course:detail", pk=pk)
 
 
-def file_download(item):
-    if not item.file or not item.file.storage.exists(item.file.name):
-        raise Http404("File does not exist on disk.")
-    return FileResponse(
-        item.file.open("rb"),
-        as_attachment=True,
-        filename=item.original_name or item.file.name.split("/")[-1],
-    )
+def file_download(attachment):
+    """
+    Helper function to safely stream an attachment file.
+    """
+    try:
+        # Obtain original filename safely
+        filename = getattr(attachment, 'original_name', None) or getattr(attachment, 'name', None) or 'attachment'
+        
+        return FileResponse(
+            attachment.file.open('rb'),
+            as_attachment=True,
+            filename=filename
+        )
+    except (FileNotFoundError, ValueError, AttributeError):
+        raise Http404("Attachment file unavailable")
+
 
 
 @course_access()
@@ -449,7 +470,7 @@ def edit_post(request, pk, post_id):
         messages.error(request, "You can only edit your own announcements.")
         return redirect("course:detail", pk=pk)
         
-    form = CoursePostForm(request.POST, request.FILES, instance=post, course=request.course)
+    form = CoursePostForm(request.POST, instance=post, course=request.course)
     if form.is_valid():
         form.save()
         if api_request(request):
