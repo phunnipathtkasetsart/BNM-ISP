@@ -41,6 +41,8 @@
     <div class="cc-tabs" role="tablist" aria-label="Course sections" data-cc-tabs data-storage-key="course-tab-{{ course.pk }}">
       <button type="button" class="cc-tab" role="tab" id="tab-content" data-panel="panel-content" aria-controls="panel-content" aria-selected="true">Course Content</button>
       <button type="button" class="cc-tab" role="tab" id="tab-manage" data-panel="panel-manage" aria-controls="panel-manage" aria-selected="false" tabindex="-1">Manage Content</button>
+      {% if can_manage %}<button type="button" class="cc-tab" role="tab" id="tab-settings" data-panel="panel-settings" aria-controls="panel-settings" aria-selected="false" tabindex="-1">Settings</button>{% endif %}
+
     </div>
   {% endif %}
 
@@ -297,6 +299,43 @@
     </section>
   {% endif %}
   
+  {# ---- Settings: class owner only ---- #}
+  {% if can_manage %}
+    <section class="cc-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+      <div class="cc-section">
+        <h2 class="cc-section-title">Teaching assistants <span class="cc-count">{{ ta_ids|length }}</span></h2>
+        <p class="cc-hint">A TA is an enrolled student who can post announcements and manage materials. TAs cannot manage members or edit the class.</p>
+        {% if enrollments %}
+          <div class="cc-card">
+            <ul class="cc-files">
+              {% for e in enrollments %}
+                <li class="cc-file">
+                  <div class="cc-file__main">
+                    <span class="cc-file__name">{{ e.student.get_full_name }} {% if e.student_id in ta_ids %}<span class="cc-role cc-role--ta">TA</span>{% endif %}</span>
+                    <span class="cc-file__meta">{{ e.student_id }}</span>
+                  </div>
+                  {% if e.student_id in ta_ids %}
+                    <form method="post" action="{% url 'course:ta_remove' course.pk e.student_id %}" data-confirm="Remove {{ e.student.get_full_name }} as TA?">
+                      {% csrf_token %}
+                      <button type="submit" class="course-btn secondary">Remove TA</button>
+                    </form>
+                  {% else %}
+                    <form method="post" action="{% url 'course:ta_assign' course.pk e.student_id %}">
+                      {% csrf_token %}
+                      <button type="submit" class="course-btn">Make TA</button>
+                    </form>
+                  {% endif %}
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <p class="cc-empty">No students are enrolled yet. Add students from <a href="{% url 'course:members_page' course.pk %}">Manage members</a> first.</p>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
+
 </div>
 
 

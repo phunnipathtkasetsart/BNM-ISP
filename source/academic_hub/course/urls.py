@@ -45,4 +45,10 @@ urlpatterns = [
     path("api/<int:pk>/materials/<int:material_id>/delete/", views.delete_material, name="api_delete_material"),
 
     path("<int:pk>/posts/<int:post_id>/edit/", views.edit_post, name="edit_post"),
+
+        # Task 4.5: teaching assistants
+    path("<int:pk>/tas/<str:student_id>/assign/", views.ta_assign, name="ta_assign"),
+    path("<int:pk>/tas/<str:student_id>/remove/", views.ta_remove, name="ta_remove"),
+    path("api/<int:pk>/tas/<str:student_id>/assign/", views.ta_assign, name="api_ta_assign"),
+    path("api/<int:pk>/tas/<str:student_id>/remove/", views.ta_remove, name="api_ta_remove"),
 ]

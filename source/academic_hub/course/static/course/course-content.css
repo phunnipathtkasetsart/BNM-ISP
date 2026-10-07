@@ -411,15 +411,7 @@
   color: #5f6368;
 }
 
-/* Past due override styles */
-.cc-post__due-badge.cc-post__due-badge--past {
-  background-color: #fce8e6;
-  color: #d93025;
-}
 
-.cc-post__due-badge.cc-post__due-badge--past .cc-post__due-icon {
-  color: #d93025;
-}
 
 /* Post Content Body */
 .cc-post__title {
@@ -523,3 +515,4 @@
   padding: 0;
   background: transparent;
 }
+

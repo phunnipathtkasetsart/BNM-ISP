@@ -12,8 +12,8 @@ from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
                     MaterialEditForm, MaterialUploadForm, RosterForm)
 from .models import Course, CoursePost, Enrollment, Material, PostAttachment
 from .permissions import can_teach, course_access, visible_courses
-from .services import (add_materials, add_students, create_course,
-                       get_or_create_topic, update_course)
+from .services import (add_materials, add_students, assign_ta, create_course,
+                       get_or_create_topic, remove_ta, update_course)
 
 
 def api_request(request):
@@ -145,6 +145,9 @@ def detail_context(request, post_form=None, material_form=None):
         "can_manage": request.can_manage_roster,
         "can_manage_content": manage,
         "can_delete_any": request.is_owner or request.is_dept_override,
+
+        "enrollments": course.enrollments.select_related("student") if request.can_manage_roster else [],
+        "ta_ids": set(course.ta_links.values_list("user_id", flat=True)),
     }
 
 
@@ -211,8 +214,10 @@ def delete(request, pk):
 @require_http_methods(["GET"])
 def members(request, pk):
     roster = request.course.enrollments.select_related("student")
+    tas = set(request.course.ta_links.values_list("user_id", flat=True))
     return JsonResponse({"lecturer": {"id": request.course.owner_id, "name": request.course.owner.get_full_name()},
-                         "students": [{"id": e.student_id, "name": e.student.get_full_name()} for e in roster]})
+                         "students": [{"id": e.student_id, "name": e.student.get_full_name(),
+                                       "is_ta": e.student_id in tas} for e in roster]})
 
 
 @course_access(owner=True)
@@ -421,4 +426,32 @@ def edit_post(request, pk, post_id):
             return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
         messages.error(request, "Failed to update announcement. Check form fields.")
         
+    return redirect("course:detail", pk=pk)
+
+
+# --- Task 4.5: teaching assistants (owner only) -------------------------------
+
+@course_access(owner=True)
+@require_POST
+def ta_assign(request, pk, student_id):
+    try:
+        created = assign_ta(request.course, student_id)
+    except ValidationError as error:
+        if api_request(request):
+            return JsonResponse({"error": error.messages[0]}, status=404)
+        messages.error(request, error.messages[0])
+        return redirect("course:detail", pk=pk)
+    if api_request(request):
+        return JsonResponse({"assigned": True, "created": created}, status=201 if created else 200)
+    messages.success(request, "Student is now a TA." if created else "Student is already a TA.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access(owner=True)
+@require_POST
+def ta_remove(request, pk, student_id):
+    removed = remove_ta(request.course, student_id)
+    if api_request(request):
+        return JsonResponse({"removed": removed})
+    messages.success(request, "TA role removed." if removed else "That student was not a TA.")
     return redirect("course:detail", pk=pk)

@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models.functions import Lower, Trim
 
-from .models import Course, Enrollment, Material, Topic, generate_class_code
+from .models import Course, CourseTA, Enrollment, Material, Topic, generate_class_code
 
 DUPLICATE_CLASS = "You already have a class with this name and section. Use a different name or section."
 
@@ -84,3 +84,21 @@ def add_materials(course, topic, files, user):
             material.file.storage.delete(material.file.name)
         raise
     return created
+
+
+
+def assign_ta(course, student_id):
+    """Make an enrolled student a TA. Returns True when newly assigned."""
+    with transaction.atomic():
+        # Lock the enrollment row so a concurrent roster removal cannot
+        # leave a TA behind (the removal signal runs after we commit).
+        if not Enrollment.objects.select_for_update().filter(
+                course=course, student_id=student_id).exists():
+            raise ValidationError("Only students enrolled in this class can become TAs.")
+        _, created = CourseTA.objects.get_or_create(course=course, user_id=student_id)
+    return created
+
+
+def remove_ta(course, student_id):
+    deleted, _ = CourseTA.objects.filter(course=course, user_id=student_id).delete()
+    return bool(deleted)

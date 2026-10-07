@@ -174,5 +174,9 @@
        card.querySelector('[data-post-editform]').hidden = !open;
      });
 
+
+
+
+     
 })();
 
