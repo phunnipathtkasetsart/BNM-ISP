@@ -1,13 +1,124 @@
+import shutil
+import tempfile
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
-from django.test import Client, TestCase
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
-from .models import Course, Enrollment
-from .services import create_course
+from .models import Course, CoursePost, CourseTA, Enrollment, Material, PostAttachment, Topic
+from .services import assign_ta, create_course
+from .validators import validate_upload_size
+
+# Separate temp directories to prevent tearDownClass conflicts between test suites
+MEDIA_MODELS = tempfile.mkdtemp(prefix="course-test-media-models-")
+MEDIA_VIEWS = tempfile.mkdtemp(prefix="course-test-media-views-")
+
+
+@override_settings(MEDIA_ROOT=MEDIA_MODELS)
+class ContentModelTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+        cls.teacher = User.objects.create_user(
+            nisit_id="6610540001", email="t@ku.th", password="x", first_name="T",
+            last_name="Test", department="ske", is_staff=True)
+        cls.student = User.objects.create_user(
+            nisit_id="6610540003", email="s@ku.th", password="x", first_name="S",
+            last_name="Test", department="ske")
+        cls.course = create_course(owner=cls.teacher, name="Software Engineering", section="001")
+        cls.other = create_course(owner=cls.teacher, name="Databases", section="001")
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA_MODELS, ignore_errors=True)
+
+    def upload(self, name="Lecture 1.pdf", data=b"hello"):
+        return SimpleUploadedFile(name, data, content_type="application/pdf")
+
+    def test_material_keeps_original_name_and_size_but_stores_random_path(self):
+        m = Material.objects.create(course=self.course, title="Slides", file=self.upload(),
+                                    created_by=self.teacher)
+        self.assertEqual(m.original_name, "Lecture 1.pdf")
+        self.assertEqual(m.size, 5)
+        self.assertTrue(m.file.name.startswith(f"course_files/{self.course.pk}/"))
+        self.assertNotIn("Lecture", m.file.name)
+        self.assertTrue(m.file.name.endswith(".pdf"))
+
+    def test_attachment_path_uses_the_posts_course(self):
+        post = CoursePost.objects.create(course=self.course, author=self.teacher, title="Hi")
+        a = PostAttachment.objects.create(post=post, file=self.upload("a.txt"))
+        self.assertTrue(a.file.name.startswith(f"course_files/{self.course.pk}/"))
+        self.assertEqual(a.original_name, "a.txt")
+        self.assertEqual(a.course_id, self.course.pk)
+
+    def test_size_limit_is_enforced_by_validator(self):
+        with override_settings(MAX_UPLOAD_BYTES=10):
+            with self.assertRaises(ValidationError):
+                validate_upload_size(self.upload(data=b"x" * 11))
+            validate_upload_size(self.upload(data=b"x" * 10))
+
+    def test_default_limit_is_50_mb(self):
+        big = SimpleUploadedFile("big.bin", b"x")
+        big.size = 50 * 1024 * 1024 + 1
+        with self.assertRaises(ValidationError):
+            validate_upload_size(big)
+        big.size = 50 * 1024 * 1024
+        validate_upload_size(big)
+
+    def test_deleting_row_removes_file_from_storage(self):
+        m = Material.objects.create(course=self.course, title="Slides", file=self.upload())
+        storage, name = m.file.storage, m.file.name
+        self.assertTrue(storage.exists(name))
+        with self.captureOnCommitCallbacks(execute=True):
+            m.delete()
+        self.assertFalse(storage.exists(name))
+
+    def test_deleting_course_removes_its_files_and_content(self):
+        post = CoursePost.objects.create(course=self.course, title="Hi")
+        a = PostAttachment.objects.create(post=post, file=self.upload("a.txt"))
+        m = Material.objects.create(course=self.course, title="Slides", file=self.upload())
+        names = [(a.file.storage, a.file.name), (m.file.storage, m.file.name)]
+        with self.captureOnCommitCallbacks(execute=True):
+            self.course.delete()
+        self.assertFalse(CoursePost.objects.exists() or Material.objects.exists()
+                         or PostAttachment.objects.exists())
+        for storage, name in names:
+            self.assertFalse(storage.exists(name))
+
+    def test_deleting_topic_keeps_materials(self):
+        topic = Topic.objects.create(course=self.course, title="Week 1")
+        m = Material.objects.create(course=self.course, topic=topic, title="S", file=self.upload())
+        topic.delete()
+        m.refresh_from_db()
+        self.assertIsNone(m.topic)
+
+    def test_topic_title_unique_per_course_ignoring_case_and_spaces(self):
+        Topic.objects.create(course=self.course, title="Week 1")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            Topic.objects.create(course=self.course, title="  week 1 ")
+        Topic.objects.create(course=self.other, title="Week 1")
+
+    def test_ta_link_unique_per_course_and_user(self):
+        CourseTA.objects.create(course=self.course, user=self.student)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            CourseTA.objects.create(course=self.course, user=self.student)
+        CourseTA.objects.create(course=self.other, user=self.student)
+
+    def test_deleting_author_keeps_post(self):
+        post = CoursePost.objects.create(course=self.course, author=self.student, title="Hi")
+        self.student.delete()
+        post.refresh_from_db()
+        self.assertIsNone(post.author)
+
+    def test_posts_and_materials_list_newest_first(self):
+        first = CoursePost.objects.create(course=self.course, title="One")
+        second = CoursePost.objects.create(course=self.course, title="Two")
+        self.assertEqual(list(self.course.posts.all()), [second, first])
 
 
 class CourseTests(TestCase):
@@ -394,7 +505,6 @@ class CourseTests(TestCase):
         self.sign_in(self.student)
         self.assertEqual(self.client.get(self.url("join")).status_code, 200)
 
-
     def test_unavailable_class_redirects_without_leaking_class_details(self):
         enrollment = Enrollment.objects.create(course=self.course, student=self.student)
         self.sign_in(self.student)
@@ -462,3 +572,118 @@ class CourseTests(TestCase):
         with patch("course.services.duplicate_class", side_effect=[False, True]), patch("django.db.models.query.QuerySet.update", side_effect=IntegrityError):
             with self.assertRaises(ValidationError):
                 update_course(self.course, name="Race", section="001")
+
+
+@override_settings(MEDIA_ROOT=MEDIA_VIEWS)
+class ContentViewTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        User = get_user_model()
+        cls.teacher = User.objects.create_user(nisit_id="0000000001", email="teacher@ku.th", password="x", is_staff=True, department="ske")
+        cls.dept = User.objects.create_user(nisit_id="0000000002", email="dept@ku.th", password="x", is_superuser=True, department="ske")
+        cls.student = User.objects.create_user(nisit_id="0000000003", email="student@ku.th", password="x")
+        cls.ta = User.objects.create_user(nisit_id="0000000004", email="ta@ku.th", password="x")
+
+        cls.course = create_course(owner=cls.teacher, name="Content Course", section="001")
+        Enrollment.objects.create(course=cls.course, student=cls.student)
+        Enrollment.objects.create(course=cls.course, student=cls.ta)
+        assign_ta(cls.course, cls.ta.pk)
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA_VIEWS, ignore_errors=True)
+
+    def sign_in(self, user):
+        self.client.force_login(user)
+
+    def url(self, action, *args):
+        return reverse(f"course:{action}", args=args)
+
+    def upload(self, name="file.pdf", data=b"data"):
+        return SimpleUploadedFile(name, data, content_type="application/pdf")
+
+    def test_42_45_ta_permissions(self):
+        # TA can manage content but not roster
+        self.sign_in(self.ta)
+        # Cannot assign or remove another TA
+        self.assertEqual(self.client.post(self.url("api_ta_assign", self.course.pk, self.student.pk)).status_code, 403)
+        # Can create topic/material (simulate by posting)
+        resp = self.client.post(self.url("api_upload_materials", self.course.pk), {
+            "topic": "__new", "new_topic": "TA Topic", "files": self.upload()
+        })
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(Topic.objects.filter(title="TA Topic").exists())
+
+    def test_45_lecturer_ta_assignment(self):
+        self.sign_in(self.teacher)
+        # Assign enrolled student
+        resp = self.client.post(self.url("api_ta_assign", self.course.pk, self.student.pk))
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(CourseTA.objects.filter(course=self.course, user=self.student).exists())
+        # Remove TA
+        resp = self.client.post(self.url("api_ta_remove", self.course.pk, self.student.pk))
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(CourseTA.objects.filter(course=self.course, user=self.student).exists())
+
+    def test_43_course_post_crud(self):
+        self.sign_in(self.teacher)
+        resp = self.client.post(self.url("api_create_post", self.course.pk), {
+            "title": "Welcome", "body": "Hello", "attachment": self.upload()
+        })
+        self.assertEqual(resp.status_code, 201)
+        post = CoursePost.objects.get(title="Welcome")
+        self.assertTrue(post.attachments.exists())
+
+        # Download attachment
+        attachment = post.attachments.first()
+        dl_resp = self.client.get(self.url("download_attachment", self.course.pk, attachment.pk))
+        self.assertEqual(dl_resp.status_code, 200)
+
+        # Delete post
+        del_resp = self.client.post(self.url("api_delete_post", self.course.pk, post.pk))
+        self.assertEqual(del_resp.status_code, 200)
+        self.assertFalse(CoursePost.objects.filter(pk=post.pk).exists())
+
+    def test_44_material_crud(self):
+        self.sign_in(self.teacher)
+        resp = self.client.post(self.url("api_upload_materials", self.course.pk), {
+            "topic": "__new", "new_topic": "Lectures", "files": self.upload("lecture1.pdf")
+        })
+        self.assertEqual(resp.status_code, 201)
+        material = Material.objects.get(title="lecture1.pdf")
+
+        # Download material
+        dl_resp = self.client.get(self.url("download_material", self.course.pk, material.pk))
+        self.assertEqual(dl_resp.status_code, 200)
+
+        # Edit material
+        self.client.post(self.url("api_edit_material", self.course.pk, material.pk), {
+            "title": "Updated Lecture", "topic": material.topic.pk
+        })
+        material.refresh_from_db()
+        self.assertEqual(material.title, "Updated Lecture")
+
+        # Delete material
+        self.client.post(self.url("api_delete_material", self.course.pk, material.pk))
+        self.assertFalse(Material.objects.filter(pk=material.pk).exists())
+
+    def test_student_cannot_manage_content(self):
+        self.sign_in(self.student)
+        # Cannot create post
+        resp = self.client.post(self.url("api_create_post", self.course.pk), {
+            "title": "Hack", "body": "Hacked"
+        })
+        self.assertEqual(resp.status_code, 403)
+        # Can view/download
+        post = CoursePost.objects.create(course=self.course, title="Test", author=self.teacher)
+        att = PostAttachment.objects.create(post=post, file=self.upload())
+        self.assertEqual(self.client.get(self.url("download_attachment", self.course.pk, att.pk)).status_code, 200)
+
+    def test_dept_admin_override_content(self):
+        self.sign_in(self.dept)
+        resp = self.client.post(self.url("api_create_post", self.course.pk), {
+            "title": "Dept Notice", "body": "Overriding"
+        })
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(CoursePost.objects.filter(title="Dept Notice").exists())
