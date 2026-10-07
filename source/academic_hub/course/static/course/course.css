@@ -525,3 +525,102 @@
   max-width: 1600px;
 }
 
+/* Upcoming Deadlines Widget */
+.course-shell.deadline-widget {
+  min-height: auto;
+  margin-bottom: 24px;
+}
+
+.deadline-widget h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #183e35;
+}
+
+.deadline-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.deadline-item {
+  border: 1px solid #dce6e0;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.deadline-item:hover {
+  border-color: #bad3ca;
+  box-shadow: 0 4px 12px rgba(22, 63, 53, 0.06);
+}
+
+.deadline-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 18px;
+  text-decoration: none;
+  color: #183e35;
+}
+
+.deadline-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.deadline-course {
+  font-size: 11px;
+  font-weight: 800;
+  color: #176c5d;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.deadline-title {
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.deadline-time {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background: #fbf3e8;
+  border: 1px solid #f2dfce;
+  color: #8c4a00;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.deadline-empty,
+.cc-empty {
+  margin: 8px 0 0;
+  color: #577067;
+  font-size: 14px;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 650px) {
+  .deadline-link {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .deadline-title {
+    white-space: normal;
+  }
+}

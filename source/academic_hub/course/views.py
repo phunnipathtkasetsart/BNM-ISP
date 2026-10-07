@@ -1,4 +1,6 @@
 import json
+from datetime import timedelta
+
 
 from django.contrib import messages
 from django.core.exceptions import ValidationError
@@ -63,12 +65,36 @@ def dashboard(request):
     ta_course_ids = set(
         CourseTA.objects.filter(user=request.user).values_list("course_id", flat=True)
     )
+
+    # Fetch deadlines within the next 7 days across all classes
+    now = timezone.now()
+    upcoming_deadlines = (
+        CoursePost.objects.filter(
+            course__in=courses,
+            deadline__isnull=False,
+            deadline__gte=now,
+            deadline__lte=now + timedelta(days=7)
+        )
+        .select_related("course")
+        .order_by("deadline")
+    )
+
     if api_request(request):
         return JsonResponse({"courses": [course_data(c, request.user) for c in courses]})
-    return render(request, "course/dashboard.html", {"courses": courses, "can_create": can_teach(request.user),
-                  "can_join": not request.user.is_staff and not request.user.is_superuser,
-                  "ta_course_ids": ta_course_ids,
-                  "create_form": CourseForm(), "join_form": JoinForm()})
+
+    return render(
+        request,
+        "course/dashboard.html",
+        {
+            "courses": courses,
+            "can_create": can_teach(request.user),
+            "can_join": not request.user.is_staff and not request.user.is_superuser,
+            "ta_course_ids": ta_course_ids,
+            "upcoming_deadlines": upcoming_deadlines,
+            "create_form": CourseForm(),
+            "join_form": JoinForm(),
+        },
+    )
 
 
 @course_access(lecturer=True)
@@ -132,16 +158,18 @@ def detail_context(request, post_form=None, material_form=None):
         material_form = MaterialUploadForm(course=course, auto_id="material_%s")
     groups = topic_groups(course)
     
-    # Query upcoming deadlines
+    # Query deadlines within the next 7 days
+    now = timezone.now()
     upcoming_deadlines = course.posts.filter(
         deadline__isnull=False, 
-        deadline__gte=timezone.now()
+        deadline__gte=now,
+        deadline__lte=now + timedelta(days=7)
     ).order_by("deadline")
 
     return {
         "course": course,
         "posts": course.posts.select_related("author").prefetch_related("attachments"),
-        "upcoming_deadlines": upcoming_deadlines, # Add this to the context
+        "upcoming_deadlines": upcoming_deadlines,
         "post_form": post_form,
         "material_form": material_form,
         "topic_groups": groups,
