@@ -36,37 +36,87 @@
     // Compose forms: show chosen file names, refuse oversize files early, and
   // stop double submits on slow uploads. The server still enforces the limit.
   document.querySelectorAll('[data-cc-compose]').forEach(form => {
-    const input = form.querySelector('input[type="file"]');
-    const names = form.querySelector('[data-file-names]');
-    const error = form.querySelector('[data-file-error]');
-    const maxMb = Number(form.dataset.maxMb || 50);
-    const maxBytes = maxMb * 1024 * 1024;
+  const input = form.querySelector('input[type="file"]');
+  const names = form.querySelector('[data-file-names]');
+  const error = form.querySelector('[data-file-error]');
+  const maxMb = Number(form.dataset.maxMb || 50);
+  const maxBytes = maxMb * 1024 * 1024;
 
-    input.addEventListener('change', () => {
-      const files = Array.from(input.files);
-      const big = files.find(f => f.size > maxBytes);
-      error.hidden = true;
-      if (big) {
+  // File selection change handler
+  input?.addEventListener('change', () => {
+    const files = Array.from(input.files);
+    const big = files.find(f => f.size > maxBytes);
+    if (error) error.hidden = true;
+    
+    if (big) {
+      if (error) {
         error.textContent = `${big.name} is larger than ${maxMb} MB. Choose smaller files.`;
         error.hidden = false;
-        input.value = '';
-        names.textContent = 'No file chosen';
-        return;
       }
+      input.value = '';
+      if (names) names.textContent = 'No file chosen';
+      return;
+    }
+    
+    if (names) {
       names.textContent = !files.length ? 'No file chosen'
         : files.length === 1 ? files[0].name
         : `${files.length} files: ${files.map(f => f.name).join(', ')}`;
-    });
-
-    form.addEventListener('submit', () => {
-      const button = form.querySelector('[type="submit"]');
-      if (!button || button.disabled) return;
-      button.textContent = button.dataset.submitLabel || 'Posting…';
-      // Disable on the next tick so the click still submits the form.
-      setTimeout(() => { button.disabled = true; }, 0);
-    });
+    }
   });
 
+  // PRE-SUBMIT VALIDATION: Prevents losing selected files on invalid submits
+  form.addEventListener('submit', (e) => {
+    const box = form.querySelector('input[name="add_to_materials"]');
+    const topicSelect = form.querySelector('select[name="topic"]');
+    const newTopicInput = form.querySelector('input[name="new_topic"]');
+    
+    // Check if this form requires topic validation:
+    // 1. Upload Material form (always requires a topic)
+    // 2. Announcement form with "Add attachment to Materials" checked
+    const isMaterialUpload = form.action.includes('upload_materials') || Boolean(form.querySelector('input[name="files"]'));
+    const isAddingToMaterials = box && box.checked;
+
+    if (isMaterialUpload || isAddingToMaterials) {
+      // 1. Validate File Choice (for Material Upload)
+      if (isMaterialUpload && input && input.files.length === 0) {
+        e.preventDefault();
+        if (error) {
+          error.textContent = 'Please choose at least one file to upload.';
+          error.hidden = false;
+        }
+        input.focus();
+        return false;
+      }
+
+      // 2. Validate Topic Choice
+      const hasSelectedTopic = topicSelect && topicSelect.value && topicSelect.value !== '__new' && topicSelect.value !== '';
+      const hasNewTopic = newTopicInput && newTopicInput.value.trim().length > 0;
+
+      if (!hasSelectedTopic && !hasNewTopic) {
+        e.preventDefault(); // Stop form submission so chosen files are NOT lost
+
+        if (error) {
+          error.textContent = 'Choose a topic category or enter a new topic name.';
+          error.hidden = false;
+        }
+
+        if (topicSelect && topicSelect.value === '__new' && newTopicInput) {
+          newTopicInput.focus();
+        } else if (topicSelect) {
+          topicSelect.focus();
+        }
+        return false;
+      }
+    }
+
+    // Disable button to prevent double-submitting
+    const button = form.querySelector('[type="submit"]');
+    if (!button || button.disabled) return;
+    button.textContent = button.dataset.submitLabel || 'Posting…';
+    setTimeout(() => { button.disabled = true; }, 0);
+  });
+});
   
 
 
@@ -79,17 +129,20 @@
   });
 
   // Student view: topic filter and collapse/expand all.
+  // Student view: topic filter and collapse/expand all.
   document.querySelectorAll('[data-cc-materials]').forEach(root => {
     const sections = Array.from(root.querySelectorAll('.cc-topic'));
     const filter = root.querySelector('[data-topic-filter]');
     const toggle = root.querySelector('[data-collapse-all]');
-    // Collapse all sections on initial load
-  sections.forEach(s => { s.open = false; });
-  if (toggle) toggle.textContent = 'Expand all';
+
+    // Expand all sections on initial load
+    sections.forEach(s => { s.open = true; });
+    if (toggle) toggle.textContent = 'Collapse all';
 
     filter.addEventListener('change', () => {
       sections.forEach(s => { s.hidden = Boolean(filter.value) && s.dataset.topic !== filter.value; });
     });
+
     toggle.addEventListener('click', () => {
       const visible = sections.filter(s => !s.hidden);
       const anyOpen = visible.some(s => s.open);

@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
                     MaterialEditForm, MaterialUploadForm, RosterForm)
-from .models import Course, CoursePost, Enrollment, Material, PostAttachment
+from .models import Course, CoursePost, CourseTA, Enrollment, Material, PostAttachment
 from .permissions import can_teach, course_access, visible_courses
 from .services import (add_materials, add_students, assign_ta, create_course,
                        get_or_create_topic, remove_ta, update_course)
@@ -59,10 +59,15 @@ def form_error(request, form, title, *, course=None, template="course/form.html"
 @require_http_methods(["GET"])
 def dashboard(request):
     courses = visible_courses(request.user).select_related("owner")
+
+    ta_course_ids = set(
+        CourseTA.objects.filter(user=request.user).values_list("course_id", flat=True)
+    )
     if api_request(request):
         return JsonResponse({"courses": [course_data(c, request.user) for c in courses]})
     return render(request, "course/dashboard.html", {"courses": courses, "can_create": can_teach(request.user),
                   "can_join": not request.user.is_staff and not request.user.is_superuser,
+                  "ta_course_ids": ta_course_ids,
                   "create_form": CourseForm(), "join_form": JoinForm()})
 
 
@@ -167,6 +172,7 @@ def render_members(request, *, form=None, csv_form=None, import_report=None, sta
     return render(request, "course/members.html", {
         "course": course,
         "members": course.enrollments.select_related("student"),
+        "ta_ids": set(course.ta_links.values_list("user_id", flat=True)),
         "can_manage": request.can_manage_roster,
         "roster_form": form if form is not None else RosterForm(),
         "csv_form": csv_form if csv_form is not None else CsvRosterForm(),
