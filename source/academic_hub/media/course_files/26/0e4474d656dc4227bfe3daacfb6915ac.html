@@ -1,0 +1,404 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Course Content Mockup</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&family=Source+Serif+4:wght@600&display=swap">
+<style>
+/* Layout: course header, then a main column (feed / materials / manage) beside a right rail of four placeholder tools.
+   Palette follows the project's KU green; semantic colors stay separate from the accent. */
+:root {
+  --bg: #E6EFEA;
+  --surface: #F6F8F6;
+  --surface-2: #EBF0EC;
+  --ink: #22303A;
+  --ink-soft: #3F5158;
+  --ink-muted: #667A80;
+  --line: #D3DCD5;
+  --accent: #2C5449;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #CFE3D9;
+  --sage: #6FA890;
+  --topbar: #2E5248;
+  --danger: #9B3131;
+  --danger-bg: #FCEDED;
+  --ok: #2C7A5B;
+  --pdf: #B3412F;
+  --zip: #B07A1C;
+  --doc: #2F5F9E;
+  --txt: #5B6B70;
+  --font-body: "Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Source Serif 4", Georgia, serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #131B19; --surface: #1B2623; --surface-2: #22302C; --ink: #E4ECE8; --ink-soft: #BFCEC7;
+    --ink-muted: #8FA39B; --line: #2E3E39; --accent: #7FBFA3; --accent-ink: #10201A; --accent-soft: #28423A;
+    --sage: #6FA890; --topbar: #0F1715; --danger: #E08A8A; --danger-bg: #3A2222; --ok: #7FD1A8;
+    --pdf: #E27A66; --zip: #E0A94D; --doc: #7FA9E0; --txt: #A3B3B8; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #131B19; --surface: #1B2623; --surface-2: #22302C; --ink: #E4ECE8; --ink-soft: #BFCEC7;
+  --ink-muted: #8FA39B; --line: #2E3E39; --accent: #7FBFA3; --accent-ink: #10201A; --accent-soft: #28423A;
+  --sage: #6FA890; --topbar: #0F1715; --danger: #E08A8A; --danger-bg: #3A2222; --ok: #7FD1A8;
+  --pdf: #E27A66; --zip: #E0A94D; --doc: #7FA9E0; --txt: #A3B3B8; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; margin: 0; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.topbar { background: var(--topbar); color: #fff; padding: 10px 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+.topbar b { font-weight: 600; }
+.topbar span { opacity: .8; font-size: 13px; }
+.viewas { background: var(--surface-2); border-bottom: 1px solid var(--line); padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13px; color: var(--ink-muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; padding: 5px 12px; cursor: pointer; color: var(--ink-soft); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+
+.wrap { max-width: 1120px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 20px; }
+.course-head { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; display: grid; gap: 6px; }
+.course-head h1 { font-family: var(--font-display); font-size: 24px; line-height: 1.2; margin: 0; text-wrap: balance; }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 18px; color: var(--ink-soft); font-size: 13.5px; }
+.meta b { color: var(--ink); font-weight: 600; }
+.badge { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 1px 10px; font-size: 12px; font-weight: 600; }
+.code { font-variant-numeric: tabular-nums; letter-spacing: .08em; font-weight: 700; }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 880px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 16px; overflow-x: auto; }
+.tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; cursor: pointer; color: var(--ink-muted); font-weight: 500; white-space: nowrap; }
+.tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+.stack { display: grid; gap: 14px; }
+h2 { font-size: 17px; margin: 0 0 10px; font-weight: 600; }
+h3 { font-size: 13px; margin: 0; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); font-weight: 600; }
+
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 8px 18px; cursor: pointer; font-weight: 600; }
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.small { padding: 4px 12px; font-size: 13px; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.btn.full { width: 100%; }
+.iconbtn { border: 0; background: none; padding: 6px; border-radius: 6px; cursor: pointer; color: var(--ink); display: inline-grid; place-items: center; }
+.iconbtn:hover { background: var(--surface-2); }
+.iconbtn.del { color: var(--danger); }
+.iconbtn svg { width: 18px; height: 18px; fill: currentColor; }
+
+label.l { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; color: var(--ink-soft); }
+.field, select.field, textarea.field { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; }
+textarea.field { min-height: 92px; resize: vertical; }
+.filebox { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 999px; padding: 4px; background: var(--surface); }
+.filebox .pick { background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 6px 14px; font-weight: 600; cursor: pointer; font-size: 14px; white-space: nowrap; }
+.filebox .names { color: var(--ink-muted); font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.filebox input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.err { color: var(--danger); font-size: 13px; margin-top: 6px; }
+.hint { color: var(--ink-muted); font-size: 12.5px; margin-top: 6px; }
+
+/* Material rows */
+.topic { border-top: 1px solid var(--line); }
+.topic:first-child { border-top: 0; }
+.topic-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 4px 8px; }
+.topic-head button.t { background: none; border: 0; padding: 0; cursor: pointer; text-align: left; font-family: var(--font-display); font-size: 21px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.topic-head .count { font-family: var(--font-body); font-size: 12px; color: var(--ink-muted); }
+.chev { transition: transform .15s; width: 18px; height: 18px; fill: var(--ink-muted); flex: none; }
+.topic.closed .chev { transform: rotate(-90deg); }
+.topic.closed .rows { display: none; }
+.row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-top: 1px solid var(--line); }
+.row .name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.row .sub { color: var(--ink-muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.row .date { color: var(--ink-muted); font-size: 13px; white-space: nowrap; }
+.ext { flex: none; width: 36px; height: 36px; border-radius: 8px; border: 1.5px solid currentColor; display: grid; place-items: center; font-size: 10px; font-weight: 700; letter-spacing: .02em; }
+.ext.pdf { color: var(--pdf); } .ext.zip { color: var(--zip); } .ext.doc { color: var(--doc); } .ext.txt { color: var(--txt); }
+.dl { color: var(--accent); font-weight: 600; font-size: 13px; text-decoration: none; border: 1px solid var(--line); border-radius: 999px; padding: 3px 12px; }
+.dl:hover { background: var(--accent-soft); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: end; margin-bottom: 8px; }
+.toolbar .field { width: auto; min-width: 200px; }
+.link { background: none; border: 0; color: var(--accent); cursor: pointer; font-weight: 600; padding: 6px; }
+.edit-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 4px 12px 52px; }
+.edit-row .field { width: auto; min-width: 180px; }
+
+/* Announcements */
+.post { display: grid; gap: 8px; }
+.post-top { display: flex; gap: 12px; align-items: center; }
+.avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 14px; background: var(--accent-soft); color: var(--accent); flex: none; }
+.avatar.ta { background: #E7DDF3; color: #54397D; }
+:root[data-theme="dark"] .avatar.ta { background: #3A2F4D; color: #CDB8F0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .avatar.ta { background: #3A2F4D; color: #CDB8F0; } }
+.who { min-width: 0; flex: 1; }
+.who b { font-weight: 600; }
+.who .role { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-muted); margin-left: 6px; }
+.who .when { color: var(--ink-muted); font-size: 13px; }
+.post h4 { margin: 0; font-size: 16.5px; }
+.post p { margin: 0; color: var(--ink-soft); white-space: pre-wrap; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px 4px 4px; text-decoration: none; color: var(--ink); font-size: 13px; background: var(--surface-2); max-width: 100%; }
+.chip .ext { width: 28px; height: 28px; font-size: 9px; border-radius: 6px; }
+.chip span.n { overflow-wrap: anywhere; }
+.chip:hover { border-color: var(--accent); }
+.empty { color: var(--ink-muted); text-align: center; padding: 22px 8px; }
+
+/* Rail placeholders */
+.rail { display: grid; gap: 12px; }
+.tool { background: var(--surface); border: 1px dashed var(--line); border-radius: 12px; padding: 14px; }
+.tool header { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tool h2 { margin: 0; font-size: 15px; }
+.tool p { margin: 0; color: var(--ink-muted); font-size: 13px; }
+.tool .ph { display: grid; gap: 6px; margin-top: 10px; }
+.tool .ph i { display: block; height: 8px; border-radius: 4px; background: var(--surface-2); }
+.tool .ph i:nth-child(2) { width: 65%; }
+.soon { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+
+.members { display: grid; gap: 8px; }
+.mrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid var(--line); }
+.mrow:first-child { border-top: 0; }
+.mrow small { color: var(--ink-muted); display: block; }
+.note { background: var(--accent-soft); color: var(--accent); border-radius: 10px; padding: 8px 12px; font-size: 13px; }
+.toast { position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--topbar); color: #fff; padding: 9px 18px; border-radius: 999px; font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: calc(100% - 32px); }
+.toast.on { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .chev, .toast { transition: none; } }
+</style>
+
+<header class="topbar">
+  <b>KU Student Portal</b>
+  <span id="whoami"></span>
+</header>
+<div class="viewas">
+  <span>Mockup only. View this course as:</span>
+  <div class="seg" role="group" aria-label="View as">
+    <button type="button" data-role="lecturer" aria-pressed="true">Lecturer</button>
+    <button type="button" data-role="ta" aria-pressed="false">TA (student)</button>
+    <button type="button" data-role="student" aria-pressed="false">Student</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <section class="course-head" aria-label="Course">
+    <h1>CSCI 301 Software Engineering <span class="badge">Sec 001</span></h1>
+    <div class="meta">
+      <span>Lecturer: <b>Dr. Suwat T.</b></span>
+      <span>Students: <b>45</b></span>
+      <span id="codeMeta">Class code: <b class="code">AB12CD</b></span>
+      <span>Enrollment: <b>Active</b></span>
+    </div>
+  </section>
+
+  <div class="layout">
+    <main>
+      <div class="tabs" role="tablist" id="mainTabs"></div>
+      <div id="view"></div>
+    </main>
+
+    <aside class="rail" aria-label="Course tools preview">
+      <div class="tool"><header><h2>Upcoming deadlines</h2><span class="soon">Placeholder</span></header><p>Assignment deadlines will appear here.</p><div class="ph" aria-hidden="true"><i></i><i></i></div></div>
+      <div class="tool"><header><h2>Academic contact</h2><span class="soon">Placeholder</span></header><p>Lecturer and teaching assistant contact details.</p><div class="ph" aria-hidden="true"><i></i><i></i></div></div>
+      <div class="tool"><header><h2>FAQ forum</h2><span class="soon">Placeholder</span></header><p>Course questions and answers will appear here.</p><div class="ph" aria-hidden="true"><i></i><i></i></div></div>
+      <div class="tool"><header><h2>Group gathering</h2><span class="soon">Placeholder</span></header><p>Find classmates and project groups here.</p><div class="ph" aria-hidden="true"><i></i><i></i></div></div>
+    </aside>
+  </div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function () {
+  var ICON = {
+    edit: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
+    del: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+    chev: '<svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg>'
+  };
+  var ME = {
+    lecturer: { name: 'Dr. Suwat T.', init: 'ST', label: 'Lecturer' },
+    ta: { name: 'John D.', init: 'JD', label: 'TA' },
+    student: { name: 'Napat K.', init: 'NK', label: 'Student' }
+  };
+  var S = {
+    role: 'lecturer', tab: 'course', manage: 'material', filter: 'all', closed: {}, editMat: null, editPost: null, seq: 100,
+    topics: ['Course Syllabus', 'Week 9 - DevOps Culture', 'Week 8 - Agile and Scrum'],
+    mats: [
+      { id: 1, name: 'Course_Syllabus.pdf', size: 412000, topic: 'Course Syllabus', date: 'Jun 16' },
+      { id: 2, name: 'Course_Discord_Invite.txt', size: 1200, topic: 'Course Syllabus', date: 'Aug 18' },
+      { id: 3, name: 'Slides_DevOps_Culture.pdf', size: 5800000, topic: 'Week 9 - DevOps Culture', date: 'Today' },
+      { id: 4, name: 'Lab_9_Environment_Setup.zip', size: 18400000, topic: 'Week 9 - DevOps Culture', date: 'Today' },
+      { id: 5, name: 'Product_and_Sprint_Backlog.docx', size: 96000, topic: 'Week 8 - Agile and Scrum', date: 'Sep 24' }
+    ],
+    posts: [
+      { id: 1, by: 'lecturer', title: 'Assignment 1 guidelines and due date update', body: 'The due date for Assignment 1 moves to Friday 16 Oct, 23:59. Please use the attached template and read the grading notes before you start.', files: ['Assignment_1.pdf', 'Project_Template.zip'], when: '2h ago' },
+      { id: 2, by: 'ta', title: 'Lab 2 environment setup', body: 'Follow the setup steps before Thursday. Bring your laptop with Docker installed.', files: ['Lab2_Setup.zip', 'Setup_Steps.txt'], when: 'Yesterday' }
+    ],
+    tas: ['John D.']
+  };
+
+  var $ = function (s) { return document.querySelector(s); };
+  var esc = function (t) { return String(t).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var isStaff = function () { return S.role !== 'student'; };
+  var extOf = function (n) { var m = /\.([a-z0-9]+)$/i.exec(n); return m ? m[1].toLowerCase() : ''; };
+  var kind = function (n) { var e = extOf(n); return e === 'pdf' ? 'pdf' : (e === 'zip' || e === 'rar') ? 'zip' : /^(docx?|pptx?|xlsx?)$/.test(e) ? 'doc' : 'txt'; };
+  var badge = function (n) { return '<span class="ext ' + kind(n) + '">' + esc((extOf(n) || 'file').slice(0, 4).toUpperCase()) + '</span>'; };
+  var fmt = function (b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; };
+  var MAX = 50 * 1048576;
+  var toastT;
+  function toast(m) { var t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2200); }
+
+  function tabs() {
+    var list = [['course', 'Course']];
+    if (isStaff()) list.push(['manage', 'Manage content']);
+    if (S.tab === 'manage' && !isStaff()) S.tab = 'course';
+    $('#mainTabs').innerHTML = list.map(function (t) {
+      return '<button type="button" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '</button>';
+    }).join('');
+  }
+
+  /* ---------- shared pieces ---------- */
+  function postCard(p, manage) {
+    var who = ME[p.by];
+    var actions = manage ? '<div><button class="iconbtn" data-act="edit-post" data-id="' + p.id + '" aria-label="Edit announcement">' + ICON.edit + '</button><button class="iconbtn del" data-act="del-post" data-id="' + p.id + '" aria-label="Delete announcement">' + ICON.del + '</button></div>' : '';
+    var files = p.files.length ? '<div class="chips">' + p.files.map(function (f) { return '<a class="chip" href="#" data-act="download" data-name="' + esc(f) + '">' + badge(f) + '<span class="n">' + esc(f) + '</span></a>'; }).join('') + '</div>' : '';
+    return '<article class="card post"><div class="post-top"><span class="avatar ' + (p.by === 'ta' ? 'ta' : '') + '">' + who.init + '</span><div class="who"><b>' + who.name + '</b><span class="role">' + who.label + '</span><div class="when">' + esc(p.when) + '</div></div>' + actions + '</div><h4>' + esc(p.title) + '</h4><p>' + esc(p.body) + '</p>' + files + '</article>';
+  }
+
+  function topicsInUse() { return S.topics.filter(function (t) { return S.mats.some(function (m) { return m.topic === t; }); }); }
+
+  function materialsView() {
+    var shown = S.filter === 'all' ? topicsInUse() : topicsInUse().filter(function (t) { return t === S.filter; });
+    var opts = '<option value="all">All topics</option>' + topicsInUse().map(function (t) { return '<option' + (S.filter === t ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('');
+    var allClosed = shown.length && shown.every(function (t) { return S.closed[t]; });
+    var html = '<div class="card"><div class="toolbar"><div><label class="l" for="topicFilter">Topic filter</label><select class="field" id="topicFilter">' + opts + '</select></div><button type="button" class="link" data-act="collapse">' + (allClosed ? 'Expand all' : 'Collapse all') + '</button></div>';
+    if (!shown.length) html += '<p class="empty">No materials yet.</p>';
+    shown.forEach(function (t) {
+      var rows = S.mats.filter(function (m) { return m.topic === t; });
+      html += '<section class="topic' + (S.closed[t] ? ' closed' : '') + '"><div class="topic-head"><button type="button" class="t" data-act="toggle" data-topic="' + esc(t) + '" aria-expanded="' + !S.closed[t] + '">' + ICON.chev + '<span>' + esc(t) + '</span><span class="count">' + rows.length + ' file' + (rows.length > 1 ? 's' : '') + '</span></button></div><div class="rows">' +
+        rows.map(function (m) { return '<div class="row">' + badge(m.name) + '<div class="name">' + esc(m.name) + '<div class="sub">' + fmt(m.size) + '</div></div><span class="date">Posted ' + m.date + '</span><a class="dl" href="#" data-act="download" data-name="' + esc(m.name) + '">Download</a></div>'; }).join('') + '</div></section>';
+    });
+    return html + '</div>';
+  }
+
+  function courseView() {
+    return '<div class="stack"><h3>Announcements</h3>' + (S.posts.length ? S.posts.map(function (p) { return postCard(p, false); }).join('') : '<div class="card empty">No announcements yet.</div>') +
+      '<h3 style="margin-top:10px">Materials</h3>' + materialsView() + '</div>';
+  }
+
+  /* ---------- manage (lecturer / TA) ---------- */
+  function manageTabs() {
+    var t = [['material', 'Material'], ['announcement', 'Announcement']];
+    if (S.role === 'lecturer') t.push(['settings', 'Settings']);
+    if (S.manage === 'settings' && S.role !== 'lecturer') S.manage = 'material';
+    return '<div class="tabs" role="tablist">' + t.map(function (x) { return '<button type="button" role="tab" data-manage="' + x[0] + '" aria-selected="' + (S.manage === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>';
+  }
+
+  function materialManage() {
+    var opts = '<option value="" disabled selected>Topic category (select or create)</option>' + S.topics.map(function (t) { return '<option>' + esc(t) + '</option>'; }).join('') + '<option value="__new">+ Create new topic…</option>';
+    var form = '<div class="card"><h2>Create material</h2><div class="stack">' +
+      '<div><label class="l" for="mTopic">Topic category</label><select class="field" id="mTopic">' + opts + '</select><div id="newTopicBox" hidden style="margin-top:8px"><input class="field" id="mNewTopic" placeholder="New topic name, e.g. Lectures" maxlength="80"></div></div>' +
+      '<div><label class="l" for="mFiles">File upload</label><div class="filebox"><label class="pick" for="mFiles">Choose files</label><input type="file" id="mFiles" multiple><span class="names" id="mNames">No file chosen</span></div><div class="hint">Up to 50 MB per file. Each file becomes one material under the chosen topic.</div><div class="err" id="mErr" hidden></div></div>' +
+      '<button type="button" class="btn full" data-act="add-mat">Add material</button></div></div>';
+    var list = '<div class="card"><h2>Manage material</h2>';
+    if (!S.mats.length) list += '<p class="empty">Nothing uploaded yet.</p>';
+    S.mats.forEach(function (m) {
+      list += '<div class="row">' + badge(m.name) + '<div class="name">' + esc(m.name) + '<div class="sub">' + esc(m.topic) + ' · ' + fmt(m.size) + '</div></div><button class="iconbtn" data-act="edit-mat" data-id="' + m.id + '" aria-label="Change topic of ' + esc(m.name) + '">' + ICON.edit + '</button><button class="iconbtn del" data-act="del-mat" data-id="' + m.id + '" aria-label="Delete ' + esc(m.name) + '">' + ICON.del + '</button></div>';
+      if (S.editMat === m.id) {
+        list += '<div class="edit-row"><label class="l" for="eTopic" style="margin:0">Topic</label><select class="field" id="eTopic">' + S.topics.map(function (t) { return '<option' + (t === m.topic ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select><button class="btn small" data-act="save-mat" data-id="' + m.id + '">Save</button><button class="btn small ghost" data-act="cancel-mat">Cancel</button></div>';
+      }
+    });
+    return '<div class="stack">' + form + list + '</div></div>';
+  }
+
+  function announcementManage() {
+    var e = S.editPost ? S.posts.filter(function (p) { return p.id === S.editPost; })[0] : null;
+    var form = '<div class="card"><h2>' + (e ? 'Edit announcement' : 'New announcement') + '</h2><div class="stack">' +
+      '<div><label class="l" for="aTitle">Title</label><input class="field" id="aTitle" maxlength="200" value="' + (e ? esc(e.title) : '') + '"></div>' +
+      '<div><label class="l" for="aBody">Message</label><textarea class="field" id="aBody">' + (e ? esc(e.body) : '') + '</textarea></div>' +
+      '<div><label class="l" for="aFiles">Attach files</label><div class="filebox"><label class="pick" for="aFiles">Choose files</label><input type="file" id="aFiles" multiple><span class="names" id="aNames">' + (e && e.files.length ? esc(e.files.join(', ')) : 'No file chosen') + '</span></div><div class="hint">Students get these as download links. Up to 50 MB per file.</div><div class="err" id="aErr" hidden></div></div>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-act="save-post">' + (e ? 'Save changes' : 'Post announcement') + '</button>' + (e ? '<button type="button" class="btn ghost" data-act="cancel-post">Cancel</button>' : '') + '</div></div></div>';
+    var mine = S.posts.map(function (p) { return postCard(p, S.role === 'lecturer' || p.by === S.role); }).join('') || '<div class="card empty">No announcements yet.</div>';
+    return '<div class="stack">' + form + '<h3>Posted in this course (students see these as shown)</h3>' + mine + '</div>';
+  }
+
+  function settingsManage() {
+    return '<div class="stack"><div class="card"><h2>Teaching assistants</h2><p class="hint" style="margin:0 0 10px">A TA is an enrolled student you choose. TAs can post announcements and manage materials. They cannot manage the roster or the class code.</p><div class="members">' +
+      S.tas.map(function (n) { return '<div class="mrow"><div>' + n + '<small>Student · TA</small></div><button class="btn small ghost" data-act="rm-ta" data-name="' + n + '">Remove TA</button></div>'; }).join('') +
+      '<div class="mrow"><div>Napat K.<small>Student</small></div><button class="btn small" data-act="add-ta">Make TA</button></div></div></div>' +
+      '<div class="card"><h2>Roster</h2><p class="hint" style="margin:0 0 10px">Existing page: add or remove students, import by CSV.</p><button class="btn ghost small" type="button" data-act="roster">Open roster</button></div></div>';
+  }
+
+  function manageView() {
+    var body = S.manage === 'material' ? materialManage() : S.manage === 'announcement' ? announcementManage() : settingsManage();
+    var banner = S.role === 'ta' ? '<div class="note" style="margin-bottom:14px">You are a TA for this course. You can post and manage materials. Roster and settings are lecturer-only.</div>' : '';
+    return banner + manageTabs() + body;
+  }
+
+  function render() {
+    $('#whoami').textContent = ME[S.role].name + ' · ' + ME[S.role].label;
+    $('#codeMeta').hidden = S.role === 'student';
+    tabs();
+    $('#view').innerHTML = S.tab === 'manage' && isStaff() ? manageView() : courseView();
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button, a'); if (!b) return;
+    if (b.dataset.role) {
+      S.role = b.dataset.role; S.editMat = null; S.editPost = null;
+      document.querySelectorAll('.seg button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      return render();
+    }
+    if (b.dataset.tab) { S.tab = b.dataset.tab; return render(); }
+    if (b.dataset.manage) { S.manage = b.dataset.manage; return render(); }
+    var a = b.dataset.act; if (!a) return;
+    if (a === 'download' || a === 'roster') { ev.preventDefault(); return toast(a === 'roster' ? 'Opens the existing roster page' : 'Download starts: ' + b.dataset.name); }
+    if (a === 'toggle') { var t = b.dataset.topic; S.closed[t] = !S.closed[t]; return render(); }
+    if (a === 'collapse') {
+      var shown = S.filter === 'all' ? topicsInUse() : [S.filter];
+      var all = shown.every(function (t) { return S.closed[t]; });
+      shown.forEach(function (t) { S.closed[t] = !all; }); return render();
+    }
+    if (a === 'add-mat') return addMaterial();
+    if (a === 'del-mat') { S.mats = S.mats.filter(function (m) { return m.id !== +b.dataset.id; }); render(); return toast('Material deleted'); }
+    if (a === 'edit-mat') { S.editMat = +b.dataset.id; return render(); }
+    if (a === 'cancel-mat') { S.editMat = null; return render(); }
+    if (a === 'save-mat') { var m = S.mats.filter(function (x) { return x.id === +b.dataset.id; })[0]; m.topic = $('#eTopic').value; S.editMat = null; render(); return toast('Topic updated'); }
+    if (a === 'save-post') return savePost();
+    if (a === 'edit-post') { S.editPost = +b.dataset.id; render(); return window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    if (a === 'cancel-post') { S.editPost = null; return render(); }
+    if (a === 'del-post') { S.posts = S.posts.filter(function (p) { return p.id !== +b.dataset.id; }); render(); return toast('Announcement deleted'); }
+    if (a === 'add-ta') { S.tas.push('Napat K.'); render(); return toast('Napat K. is now a TA'); }
+    if (a === 'rm-ta') { S.tas = S.tas.filter(function (n) { return n !== b.dataset.name; }); render(); return toast('TA removed'); }
+  });
+
+  document.addEventListener('change', function (ev) {
+    var el = ev.target;
+    if (el.id === 'topicFilter') { S.filter = el.value; return render(); }
+    if (el.id === 'mTopic') { $('#newTopicBox').hidden = el.value !== '__new'; if (el.value === '__new') $('#mNewTopic').focus(); }
+    if (el.id === 'mFiles' || el.id === 'aFiles') {
+      var n = Array.prototype.map.call(el.files, function (f) { return f.name; });
+      $(el.id === 'mFiles' ? '#mNames' : '#aNames').textContent = n.length ? n.join(', ') : 'No file chosen';
+    }
+  });
+
+  function overLimit(files) { return Array.prototype.filter.call(files, function (f) { return f.size > MAX; }); }
+
+  function addMaterial() {
+    var err = $('#mErr'), sel = $('#mTopic').value, topic = sel === '__new' ? $('#mNewTopic').value.trim() : sel, files = $('#mFiles').files;
+    var msg = !topic ? 'Choose a topic or create a new one.' : !files.length ? 'Choose at least one file.' : overLimit(files).length ? overLimit(files)[0].name + ' is over 50 MB.' : '';
+    if (msg) { err.textContent = msg; err.hidden = false; return; }
+    if (S.topics.indexOf(topic) < 0) S.topics.unshift(topic);
+    Array.prototype.forEach.call(files, function (f) { S.mats.unshift({ id: ++S.seq, name: f.name, size: f.size, topic: topic, date: 'Today' }); });
+    render(); toast(files.length + ' file' + (files.length > 1 ? 's' : '') + ' added to ' + topic);
+  }
+
+  function savePost() {
+    var title = $('#aTitle').value.trim(), body = $('#aBody').value.trim(), files = $('#aFiles').files, err = $('#aErr');
+    var msg = !title ? 'Add a title.' : !body ? 'Write a message.' : overLimit(files).length ? overLimit(files)[0].name + ' is over 50 MB.' : '';
+    if (msg) { err.textContent = msg; err.hidden = false; return; }
+    var names = Array.prototype.map.call(files, function (f) { return f.name; });
+    if (S.editPost) {
+      var p = S.posts.filter(function (x) { return x.id === S.editPost; })[0];
+      p.title = title; p.body = body; if (names.length) p.files = names; S.editPost = null; render(); return toast('Announcement updated');
+    }
+    S.posts.unshift({ id: ++S.seq, by: S.role, title: title, body: body, files: names, when: 'Just now' });
+    render(); toast('Announcement posted');
+  }
+
+  render();
+})();
+</script>
+
+</body></html>
