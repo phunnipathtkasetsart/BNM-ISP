@@ -9,20 +9,21 @@ from django.shortcuts import get_object_or_404, redirect, render
 from accounts.middleware import is_guest_request
 from .models import Course, CourseTA, Enrollment
 
-
 def can_teach(user):
     return user.is_authenticated and user.is_active and (user.is_staff or user.is_superuser)
 
 
 def visible_courses(user):
-    """Owned, enrolled, or (Department admin) same-department courses."""
+    """Owned, enrolled, or ALL courses for Superusers/Department admins."""
     if not user.is_authenticated:
         return Course.objects.none()
+    
+    # Global access: Department Admins / Superusers can see all courses
+    if user.is_active and user.is_superuser:
+        return Course.objects.all()
+
     enrolled = Enrollment.objects.filter(student=user).values("course_id")
     q = Q(owner=user) | Q(pk__in=enrolled)
-    dept = (getattr(user, "department", None) or "").strip()
-    if user.is_active and user.is_superuser and dept:
-        q |= Q(owner__department__iexact=dept)
     return Course.objects.filter(q).distinct()
 
 
@@ -69,13 +70,14 @@ def course_access(
                     )
                     return redirect("course:dashboard")
 
-                    # Role flags evaluation
+                # Role flags evaluation
                 is_owner = course.owner_id == user.pk and can_teach(user)
                 is_ta = not is_owner and CourseTA.objects.filter(course=course, user=user).exists()
-                same_dept = (user.department or "").strip().lower() == (course.owner.department or "").strip().lower()
-                is_dept_override = bool(user.is_superuser and user.is_active and (user.department or "").strip() and same_dept)
+                
+                # Global admin override: any active superuser gets override access regardless of department
+                is_dept_override = bool(user.is_superuser and user.is_active)
 
-                can_manage_roster = is_owner
+                can_manage_roster = is_owner or is_dept_override
                 can_manage_content = is_owner or is_ta or is_dept_override
 
                 if (owner or manage_roster) and not can_manage_roster:

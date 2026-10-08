@@ -1,7 +1,7 @@
 import json
 from datetime import timedelta
 
-
+from django.db.models import Q
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -60,13 +60,22 @@ def form_error(request, form, title, *, course=None, template="course/form.html"
 @course_access()
 @require_http_methods(["GET"])
 def dashboard(request):
+    query = request.GET.get("q", "").strip()
     courses = visible_courses(request.user).select_related("owner")
+
+    # Admin-only search filter
+    if request.user.is_superuser and query:
+        courses = courses.filter(
+            Q(name__icontains=query) |
+            Q(section__icontains=query) |
+            Q(owner__first_name__icontains=query) |
+            Q(owner__last_name__icontains=query)
+        ).distinct()
 
     ta_course_ids = set(
         CourseTA.objects.filter(user=request.user).values_list("course_id", flat=True)
     )
 
-    # Fetch deadlines within the next 7 days across all classes
     now = timezone.now()
     upcoming_deadlines = (
         CoursePost.objects.filter(
@@ -87,6 +96,7 @@ def dashboard(request):
         "course/dashboard.html",
         {
             "courses": courses,
+            "query": query,  # Passed to retain search value in input
             "can_create": can_teach(request.user),
             "can_join": not request.user.is_staff and not request.user.is_superuser,
             "ta_course_ids": ta_course_ids,
