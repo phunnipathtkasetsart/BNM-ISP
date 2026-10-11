@@ -232,15 +232,16 @@
   font-size:14px;
   font-weight:700;
   margin:0 0 8px}
-.course-dialog input,.course-shell input,.course-shell textarea {
-  display:block;
-  border:1px solid #aec8be;
-  background:white;
-  color:#183e35;
-  border-radius:8px;
-  padding:12px;
-  font:inherit;
-  box-sizing:border-box;
+.course-dialog input, .course-shell input, .course-shell textarea {
+  display: block;
+  width: 100%; 
+  border: 1px solid #aec8be;
+  background: white;
+  color: #183e35;
+  border-radius: 8px;
+  padding: 12px;
+  font: inherit;
+  box-sizing: border-box;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .course-dialog input:focus, .course-shell input:focus, .course-shell textarea:focus {
@@ -776,7 +777,8 @@
   border-radius: 8px;
   font: inherit;
   font-size: 14px;
-  width: 410px;
+  width: 360px;
+  min-width: 350px; 
   max-width: 100%;
   background: white;
   color: #183e35;
