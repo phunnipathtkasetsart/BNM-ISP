@@ -302,53 +302,53 @@
     </section>
   {% endif %}
   {# ---- Settings: class owner only ---- #}
-  {% if can_manage %}
-    <section class="cc-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
-      <div class="cc-section">
-        <h2 class="cc-section-title">Teaching assistants <span class="cc-count">{{ ta_ids|length }}</span></h2>
-        <p class="cc-hint">A TA is an enrolled student who can post announcements and manage materials. TAs cannot manage members or edit the class.</p>
-        {% if enrollments %}
-          <div class="cc-card">
-            <ul class="cc-files">
-              {# 1. Teaching Assistants First #}
-              {% for e in enrollments %}
-                {% if e.student_id in ta_ids %}
-                  <li class="cc-file">
-                    <div class="cc-file__main">
-                      <span class="cc-file__name">{{ e.student.get_full_name }} <span class="cc-role cc-role--ta">TA</span></span>
-                      <span class="cc-file__meta">{{ e.student_id }}</span>
-                    </div>
-                    <form method="post" action="{% url 'course:ta_remove' course.pk e.student_id %}" data-confirm="Remove {{ e.student.get_full_name }} as TA?">
-                      {% csrf_token %}
-                      <button type="submit" class="course-btn secondary">Remove TA</button>
-                    </form>
-                  </li>
-                {% endif %}
-              {% endfor %}
+{% if can_manage %}
+  <section class="cc-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+    <div class="cc-section">
+      <h2 class="cc-section-title">Teaching assistants <span class="cc-count">{{ ta_ids|length }}</span></h2>
+      <p class="cc-hint">A TA can post announcements and manage materials. Assigning a student as TA automatically enrolls them if they are not already in the class.</p>
 
-              {# 2. Regular Students Second #}
-              {% for e in enrollments %}
-                {% if e.student_id not in ta_ids %}
-                  <li class="cc-file">
-                    <div class="cc-file__main">
-                      <span class="cc-file__name">{{ e.student.get_full_name }}</span>
-                      <span class="cc-file__meta">{{ e.student_id }}</span>
-                    </div>
-                    <form method="post" action="{% url 'course:ta_assign' course.pk e.student_id %}">
-                      {% csrf_token %}
-                      <button type="submit" class="course-btn">Make TA</button>
-                    </form>
-                  </li>
-                {% endif %}
-              {% endfor %}
-            </ul>
+      <!-- NISIT ID INPUT FORM -->
+      <div class="cc-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+        <form method="post" action="{% url 'course:ta_assign_form' course.pk %}" style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+          {% csrf_token %}
+          <div style="flex: 1; min-width: 240px;">
+            <label for="student_id_input" style="display: block; font-weight: 600; margin-bottom: 0.25rem; font-size: 0.9rem;">Assign TA by Student ID (Nisit ID)</label>
+            <input type="text" 
+                   id="student_id_input" 
+                   name="student_id" 
+                   placeholder="e.g. 6610540001" 
+                   required 
+                   style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit;">
           </div>
-        {% else %}
-          <p class="cc-empty">No students are enrolled yet. Add students from <a href="{% url 'course:members_page' course.pk %}">Manage members</a> first.</p>
-        {% endif %}
+          <button type="submit" class="course-btn">Assign as TA</button>
+        </form>
       </div>
-    </section>
-  {% endif %}
+
+      <!-- CURRENT ASSIGNED TAs LIST -->
+      <div class="cc-card">
+        <ul class="cc-files">
+          {% for e in enrollments %}
+            {% if e.student_id in ta_ids %}
+              <li class="cc-file">
+                <div class="cc-file__main">
+                  <span class="cc-file__name">{{ e.student.get_full_name }} <span class="cc-role cc-role--ta">TA</span></span>
+                  <span class="cc-file__meta">{{ e.student_id }}</span>
+                </div>
+                <form method="post" action="{% url 'course:ta_remove' course.pk e.student_id %}" data-confirm="Remove {{ e.student.get_full_name }} as TA?">
+                  {% csrf_token %}
+                  <button type="submit" class="course-btn secondary">Remove TA</button>
+                </form>
+              </li>
+            {% endif %}
+          {% empty %}
+            <li class="cc-empty">No TAs assigned yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </section>
+{% endif %}
 
 </div>
 

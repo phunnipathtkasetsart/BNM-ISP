@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 from django.utils import timezone
 
+from django.contrib.auth import get_user_model
+
 from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
                     MaterialEditForm, MaterialUploadForm, RosterForm)
 from .models import Course, CoursePost, CourseTA, Enrollment, Material, PostAttachment
@@ -168,13 +170,19 @@ def detail_context(request, post_form=None, material_form=None):
         material_form = MaterialUploadForm(course=course, auto_id="material_%s")
     groups = topic_groups(course)
     
-    # Query deadlines within the next 7 days
     now = timezone.now()
     upcoming_deadlines = course.posts.filter(
         deadline__isnull=False, 
         deadline__gte=now,
         deadline__lte=now + timedelta(days=7)
     ).order_by("deadline")
+
+    # Fetch all active DB students not yet assigned as TA for this course
+    User = get_user_model()
+    ta_user_ids = set(course.ta_links.values_list("user_id", flat=True))
+    available_students = User.objects.filter(
+        is_active=True, is_staff=False, is_superuser=False
+    ).exclude(pk__in=ta_user_ids)
 
     return {
         "course": course,
@@ -190,7 +198,8 @@ def detail_context(request, post_form=None, material_form=None):
         "can_delete_any": request.is_owner or request.is_dept_override,
 
         "enrollments": course.enrollments.select_related("student") if request.can_manage_roster else [],
-        "ta_ids": set(course.ta_links.values_list("user_id", flat=True)),
+        "ta_ids": ta_user_ids,
+        "available_students": available_students,  # Passed to detail.html for the select dropdown
     }
 
 
@@ -499,16 +508,24 @@ def edit_post(request, pk, post_id):
 
 @course_access(owner=True)
 @require_POST
-def ta_assign(request, pk, student_id):
+def ta_assign(request, pk, student_id=None):
+    # Retrieve Nisit ID from input form POST body or URL parameter
+    target_id = request.POST.get("student_id", "").strip() or student_id
+    if not target_id:
+        messages.error(request, "Please enter a Nisit ID.")
+        return redirect("course:detail", pk=pk)
+
     try:
-        created = assign_ta(request.course, student_id)
+        created = assign_ta(request.course, target_id)
     except ValidationError as error:
         if api_request(request):
-            return JsonResponse({"error": error.messages[0]}, status=404)
+            return JsonResponse({"error": error.messages[0]}, status=400)
         messages.error(request, error.messages[0])
         return redirect("course:detail", pk=pk)
+
     if api_request(request):
         return JsonResponse({"assigned": True, "created": created}, status=201 if created else 200)
+
     messages.success(request, "Student is now a TA." if created else "Student is already a TA.")
     return redirect("course:detail", pk=pk)
 

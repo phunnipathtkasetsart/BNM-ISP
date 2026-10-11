@@ -51,4 +51,7 @@ urlpatterns = [
     path("<int:pk>/tas/<str:student_id>/remove/", views.ta_remove, name="ta_remove"),
     path("api/<int:pk>/tas/<str:student_id>/assign/", views.ta_assign, name="api_ta_assign"),
     path("api/<int:pk>/tas/<str:student_id>/remove/", views.ta_remove, name="api_ta_remove"),
+
+    path("<int:pk>/tas/assign/", views.ta_assign, name="ta_assign_form"),
+
 ]

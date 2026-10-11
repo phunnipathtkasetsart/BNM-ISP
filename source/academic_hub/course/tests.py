@@ -200,11 +200,10 @@ class CourseTests(TestCase):
             response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n" + self.other_student.pk)})
             self.assertEqual(response.status_code, 404)
 
-        # UPDATED: Department users now have full management privileges
         self.sign_in(self.department_user())
         response = self.client.post(self.url("api_import_csv", self.course.pk), {"csv_file": self.csv_upload("student_id\n" + self.other_student.pk)})
-        self.assertEqual(response.status_code, 200)  # Changed from 403 to 200
-        self.assertTrue(self.course.enrollments.exists())  # Changed from assertFalse to assertTrue
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self.course.enrollments.exists())
 
         self.sign_in(self.teacher)
         self.assertEqual(self.client.get(self.url("import_csv", self.course.pk)).status_code, 405)
@@ -649,7 +648,6 @@ class ContentViewTests(TestCase):
 
     def body(self, response):
         content = b"".join(response.streaming_content)
-        # Safely close the underlying file stream if present, without triggering request_finished
         if getattr(response, 'file_to_stream', None):
             response.file_to_stream.close()
         return content
@@ -660,7 +658,7 @@ class ContentViewTests(TestCase):
             (self.student, False, False),
             (self.ta, True, False),
             (self.teacher, True, True),
-            (self.dept, True, True),  # Department now has roster permissions
+            (self.dept, True, True),
         ]
         for user, content, roster in cases:
             with self.subTest(user=user.pk):
@@ -773,10 +771,6 @@ class ContentViewTests(TestCase):
             with self.subTest(action=action):
                 resp = self.client.post(self.url(action, self.course.pk, *args), payload)
                 self.assertIn(resp.status_code, [200, 201])
-
-    """def test_42_other_department_cannot_see_class(self):
-        self.sign_in(self.other_dept)
-        self.assertEqual(self.client.get(self.url("api_detail", self.course.pk)).status_code, 404)"""
 
     def test_42_anonymous_get_and_csrf(self):
         self.assertEqual(self.send("api_create_post", self.course.pk, title="x").status_code, 401)
@@ -1035,10 +1029,18 @@ class ContentViewTests(TestCase):
         self.assertEqual(self.send("api_ta_remove", self.course.pk, self.student.pk).json(), {"removed": True})
         self.assertEqual(self.send("api_ta_remove", self.course.pk, self.student.pk).json(), {"removed": False})
 
-    def test_45_only_enrolled_students_can_become_tas(self):
+    def test_45_assign_unenrolled_student_auto_enrolls_and_becomes_ta(self):
         self.sign_in(self.teacher)
-        self.assertEqual(self.send("api_ta_assign", self.course.pk, self.outsider.pk).status_code, 404)
-        self.assertFalse(CourseTA.objects.filter(user=self.outsider).exists())
+        # Outsider is not enrolled yet
+        self.assertFalse(Enrollment.objects.filter(course=self.course, student=self.outsider).exists())
+        # Assigning outsider by ID auto-enrolls and assigns TA
+        resp = self.send("api_ta_assign", self.course.pk, self.outsider.pk)
+        self.assertEqual(resp.status_code, 201)
+        self.assertTrue(CourseTA.objects.filter(course=self.course, user=self.outsider).exists())
+        self.assertTrue(Enrollment.objects.filter(course=self.course, student=self.outsider).exists())
+        # Invalid student ID or staff user cannot become TA
+        self.assertEqual(self.send("api_ta_assign", self.course.pk, "invalid_id").status_code, 400)
+        self.assertEqual(self.send("api_ta_assign", self.course.pk, self.other_teacher.pk).status_code, 400)
 
     def test_45_removed_student_loses_ta_and_rejoin_does_not_revive(self):
         self.sign_in(self.teacher)
@@ -1053,8 +1055,6 @@ class ContentViewTests(TestCase):
         self.sign_in(self.ta)
         self.assertEqual(self.client.get(self.url("api_detail", self.other_course.pk)).status_code, 404)
 
-
-# Add these additional test cases to ContentViewTests or as an extended suite in tests.py
 
 class ContentEdgeCaseAndTopicTests(TestCase):
     @classmethod

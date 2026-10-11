@@ -4,6 +4,10 @@ from django.db.models.functions import Lower, Trim
 
 from .models import Course, CourseTA, Enrollment, Material, Topic, generate_class_code
 
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
+
 DUPLICATE_CLASS = "You already have a class with this name and section. Use a different name or section."
 
 
@@ -87,15 +91,28 @@ def add_materials(course, topic, files, user):
 
 
 
+
 def assign_ta(course, student_id):
-    """Make an enrolled student a TA. Returns True when newly assigned."""
+    """Assign any active student in the database as a TA by Nisit ID or PK."""
+    User = get_user_model()
+    target_id = str(student_id).strip()
+
+    # Search by nisit_id or primary key
+    student = User.objects.filter(
+        models.Q(nisit_id=target_id) | models.Q(pk=target_id),
+        is_active=True
+    ).first()
+
+    if not student:
+        raise ValidationError(f"No active student found with ID '{target_id}'. Check the Nisit ID and try again.")
+    if student.is_staff or student.is_superuser:
+        raise ValidationError("Staff or department users cannot be assigned as TAs.")
+
     with transaction.atomic():
-        # Lock the enrollment row so a concurrent roster removal cannot
-        # leave a TA behind (the removal signal runs after we commit).
-        if not Enrollment.objects.select_for_update().filter(
-                course=course, student_id=student_id).exists():
-            raise ValidationError("Only students enrolled in this class can become TAs.")
-        _, created = CourseTA.objects.get_or_create(course=course, user_id=student_id)
+        # Ensure student is enrolled so permissions and views allow course access
+        Enrollment.objects.get_or_create(course=course, student=student)
+        _, created = CourseTA.objects.get_or_create(course=course, user=student)
+
     return created
 
 
