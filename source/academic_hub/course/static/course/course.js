@@ -40,4 +40,26 @@
       }
     });
   });
+  const grid = document.querySelector('[data-course-grid]');
+  const viewButtons = document.querySelectorAll('[data-view]');
+  if (grid && viewButtons.length) {
+    const KEY = 'course:view';
+    const apply = view => {
+      grid.classList.toggle('is-list', view === 'list');
+      viewButtons.forEach(button => {
+        const on = button.dataset.view === view;
+        button.classList.toggle('is-active', on);
+        button.setAttribute('aria-pressed', String(on));
+      });
+    };
+    let saved = 'grid';
+    try { saved = localStorage.getItem(KEY) === 'list' ? 'list' : 'grid'; } catch (_) {}
+    apply(saved);
+    viewButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        apply(button.dataset.view);
+        try { localStorage.setItem(KEY, button.dataset.view); } catch (_) {}
+      });
+    });
+  }
 })();
