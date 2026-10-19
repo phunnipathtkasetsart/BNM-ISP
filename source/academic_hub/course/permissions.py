@@ -1,11 +1,18 @@
+# wraps ช่วยรักษาชื่อและ metadata ของ view เดิมเมื่อห่อด้วย decorator
 from functools import wraps
 
+# messages ใช้ฝากข้อความแจ้งผู้ใช้ และ redirect_to_login ส่งผู้ที่ยังไม่เข้าสู่ระบบไปหน้า login
 from django.contrib import messages
 from django.contrib.auth.views import redirect_to_login
+# Q ใช้ประกอบเงื่อนไขการค้นข้อมูลแบบ OR/AND
 from django.db.models import Q
+# Http404 เป็น exception เมื่อหาไม่พบ; JsonResponse ส่ง JSON; get_object_or_404 ค้นหรือโยน 404; redirect
+# เปลี่ยนหน้า; render สร้างหน้า HTML จาก template
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
+# นำเข้าตัวตรวจ guest ของโปรเจกต์และโมเดล Course/Enrollment โดยจุดหน้า models หมายถึงโมดูลใน package
+# เดียวกัน
 from accounts.middleware import is_guest_request
 from .models import Course, CourseTA, Enrollment
 
@@ -13,6 +20,8 @@ def can_teach(user):
     return user.is_authenticated and user.is_active and (user.is_staff or user.is_superuser)
 
 
+# visible_courses เริ่มจาก query สมาชิกของผู้ใช้ แล้วเลือกเฉพาะ course_id เพื่อใช้เป็น subquery
+# ไม่จำเป็นต้องโหลดทั้ง Enrollment object
 def visible_courses(user):
     """Owned, enrolled, or ALL courses for Superusers/Department admins."""
     if not user.is_authenticated:
@@ -39,6 +48,7 @@ def course_access(
     def decorate(view):
         @wraps(view)
         def wrapped(request, *args, **kwargs):
+            # แยกคำขอ API ด้วย path ที่เริ่ม /course/api/ เพื่อเลือกรูปแบบตอบกลับ
             api = request.path.startswith("/course/api/")
             user = request.user
 

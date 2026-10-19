@@ -655,6 +655,89 @@
   max-width: 1600px;
 }
 
+
+/* Grid / List toggle on the class dashboard. */
+.course-view-toggle {
+  display: inline-flex;
+  margin: 0 0 16px auto;
+  padding: 3px;
+  gap: 3px;
+  background: #fff;
+  border: 1px solid #bad3ca;
+  border-radius: 10px;
+  width: fit-content;
+  float: right;
+}
+.course-view-toggle + .course-grid { clear: both; }
+.course-view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #185e50;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.course-view-btn:hover { background: #edf6f2; }
+.course-view-btn.is-active,
+.course-view-btn.is-active:hover {
+  background: #176c5d;
+  color: #fff;
+}
+
+/* List layout: one row per class. */
+.course-grid.is-list {
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+.course-grid.is-list > .course-card {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) auto;
+  align-items: stretch;
+}
+.course-grid.is-list .course-card-title {
+  min-height: 0;
+  padding: 16px 22px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.course-grid.is-list .course-card-title .eyebrow { flex-basis: 100%; }
+.course-grid.is-list .course-card-title h2 {
+  margin: 0;
+  font-size: 19px;
+}
+.course-grid.is-list .course-card-body {
+  min-height: 0;
+  padding: 16px 22px;
+  align-self: center;
+}
+.course-grid.is-list .course-card-body p:last-child { margin-bottom: 0; }
+.course-grid.is-list .course-card-foot {
+  border-top: 0;
+  border-left: 1px solid #e3ece8;
+  padding: 16px 22px;
+  gap: 18px;
+}
+@media (max-width: 650px) {
+  .course-grid.is-list > .course-card { grid-template-columns: minmax(0, 1fr) auto; }
+  .course-grid.is-list .course-card-title { grid-column: 1 / -1; padding: 12px 16px; }
+  .course-grid.is-list .course-card-body { padding: 12px 16px; }
+  .course-grid.is-list .course-card-foot {
+    border-left: 0;
+    padding: 12px 16px;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+  }
+}
+
 /* Upcoming Deadlines Widget */
 .course-shell.deadline-widget {
   min-height: auto;
