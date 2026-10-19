@@ -11,28 +11,12 @@
 {% endblock %}
 
 {% block course_content %}
-<div class="course-heading course-dashboard-heading">
-  <div>
-    <p class="eyebrow">YOUR LEARNING SPACE</p>
-    <h1>My classes</h1>
-  </div>
-  <div class="course-dashboard-actions">
-    {% if request.user.is_superuser %}
-  
-    <input 
-      type="text" 
-      id="admin-course-search" 
-      class="course-search-input"
-      placeholder="🔍︎ Search by class name, section, or lecturer..." 
-    />
-    {% endif %}
-
-    {% if can_create %}<a class="course-btn" href="{% url 'course:create' %}" data-dialog="create-class">+ Create class</a>{% endif %}
-    {% if can_join %}<a class="course-btn" href="{% url 'course:join' %}" data-dialog="join-class">+ Join class</a>{% endif %}
-  </div>
-</div>
-
-<div class="course-grid" id="course-grid-container">
+<div class="course-heading course-dashboard-heading"><div><p class="eyebrow">YOUR LEARNING SPACE</p><h1>My classes</h1></div><div>
+{% if can_create %}<a class="course-btn" href="{% url 'course:create' %}" data-dialog="create-class">+ Create class</a>{% endif %}
+{% if can_join %}<a class="course-btn" href="{% url 'course:join' %}" data-dialog="join-class">+ Join class</a>{% endif %}
+</div></div>
+{% if courses %}<div class="course-view-toggle" role="group" aria-label="Course layout"><button type="button" class="course-view-btn is-active" data-view="grid" aria-pressed="true" title="Grid view"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg><span>Grid</span></button><button type="button" class="course-view-btn" data-view="list" aria-pressed="false" title="List view"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor"><path d="M3 4h18v4H3zM3 10h18v4H3zM3 16h18v4H3z"/></svg><span>List</span></button></div>{% endif %}
+<div class="course-grid" data-course-grid>
 {% for course in courses %}
 <article class="course-card">
   <a class="course-card-title" href="{% url 'course:detail' course.pk %}">
