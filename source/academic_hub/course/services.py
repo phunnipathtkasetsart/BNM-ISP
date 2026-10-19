@@ -5,8 +5,12 @@ from django.db import IntegrityError, transaction
 # Lower แปลงเป็นตัวพิมพ์เล็ก และ Trim ตัดช่องว่างหัวท้ายในคำสั่งฐานข้อมูล
 from django.db.models.functions import Lower, Trim
 
+<<<<<<< HEAD
 # นำเข้าโมเดลคลาส โมเดลสมาชิก และฟังก์ชันสุ่มรหัสคลาสจาก package เดียวกัน
 from .models import Course, Enrollment, generate_class_code
+=======
+from .models import Course, CourseTA, Enrollment, Material, Topic, generate_class_code
+>>>>>>> course-annoucnment-material-departmentOverride
 
 # เก็บข้อความแจ้งคลาสซ้ำเป็นค่าคงที่ เพื่อให้การสร้างและแก้ไขใช้ข้อความเดียวกัน
 DUPLICATE_CLASS = "You already have a class with this name and section. Use a different name or section."
@@ -103,3 +107,53 @@ def add_students(course, students):
         added += int(created)
     # คืนจำนวนที่เพิ่มใหม่ให้ view ใช้ทำรายงานผลการนำเข้า
     return added
+
+def _topic_match(course, title):
+    return (Topic.objects.annotate(key=Lower(Trim("title")))
+            .filter(course=course, key=title.lower()).first())
+
+
+def get_or_create_topic(course, title):
+    title = " ".join(title.split())[:120]
+    found = _topic_match(course, title)
+    if found:
+        return found
+    try:
+        with transaction.atomic():
+            return Topic.objects.create(course=course, title=title)
+    except IntegrityError:  # another request created it first
+        return _topic_match(course, title)
+
+
+def add_materials(course, topic, files, user):
+    created = []
+    try:
+        with transaction.atomic():
+            for upload in files:
+                created.append(Material.objects.create(
+                    course=course, topic=topic, file=upload,
+                    title=upload.name[:150], created_by=user))
+    except Exception:
+        # Rows rolled back; remove the files already written to disk.
+        for material in created:
+            material.file.storage.delete(material.file.name)
+        raise
+    return created
+
+
+
+def assign_ta(course, student_id):
+    """Make an enrolled student a TA. Returns True when newly assigned."""
+    with transaction.atomic():
+        # Lock the enrollment row so a concurrent roster removal cannot
+        # leave a TA behind (the removal signal runs after we commit).
+        if not Enrollment.objects.select_for_update().filter(
+                course=course, student_id=student_id).exists():
+            raise ValidationError("Only students enrolled in this class can become TAs.")
+        _, created = CourseTA.objects.get_or_create(course=course, user_id=student_id)
+    return created
+
+
+def remove_ta(course, student_id):
+    deleted, _ = CourseTA.objects.filter(course=course, user_id=student_id).delete()
+    return bool(deleted)

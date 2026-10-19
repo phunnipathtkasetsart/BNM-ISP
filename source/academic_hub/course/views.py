@@ -5,15 +5,24 @@ import json
 # HTTP method
 from django.contrib import messages
 from django.core.exceptions import ValidationError
-from django.http import JsonResponse
+from django.db import transaction
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
+from django.utils import timezone
 
+<<<<<<< HEAD
 # นำเข้าฟอร์มสำหรับตรวจข้อมูล โมเดลสำหรับข้อมูล ตัวตรวจสิทธิ์ และ service สำหรับสร้าง/แก้คลาสและเพิ่มสมาชิก
 from .forms import CourseForm, CsvRosterForm, JoinForm, RosterForm
 from .models import Course, Enrollment
+=======
+from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
+                    MaterialEditForm, MaterialUploadForm, RosterForm)
+from .models import Course, CoursePost, Enrollment, Material, PostAttachment
+>>>>>>> course-annoucnment-material-departmentOverride
 from .permissions import can_teach, course_access, visible_courses
-from .services import add_students, create_course, update_course
+from .services import (add_materials, add_students, assign_ta, create_course,
+                       get_or_create_topic, remove_ta, update_course)
 
 
 # api_request คืน boolean ว่า path เริ่ม /course/api/ หรือไม่ ฟังก์ชันนี้ใช้เลือกรูปแบบ response
@@ -146,6 +155,7 @@ def join(request):
     return render(request, "course/form.html", {"form": form, "title": "Join class"})
 
 
+<<<<<<< HEAD
 # detail รับ GET และผ่านสิทธิ์ก่อน request.course มาจาก decorator ที่ค้นและตรวจคลาสให้แล้ว
 # จึงไม่ต้องค้นซ้ำใน view
 @course_access()
@@ -153,10 +163,63 @@ def join(request):
 def detail(request, pk):
     course = request.course
     # API ส่งข้อมูลคลาส เว็บ render รายละเอียดพร้อม can_manage=True เฉพาะเจ้าของที่เป็นผู้สอน
+=======
+def topic_groups(course):
+    """Materials grouped by topic, newest topic first. Files with no topic last."""
+    by_topic = {}
+    for material in course.materials.order_by("-created_at", "-pk"):
+        by_topic.setdefault(material.topic_id, []).append(material)
+    groups = [{"title": t.title, "materials": by_topic[t.pk]}
+              for t in course.topics.order_by("-pk") if t.pk in by_topic]
+    if None in by_topic:
+        groups.append({"title": "No topic", "materials": by_topic[None]})
+    return groups
+
+
+
+def detail_context(request, post_form=None, material_form=None):
+    course = request.course
+    manage = request.can_manage_content
+    if manage and post_form is None:
+        post_form = CoursePostForm(course=course)
+    if manage and material_form is None:
+        material_form = MaterialUploadForm(course=course, auto_id="material_%s")
+    groups = topic_groups(course)
+    
+    # Query upcoming deadlines
+    upcoming_deadlines = course.posts.filter(
+        deadline__isnull=False, 
+        deadline__gte=timezone.now()
+    ).order_by("deadline")
+
+    return {
+        "course": course,
+        "posts": course.posts.select_related("author").prefetch_related("attachments"),
+        "upcoming_deadlines": upcoming_deadlines, # Add this to the context
+        "post_form": post_form,
+        "material_form": material_form,
+        "topic_groups": groups,
+        "material_count": sum(len(g["materials"]) for g in groups),
+        "topics": list(course.topics.order_by("-pk")) if manage else [],
+        "can_manage": request.can_manage_roster,
+        "can_manage_content": manage,
+        "can_delete_any": request.is_owner or request.is_dept_override,
+
+        "enrollments": course.enrollments.select_related("student") if request.can_manage_roster else [],
+        "ta_ids": set(course.ta_links.values_list("user_id", flat=True)),
+    }
+
+
+@course_access()
+@require_http_methods(["GET"])
+def detail(request, pk):
+>>>>>>> course-annoucnment-material-departmentOverride
     if api_request(request):
-        return JsonResponse(course_data(course, request.user))
-    return render(request, "course/detail.html", {"course": course,
-                  "can_manage": course.owner_id == request.user.pk and can_teach(request.user)})
+        data = course_data(request.course, request.user)
+        data["can_manage_content"] = request.can_manage_content
+        data["can_manage_roster"] = request.can_manage_roster
+        return JsonResponse(data)
+    return render(request, "course/detail.html", detail_context(request))
 
 
 # render_members เป็น helper สร้างหน้าสมาชิก รับฟอร์ม/รายงาน/status แบบ optional แล้วใช้คลาสจาก
@@ -167,8 +230,12 @@ def render_members(request, *, form=None, csv_form=None, import_report=None, sta
         "course": course,
         # อ่าน Enrollment ของคลาสพร้อม student ด้วย select_related และกำหนด flag ว่าจัดการสมาชิกได้หรือไม่
         "members": course.enrollments.select_related("student"),
+<<<<<<< HEAD
         "can_manage": course.owner_id == request.user.pk and can_teach(request.user),
         # ใช้ฟอร์มที่ส่งมาเพื่อรักษาค่าที่กรอกและ error หากไม่มีค่อยสร้างฟอร์มว่าง แยกฟอร์มกรอกรหัสกับฟอร์ม CSV
+=======
+        "can_manage": request.can_manage_roster,
+>>>>>>> course-annoucnment-material-departmentOverride
         "roster_form": form if form is not None else RosterForm(),
         "csv_form": csv_form if csv_form is not None else CsvRosterForm(),
         # ส่งรายงานนำเข้าให้ template พร้อม HTTP status ที่ผู้เรียกระบุ ค่าเริ่มต้น 200
@@ -229,10 +296,15 @@ def delete(request, pk):
 @require_http_methods(["GET"])
 def members(request, pk):
     roster = request.course.enrollments.select_related("student")
+<<<<<<< HEAD
     # คืน dictionary ที่มีข้อมูลผู้สอนและ list นิสิต แต่ละคนประกอบด้วย id และชื่อเต็มจาก get_full_name()
     # ฟังก์ชันนี้คืน JSON เสมอ
+=======
+    tas = set(request.course.ta_links.values_list("user_id", flat=True))
+>>>>>>> course-annoucnment-material-departmentOverride
     return JsonResponse({"lecturer": {"id": request.course.owner_id, "name": request.course.owner.get_full_name()},
-                         "students": [{"id": e.student_id, "name": e.student.get_full_name()} for e in roster]})
+                         "students": [{"id": e.student_id, "name": e.student.get_full_name(),
+                                       "is_ta": e.student_id in tas} for e in roster]})
 
 
 # import_members จำกัดเจ้าของและ POST แล้วสร้าง RosterForm จากข้อมูลที่กรอกหรือ JSON
@@ -249,9 +321,12 @@ def import_members(request, pk):
     return finish_import(request, form, csv=False)
 
 
+<<<<<<< HEAD
 
 # remove_member จำกัดเจ้าของและ POST แล้วค้น Enrollment ที่ต้องตรงทั้งคลาสปัจจุบันและ student_id จาก URL
 # จึงไม่ไปลบสมาชิกของคลาสอื่น ถ้าไม่พบโยน 404
+=======
+>>>>>>> course-annoucnment-material-departmentOverride
 @course_access(owner=True)
 @require_POST
 def remove_member(request, pk, student_id):
@@ -302,3 +377,192 @@ def finish_import(request, form, *, csv):
     messages.success(request, f"Added {added} student(s); {result['already_enrolled']} already enrolled; "
                      f"{result['duplicates_skipped']} duplicate row(s) skipped.")
     return redirect("course:members_page", pk=request.course.pk)
+
+
+# --- Task 4.3: announcements and attachments ---------------------------------
+
+@course_access(manage_content=True)
+@require_POST
+def create_post(request, pk):
+    form = CoursePostForm(request.POST, request.FILES, course=request.course)
+    if not form.is_valid():
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        return render(request, "course/detail.html", detail_context(request, form), status=400)
+
+    with transaction.atomic():
+        post = form.save(commit=False)
+        post.course = request.course
+        post.author = request.user
+        post.save()
+        upload = form.cleaned_data.get("attachment")
+        if upload:
+            attachment = PostAttachment.objects.create(post=post, file=upload)
+            if form.cleaned_data.get("add_to_materials"):
+                choice = form.cleaned_data["topic"]
+                if choice == MaterialUploadForm.NEW_TOPIC:
+                    topic = get_or_create_topic(request.course, form.cleaned_data["new_topic"])
+                else:
+                    topic = get_object_or_404(request.course.topics, pk=choice)
+                # Same stored file, second row: no copy on disk.
+                Material.objects.create(
+                    course=request.course, topic=topic, created_by=request.user,
+                    title=attachment.original_name[:150], file=attachment.file.name,
+                    original_name=attachment.original_name, size=attachment.size)
+
+    if api_request(request):
+        return JsonResponse({"id": post.pk, "title": post.title}, status=201)
+    messages.success(request, "Announcement posted.")
+    return redirect("course:detail", pk=pk)
+
+@course_access(manage_content=True)
+@require_POST
+def delete_post(request, pk, post_id):
+    post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
+    if not (request.is_owner or request.is_dept_override) and post.author_id != request.user.pk:
+        if api_request(request):
+            return JsonResponse({"error": "You can only delete your own announcements."}, status=403)
+        messages.error(request, "You can only delete your own announcements.")
+        return redirect("course:detail", pk=pk)
+    post.delete()
+    if api_request(request):
+        return JsonResponse({"deleted": True})
+    messages.success(request, "Announcement deleted.")
+    return redirect("course:detail", pk=pk)
+
+
+def file_download(item):
+    if not item.file or not item.file.storage.exists(item.file.name):
+        raise Http404("File does not exist on disk.")
+    return FileResponse(
+        item.file.open("rb"),
+        as_attachment=True,
+        filename=item.original_name or item.file.name.split("/")[-1],
+    )
+
+
+@course_access()
+@require_http_methods(["GET"])
+def download_attachment(request, pk, attachment_id):
+    attachment = get_object_or_404(PostAttachment, pk=attachment_id, post__course=request.course)
+    return file_download(attachment)
+
+
+# --- Task 4.4: materials ------------------------------------------------------
+
+@course_access(manage_content=True)
+@require_POST
+def upload_materials(request, pk):
+    course = request.course
+    form = MaterialUploadForm(request.POST, request.FILES, course=course, auto_id="material_%s")
+    if not form.is_valid():
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        return render(request, "course/detail.html",
+                      detail_context(request, material_form=form), status=400)
+
+    choice = form.cleaned_data["topic"]
+    if choice == MaterialUploadForm.NEW_TOPIC:
+        topic = get_or_create_topic(course, form.cleaned_data["new_topic"])
+    else:
+        topic = get_object_or_404(course.topics, pk=choice)
+    created = add_materials(course, topic, form.cleaned_data["files"], request.user)
+
+    if api_request(request):
+        return JsonResponse({"added": len(created), "topic": topic.title}, status=201)
+    messages.success(request, f"{len(created)} file(s) added to {topic.title}.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access(manage_content=True)
+@require_POST
+def edit_material(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    form = MaterialEditForm(request.POST, course=request.course)
+    if not form.is_valid():
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        messages.error(request, "Could not update the material. Check the name and topic.")
+        return redirect("course:detail", pk=pk)
+    topic_id = form.cleaned_data["topic"]
+    material.title = form.cleaned_data["title"].strip()
+    material.topic = get_object_or_404(request.course.topics, pk=topic_id) if topic_id else None
+    material.save(update_fields=["title", "topic", "updated_at"])
+    if api_request(request):
+        return JsonResponse({"id": material.pk, "title": material.title})
+    messages.success(request, "Material updated.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access(manage_content=True)
+@require_POST
+def delete_material(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    material.delete()  # signals.py removes the file after commit
+    if api_request(request):
+        return JsonResponse({"deleted": True})
+    messages.success(request, "Material deleted.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access()
+@require_http_methods(["GET"])
+def download_material(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    return file_download(material)
+
+
+
+
+@course_access(manage_content=True)
+@require_POST
+def edit_post(request, pk, post_id):
+    post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
+    
+    # Enforce same author check as delete_post
+    if not (request.is_owner or request.is_dept_override) and post.author_id != request.user.pk:
+        if api_request(request):
+            return JsonResponse({"error": "You can only edit your own announcements."}, status=403)
+        messages.error(request, "You can only edit your own announcements.")
+        return redirect("course:detail", pk=pk)
+        
+    form = CoursePostForm(request.POST, request.FILES, instance=post, course=request.course)
+    if form.is_valid():
+        form.save()
+        if api_request(request):
+            return JsonResponse({"id": post.pk, "title": post.title})
+        messages.success(request, "Announcement updated.")
+    else:
+        if api_request(request):
+            return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
+        messages.error(request, "Failed to update announcement. Check form fields.")
+        
+    return redirect("course:detail", pk=pk)
+
+
+# --- Task 4.5: teaching assistants (owner only) -------------------------------
+
+@course_access(owner=True)
+@require_POST
+def ta_assign(request, pk, student_id):
+    try:
+        created = assign_ta(request.course, student_id)
+    except ValidationError as error:
+        if api_request(request):
+            return JsonResponse({"error": error.messages[0]}, status=404)
+        messages.error(request, error.messages[0])
+        return redirect("course:detail", pk=pk)
+    if api_request(request):
+        return JsonResponse({"assigned": True, "created": created}, status=201 if created else 200)
+    messages.success(request, "Student is now a TA." if created else "Student is already a TA.")
+    return redirect("course:detail", pk=pk)
+
+
+@course_access(owner=True)
+@require_POST
+def ta_remove(request, pk, student_id):
+    removed = remove_ta(request.course, student_id)
+    if api_request(request):
+        return JsonResponse({"removed": removed})
+    messages.success(request, "TA role removed." if removed else "That student was not a TA.")
+    return redirect("course:detail", pk=pk)

@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 # นำเข้าตัวตรวจ guest ของโปรเจกต์และโมเดล Course/Enrollment โดยจุดหน้า models หมายถึงโมดูลใน package
 # เดียวกัน
 from accounts.middleware import is_guest_request
-from .models import Course, Enrollment
+from .models import Course, CourseTA, Enrollment
 
 
 # can_teach คืน True เมื่อเข้าสู่ระบบ บัญชี active และเป็น staff หรือ superuser ระบบ course นี้ใช้ flags
@@ -26,7 +26,11 @@ def can_teach(user):
 # visible_courses เริ่มจาก query สมาชิกของผู้ใช้ แล้วเลือกเฉพาะ course_id เพื่อใช้เป็น subquery
 # ไม่จำเป็นต้องโหลดทั้ง Enrollment object
 def visible_courses(user):
+    """Owned, enrolled, or (Department admin) same-department courses."""
+    if not user.is_authenticated:
+        return Course.objects.none()
     enrolled = Enrollment.objects.filter(student=user).values("course_id")
+<<<<<<< HEAD
     # คืนเฉพาะคลาสที่ผู้ใช้เป็นเจ้าของ OR เป็นสมาชิก เครื่องหมาย | เชื่อม Q แบบ OR; pk__in หมายถึงคีย์อยู่ในผล
     # query สมาชิก เป็น QuerySet ที่ยังนำไปกรองต่อได้
     return Course.objects.filter(Q(owner=user) | Q(pk__in=enrolled))
@@ -38,11 +42,30 @@ def course_access(*, owner=False, lecturer=False, student=False):
     """Apply the same scope guard to HTML and API routes, including direct URLs."""
     # decorate รับ view ที่ต้องการป้องกัน แล้วสร้าง wrapped ที่จะทำงานก่อน view; request คือคำขอ *args
     # รับอาร์กิวเมนต์ตำแหน่ง และ **kwargs รับอาร์กิวเมนต์ชื่อ เช่น pk จาก URL
+=======
+    q = Q(owner=user) | Q(pk__in=enrolled)
+    dept = (getattr(user, "department", None) or "").strip()
+    if user.is_active and user.is_superuser and dept:
+        q |= Q(owner__department__iexact=dept)
+    return Course.objects.filter(q).distinct()
+
+
+def course_access(
+    *,
+    owner=False,
+    lecturer=False,
+    student=False,
+    manage_content=False,
+    manage_roster=False,
+):
+    """Scope guard for Task 4.2 handling HTML and API endpoints."""
+>>>>>>> course-annoucnment-material-departmentOverride
     def decorate(view):
         @wraps(view)
         def wrapped(request, *args, **kwargs):
             # แยกคำขอ API ด้วย path ที่เริ่ม /course/api/ เพื่อเลือกรูปแบบตอบกลับ
             api = request.path.startswith("/course/api/")
+<<<<<<< HEAD
             # ถ้ายังไม่ login: API คืน JSON พร้อม 401 ส่วนหน้าเว็บส่งไป login โดยแนบ URL ปัจจุบันสำหรับการกลับมาภายหลัง
             if not request.user.is_authenticated:
                 if api:
@@ -58,10 +81,24 @@ def course_access(*, owner=False, lecturer=False, student=False):
             denied |= student and (request.user.is_staff or request.user.is_superuser)
             # เมื่อ denied เป็น True: API คืน JSON 403 ส่วนเว็บ render หน้า no_access พร้อมสถานะ 403 และ return
             # หยุดการทำงานก่อนถึง view
+=======
+            user = request.user
+
+            if not user.is_authenticated:
+                if api:
+                    return JsonResponse({"error": "Authentication required."}, status=401)
+                return redirect_to_login(request.get_full_path())
+
+            denied = not user.is_active or is_guest_request(request)
+            denied |= lecturer and not can_teach(user)
+            denied |= student and (user.is_staff or user.is_superuser)
+
+>>>>>>> course-annoucnment-material-departmentOverride
             if denied:
                 if api:
                     return JsonResponse({"error": "You do not have access to this action."}, status=403)
                 return render(request, "accounts/no_access.html", status=403)
+<<<<<<< HEAD
             # ถ้า URL ส่ง pk มา แปลว่าขอทำงานกับคลาสเฉพาะ จึงเริ่มค้นจากเฉพาะคลาสที่ผู้ใช้มองเห็น
             if "pk" in kwargs:
                 courses = visible_courses(request.user)
@@ -77,14 +114,59 @@ def course_access(*, owner=False, lecturer=False, student=False):
                     request.course = get_object_or_404(courses.select_related("owner"), pk=kwargs["pk"])
                 # จับกรณีคลาสไม่มีหรือไม่มีสิทธิ์: API คืน 404 ส่วนเว็บแจ้งเตือนแล้วกลับ dashboard
                 # จึงรองรับลิงก์เก่าหลังคลาสถูกลบหรือนิสิตถูกเอาออก
+=======
+
+            if "pk" in kwargs:
+                courses = visible_courses(user)
+
+                try:
+                    course = get_object_or_404(courses.select_related("owner"), pk=kwargs["pk"])
+>>>>>>> course-annoucnment-material-departmentOverride
                 except Http404:
                     if api:
                         return JsonResponse({"error": "Class not found."}, status=404)
-                    messages.warning(request, "This class is no longer available to you. It may have been deleted or your access may have changed. Please contact your lecturer if you need help.")
+                    messages.warning(
+                        request,
+                        "This class is no longer available to you. It may have been deleted or your access may have changed.",
+                    )
                     return redirect("course:dashboard")
+<<<<<<< HEAD
             # เมื่อผ่านทุกเงื่อนไข จึงเรียก view จริงและคืน response ของ view
             return view(request, *args, **kwargs)
         # return wrapped ส่งฟังก์ชันห่อกลับไป ส่วน return decorate ส่งตัว decorator กลับไป เป็นฟังก์ชันซ้อนกัน 3
         # ชั้นเพื่อรองรับ @course_access(owner=True)
+=======
+
+                    # Role flags evaluation
+                is_owner = course.owner_id == user.pk and can_teach(user)
+                is_ta = not is_owner and CourseTA.objects.filter(course=course, user=user).exists()
+                same_dept = (user.department or "").strip().lower() == (course.owner.department or "").strip().lower()
+                is_dept_override = bool(user.is_superuser and user.is_active and (user.department or "").strip() and same_dept)
+
+                can_manage_roster = is_owner
+                can_manage_content = is_owner or is_ta or is_dept_override
+
+                if (owner or manage_roster) and not can_manage_roster:
+                    denied = True
+                elif manage_content and not can_manage_content:
+                    denied = True
+
+                if denied:
+                    if api:
+                        return JsonResponse({"error": "You do not have permission for this action."}, status=403)
+                    return render(request, "accounts/no_access.html", status=403)
+
+                # Attach context for views & templates
+                request.course = course
+                request.is_owner = is_owner
+                request.is_ta = is_ta
+                request.is_dept_override = is_dept_override
+                request.can_manage_content = can_manage_content
+                request.can_manage_roster = can_manage_roster
+
+            return view(request, *args, **kwargs)
+
+>>>>>>> course-annoucnment-material-departmentOverride
         return wrapped
+
     return decorate

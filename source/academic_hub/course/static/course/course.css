@@ -525,6 +525,7 @@
   max-width: 1600px;
 }
 
+<<<<<<< HEAD
 
 /* Grid / List toggle on the class dashboard. */
 .course-view-toggle {
@@ -607,3 +608,5 @@
     gap: 6px;
   }
 }
+=======
+>>>>>>> course-annoucnment-material-departmentOverride

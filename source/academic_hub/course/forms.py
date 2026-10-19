@@ -7,15 +7,20 @@ import re
 # forms ให้คลาสและฟิลด์ของฟอร์ม; get_user_model() คืน User model ที่โปรเจกต์ใช้จริง
 from django import forms
 from django.contrib.auth import get_user_model
-
+from .models import CoursePost
+from .validators import validate_upload_size
 
 # CourseForm สืบทอด forms.Form เพื่อรับและตรวจข้อมูลสร้าง/แก้ไขคลาส ไม่บันทึกฐานข้อมูลเอง section ใช้
 # RegexField เพื่อตรวจรูปแบบ
 class CourseForm(forms.Form):
     section = forms.RegexField(
+<<<<<<< HEAD
         # label เป็นชื่อช่อง regex ^[0-9]+$ หมายถึงตั้งแต่ต้นจนจบต้องเป็นเลข 0–9 อย่างน้อยหนึ่งตัว ความยาวไม่เกิน
         # 20 ถ้าผิดรูปแบบใช้ข้อความ invalid ที่กำหนด ไม่ได้ตั้ง required=False จึงต้องกรอก
         label="Section (Sec)", regex=r"^[0-9]+$", max_length=20,
+=======
+        label="Section (Sec)", regex=r"^[0-9]+$", max_length=20, strip=True,
+>>>>>>> course-annoucnment-material-departmentOverride
         error_messages={"invalid": "Section must contain digits 0–9 only."},
         # widget กำหนดช่อง HTML: placeholder เป็นตัวอย่าง inputmode แนะนำคีย์บอร์ดตัวเลข pattern
         # ให้เบราว์เซอร์ตรวจรูปแบบ data-numeric-section เป็นตัวระบุให้ JavaScript กรองตัวที่ไม่ใช่เลข title
@@ -170,3 +175,118 @@ class CsvRosterForm(forms.Form):
         # รายการนิสิตที่ผ่านและรายงานผิดเก็บอยู่บน form เพื่อให้ view ใช้งาน
         self.students, self.rejected, self.duplicate_count = classify_students(ids)
         return upload
+
+
+class CoursePostForm(forms.ModelForm):
+    attachment = forms.FileField(
+        required=False,
+        label="File attachment",
+        help_text="Optional file (up to 50 MB)",
+        validators=[validate_upload_size],
+        widget=forms.FileInput(attrs={"class": "form-control"}),
+    )
+
+
+    add_to_materials = forms.BooleanField(
+        required=False, label="Add attachment to Materials",
+        widget=forms.CheckboxInput(attrs={"style": "width:auto;display:inline-block;margin-right:8px"}),
+    )
+    topic = forms.ChoiceField(
+        required=False, label="Topic category",
+        widget=forms.Select(attrs={"data-topic-select": ""}),
+    )
+    new_topic = forms.CharField(
+        required=False, max_length=120, label="New topic name",
+        widget=forms.TextInput(attrs={"placeholder": "e.g. Exams"}),
+    )
+
+    def __init__(self, *args, course=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["topic"].choices = (
+            [("", "Select or create a topic")]
+            + (topic_choices(course) if course else [])
+            + [(MaterialUploadForm.NEW_TOPIC, "+ Create new topic…")]
+        )
+
+    def clean(self):
+        data = super().clean()
+        if data.get("add_to_materials"):
+            if not data.get("attachment"):
+                self.add_error("add_to_materials", "Attach a file to add it to Materials.")
+            choice = data.get("topic")
+            if not choice:
+                self.add_error("topic", "Choose a topic or create a new one.")
+            elif choice == MaterialUploadForm.NEW_TOPIC and not (data.get("new_topic") or "").strip():
+                self.add_error("new_topic", "Enter a name for the new topic.")
+        return data
+
+    class Meta:
+        model = CoursePost
+        fields = ["title", "body", "deadline"] # Added deadline
+        widgets = {
+            "title": forms.TextInput(attrs={"placeholder": "Announcement Title", "class": "form-control"}),
+            "body": forms.Textarea(attrs={"placeholder": "Write your announcement content here...", "rows": 4, "class": "form-control"}),
+           "deadline": forms.DateTimeInput(format="%Y-%m-%dT%H:%M", attrs={"type": "datetime-local", "class": "form-control"}),
+        }
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        clean_one = super().clean
+        if isinstance(data, (list, tuple)):
+            return [clean_one(item, initial) for item in data]
+        return [clean_one(data, initial)] if data else []
+
+
+def topic_choices(course):
+    return [(str(t.pk), t.title) for t in course.topics.order_by("-pk")]
+
+
+class MaterialUploadForm(forms.Form):
+    NEW_TOPIC = "__new"
+
+    topic = forms.ChoiceField(
+        label="Topic category",
+        error_messages={"required": "Choose a topic or create a new one."},
+        widget=forms.Select(attrs={"data-topic-select": ""}),
+    )
+    new_topic = forms.CharField(
+        label="New topic name", max_length=120, required=False,
+        widget=forms.TextInput(attrs={"placeholder": "e.g. Lectures"}),
+    )
+    files = MultipleFileField(label="Files", validators=[validate_upload_size])
+
+    def __init__(self, *args, course, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["topic"].choices = (
+            [("", "Select or create a topic")] + topic_choices(course)
+            + [(self.NEW_TOPIC, "+ Create new topic…")]
+        )
+
+    def clean_files(self):
+        files = self.cleaned_data["files"]
+        if not files:
+            raise forms.ValidationError("Choose at least one file.")
+        return files
+
+    def clean(self):
+        data = super().clean()
+        if data.get("topic") == self.NEW_TOPIC and not (data.get("new_topic") or "").strip():
+            self.add_error("new_topic", "Enter a name for the new topic.")
+        return data
+
+
+class MaterialEditForm(forms.Form):
+    title = forms.CharField(label="Name", max_length=150)
+    topic = forms.ChoiceField(label="Topic", required=False)
+
+    def __init__(self, *args, course, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["topic"].choices = [("", "No topic")] + topic_choices(course)

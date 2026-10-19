@@ -3,13 +3,21 @@
   <div class="course-sidebar__label"><span>COURSE TOOLS</span><span class="course-sidebar__preview">Preview</span></div>
   <section class="course-tool" aria-labelledby="tool-deadlines">
     <header class="course-tool__header"><span class="course-tool__icon" aria-hidden="true">▦</span><h2 id="tool-deadlines">Upcoming deadlines</h2></header>
-    <div class="course-tool__body"><p class="course-tool__empty">Assignment deadlines will appear here.</p><div class="course-tool__skeleton" aria-hidden="true"><span></span><span></span></div></div>
-  </section>
-  <section class="course-tool" aria-labelledby="tool-contact">
-    <header class="course-tool__header"><span class="course-tool__icon" aria-hidden="true">✉</span><h2 id="tool-contact">Academic contact</h2></header>
     <div class="course-tool__body">
-      <div class="course-tool__row"><div><strong>Lecturer</strong><span class="course-tool__muted">Contact information</span></div><button class="course-tool__button" type="button" disabled>Send message</button></div>
-      <div class="course-tool__row"><div><strong>Teaching assistant</strong><span class="course-tool__muted">Contact information</span></div><button class="course-tool__button" type="button" disabled>Ask question</button></div>
+      {% if upcoming_deadlines %}
+        <div class="course-tool__deadlines">
+          {% for post in upcoming_deadlines %}
+            <div class="course-tool__row" style="flex-direction: row; align-items: flex-start; gap: 0.15rem; margin-bottom: 0.6rem;">
+              <strong style="font-size: 0.88rem;">{{ post.title }}</strong>
+              <span class="course-tool__muted" style="font-size: 0.78rem; color: #d97706; font-weight: 600;">
+                Due: {{ post.deadline|date:"N j, Y @ H:i" }}
+              </span>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="course-tool__empty">No upcoming deadlines.</p>
+      {% endif %}
     </div>
   </section>
   <section class="course-tool" aria-labelledby="tool-faq">
