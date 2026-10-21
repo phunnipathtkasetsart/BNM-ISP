@@ -14,26 +14,7 @@
 {% endblock %}
 
 {% block topbar_right %}
-  <div class="topbar__right">
-    {% if request.user.is_authenticated %}
-      <span class="topbar__role">{% if is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
-      {% if is_guest %}
-        
-        <span class="guestclock" data-expires="{{ guest_expires_at }}"
-              title="Your guest session ends then">&mdash;</span>
-      {% endif %}
-      {% if request.user.is_superuser %}
-        <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
-      {% endif %}
-      <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
-        {% csrf_token %}
-        <button type="submit" class="topbar__logout">Log out</button>
-      </form>
-    {% else %}
-      <span class="topbar__role">Guest</span>
-      <a class="topbar__link" href="{% url 'accounts:login' %}">Sign in</a>
-    {% endif %}
-  </div>
+  {% include "accounts/_account_menu.html" %}
 {% endblock %}
 
 {% block content %}
