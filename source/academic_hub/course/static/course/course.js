@@ -126,3 +126,16 @@
     });
   }
 })();
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const toggleBtn = document.getElementById("nav-toggle");
+  const navMenu = document.getElementById("nav-menu");
+
+  if (toggleBtn && navMenu) {
+    toggleBtn.addEventListener("click", () => {
+      const isOpen = navMenu.classList.toggle("is-open");
+      toggleBtn.setAttribute("aria-expanded", isOpen);
+    });
+  }
+});
