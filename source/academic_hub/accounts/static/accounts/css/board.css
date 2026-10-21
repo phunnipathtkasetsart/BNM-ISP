@@ -89,10 +89,17 @@
 /* Urgent gets a left stripe rather than a louder fill: it has to stand out
    in a scan without making the ordinary notices look inert. */
 .post--urgent{border-left:calc(4 * var(--u)) solid var(--danger)}
-.post__top{display:flex;align-items:flex-start;gap:calc(12 * var(--u))}
+/* Wraps so the badges drop under the title on a narrow card, instead of
+   squeezing the title into a one-word column and pushing a long badge
+   such as CLOSED 7 Oct, 15:27 out past the card edge. */
+.post__top{display:flex;flex-wrap:wrap;align-items:flex-start;
+  gap:calc(8 * var(--u)) calc(12 * var(--u))}
 .post__title{
   font-family:var(--font-display);font-weight:800;
-  font-size:calc(16.5 * var(--u));color:var(--ink);margin:0;flex:1;
+  font-size:calc(16.5 * var(--u));color:var(--ink);margin:0;
+  /* A basis rather than flex:1, which let the title shrink to nothing
+     before anything wrapped. */
+  flex:1 1 calc(180 * var(--u));min-width:0;
 }
 .post__meta{margin:calc(3 * var(--u)) 0 calc(9 * var(--u));font-size:calc(12.5 * var(--u));color:var(--ink-muted)}
 .post__body{margin:0;font-size:calc(13.5 * var(--u));line-height:1.62;color:var(--ink-soft)}
