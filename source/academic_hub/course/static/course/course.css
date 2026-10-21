@@ -906,3 +906,26 @@
     transform: none !important;
   }
 }
+
+/* Course tools fold: on narrow screens the panel moves above the classes
+   and starts closed, so it no longer lands at the bottom of a long page. */
+.course-sidebar__fold > summary { list-style: none; cursor: pointer; }
+.course-sidebar__fold > summary::-webkit-details-marker { display: none; }
+.course-sidebar__fold > summary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .15s ease;
+}
+.course-sidebar__fold[open] > summary::after { transform: rotate(-135deg) translateY(-1px); }
+.course-sidebar__fold > summary:focus-visible { outline: 2px solid #35705b; outline-offset: 4px; border-radius: 4px; }
+.course-sidebar__fold > summary .course-sidebar__preview { margin-left: auto; }
+.course-sidebar__body { display: grid; gap: 14px; margin-top: 14px; }
+@media (max-width: 1000px) {
+  .course-detail-layout > .course-sidebar { order: -1; padding: 14px 16px; }
+  .course-sidebar__fold > summary { min-height: 32px; }
+}
