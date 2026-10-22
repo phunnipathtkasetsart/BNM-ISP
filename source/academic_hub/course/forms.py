@@ -118,8 +118,11 @@ class CoursePostForm(forms.ModelForm):
         validators=[validate_upload_size],
         widget=forms.FileInput(attrs={"class": "form-control"}),
     )
-
-
+    remove_attachment = forms.BooleanField(
+        required=False,
+        label="Remove current attachment",
+        widget=forms.CheckboxInput(attrs={"style": "width:auto;display:inline-block;margin-right:8px"}),
+    )
     add_to_materials = forms.BooleanField(
         required=False, label="Add attachment to Materials",
         widget=forms.CheckboxInput(attrs={"style": "width:auto;display:inline-block;margin-right:8px"}),

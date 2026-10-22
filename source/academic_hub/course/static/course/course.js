@@ -139,3 +139,98 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+
+
+// Post Edit Form Toggle & Attachment Removal JS
+document.addEventListener('DOMContentLoaded', () => {
+  document.addEventListener('click', (e) => {
+    // Open edit post form
+    const editBtn = e.target.closest('[data-post-edit]');
+    if (editBtn) {
+      const card = editBtn.closest('.cc-post-card');
+      if (!card) return;
+      const display = card.querySelector('[data-post-display]');
+      const form = card.querySelector('[data-post-editform]');
+      if (display && form) {
+        display.hidden = true;
+        form.hidden = false;
+      }
+      return;
+    }
+
+    // Cancel editing
+  const cancelBtn = e.target.closest('[data-post-edit-cancel]');
+  if (cancelBtn) {
+    const card = cancelBtn.closest('.cc-post-card');
+    if (!card) return;
+    const display = card.querySelector('[data-post-display]');
+    const form = card.querySelector('[data-post-editform]');
+
+    if (display && form) {
+      // Reset HTML form fields
+      form.reset();
+
+      // Restore attachment chip if an attachment originally existed
+      const attContainer = form.querySelector('[data-attachment-container]');
+      const removeInput = form.querySelector('[data-remove-attachment-input]');
+      const picker = form.querySelector('[data-file-picker]');
+      const nameSpan = form.querySelector('[data-file-names]');
+
+      if (attContainer) {
+        attContainer.style.display = '';
+        if (removeInput) removeInput.value = 'false';
+        if (picker) picker.hidden = true;
+      } else if (picker) {
+        picker.hidden = false;
+      }
+
+      if (nameSpan) {
+        nameSpan.textContent = 'No file chosen';
+        nameSpan.style.color = '#60776c';
+      }
+
+      // Hide edit form and show post content
+      display.hidden = false;
+      form.hidden = true;
+    }
+    return;
+  }
+
+    // Discard attachment (X button)
+    const removeAttBtn = e.target.closest('[data-remove-attachment-btn]');
+    if (removeAttBtn) {
+      const container = removeAttBtn.closest('[data-attachment-container]');
+      const form = removeAttBtn.closest('form');
+      if (container) {
+        const input = container.querySelector('[data-remove-attachment-input]');
+        if (input) input.value = 'true';
+        container.style.display = 'none';
+      }
+      if (form) {
+        const picker = form.querySelector('[data-file-picker]');
+        if (picker) picker.hidden = false;
+      }
+      return;
+    }
+  });
+
+  // Display selected filename when choosing a new file
+  document.addEventListener('change', (e) => {
+    const fileInput = e.target.closest('input[type="file"]');
+    if (!fileInput) return;
+    const filebox = fileInput.closest('.cc-filebox, .cc-field');
+    if (!filebox) return;
+    const nameSpan = filebox.querySelector('[data-file-names]');
+    if (nameSpan) {
+      if (fileInput.files && fileInput.files.length > 0) {
+        const names = Array.from(fileInput.files).map(f => f.name).join(', ');
+        nameSpan.textContent = names;
+        nameSpan.style.color = '#183e35';
+      } else {
+        nameSpan.textContent = 'No file chosen';
+        nameSpan.style.color = '#60776c';
+      }
+    }
+  });
+});

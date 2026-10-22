@@ -550,9 +550,38 @@ def edit_post(request, pk, post_id):
         return redirect("course:detail", pk=pk)
 
     if request.method == "POST":
-        form = CoursePostForm(request.POST, instance=post, course=request.course)
+        form = CoursePostForm(request.POST, request.FILES, instance=post, course=request.course)
         if form.is_valid():
-            form.save()
+            with transaction.atomic():
+                post = form.save()
+
+                remove_att = form.cleaned_data.get("remove_attachment") or request.POST.get("remove_attachment") == "true"
+                new_upload = form.cleaned_data.get("attachment")
+
+                # If removing attachment or uploading a replacement, delete old attachment(s)
+                if remove_att or new_upload:
+                    for att in post.attachments.all():
+                        att.delete()
+
+                # If a new file was uploaded, attach it
+                if new_upload:
+                    attachment = PostAttachment.objects.create(post=post, file=new_upload)
+                    if form.cleaned_data.get("add_to_materials"):
+                        choice = form.cleaned_data.get("topic")
+                        if choice == MaterialUploadForm.NEW_TOPIC:
+                            topic = get_or_create_topic(request.course, form.cleaned_data.get("new_topic"))
+                        elif choice:
+                            topic = get_object_or_404(request.course.topics, pk=choice)
+                        else:
+                            topic = None
+
+                        if topic:
+                            Material.objects.create(
+                                course=request.course, topic=topic, created_by=request.user,
+                                title=attachment.original_name[:150], file=attachment.file.name,
+                                original_name=attachment.original_name, size=attachment.size
+                            )
+
             if api_request(request):
                 return JsonResponse({"id": post.pk, "title": post.title})
             messages.success(request, "Announcement updated successfully.")
