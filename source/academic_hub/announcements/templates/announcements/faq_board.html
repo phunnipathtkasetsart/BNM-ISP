@@ -124,8 +124,10 @@
                   <p class="post__meta">
                     <span class="forum-author-role">{{ reply.author_role }}</span>: {{ reply.author_label }} &middot; Posted
                     {% timezone "Asia/Bangkok" %}{{ reply.created_at|date:"j M Y, H:i" }}{% endtimezone %}
-                    &middot; Updated
-                    {% timezone "Asia/Bangkok" %}{{ reply.updated_at|date:"j M Y, H:i" }}{% endtimezone %}
+                    {% if reply.has_been_edited %}
+                      &middot; Updated
+                      {% timezone "Asia/Bangkok" %}{{ reply.updated_at|date:"j M Y, H:i" }}{% endtimezone %}
+                    {% endif %}
                     {% if reply.archived_at %}&middot; Archived{% endif %}
                   </p>
                   {% if editing_reply and editing_reply.pk == reply.pk %}

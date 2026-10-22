@@ -1010,6 +1010,7 @@ class ForumQuestionTests(TestCase):
         self.assertEqual(accepted.status_code, 302)
         own_reply.refresh_from_db()
         self.assertEqual(own_reply.body, "Updated guidance.")
+        self.assertTrue(own_reply.has_been_edited)
 
         archived = self.client.post(
             self.forum_url("forum_reply_archive", own_reply.pk)
@@ -1164,7 +1165,8 @@ class ForumQuestionTests(TestCase):
             updated_by_is_author=False,
         )
         ForumReply.objects.filter(pk=reply.pk).update(
-            updated_at=reply.created_at + timedelta(hours=1)
+            updated_at=reply.created_at + timedelta(hours=1),
+            has_been_edited=True,
         )
         self.sign_in(self.lecturer)
         with timezone.override("Asia/Bangkok"):
@@ -1186,6 +1188,23 @@ class ForumQuestionTests(TestCase):
         self.assertContains(response, expected_reply_time)
         self.assertContains(response, "Updated")
         self.assertContains(response, "(Forum Department)")
+
+    def test_new_reply_only_displays_posted_timestamp(self):
+        reply = ForumReply.objects.create(
+            question=self.everyone_question,
+            body="A new, unedited reply.",
+            author=self.lecturer,
+            author_label=self.lecturer.get_full_name(),
+            author_role="Lecturer",
+        )
+        self.sign_in(self.lecturer)
+        response = self.client.get(
+            self.forum_url("faq_board"),
+            {"q": self.everyone_question.pk},
+        )
+        self.assertContains(response, "Posted")
+        self.assertNotContains(response, "Updated")
+        self.assertFalse(reply.has_been_edited)
 
     def test_question_list_is_paginated_and_preserves_selected_thread(self):
         for index in range(21):

@@ -335,6 +335,7 @@ class ForumReply(models.Model):
     author_role = models.CharField(max_length=20, default="Student")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
+    has_been_edited = models.BooleanField(default=False)
     archived_at = models.DateTimeField(blank=True, null=True)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,

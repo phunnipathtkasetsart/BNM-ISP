@@ -512,7 +512,9 @@ def forum_reply_edit(request, pk):
         instance=reply,
     )
     if request.method == "POST" and form.is_valid():
-        form.save()
+        reply = form.save(commit=False)
+        reply.has_been_edited = True
+        reply.save()
         return redirect(
             f"{reverse('announcements:faq_board')}?q={question.pk}&comments=1#forum-comments-{question.pk}"
         )
