@@ -238,7 +238,9 @@
   border-color: #176c5d;
   box-shadow: 0 4px 16px rgba(23, 108, 93, 0.06);
 }
-.course-detail-content .cc-field { display: grid; gap: 0; }
+.course-detail-content .cc-field[hidden] {
+  display: none !important;
+}
 .course-detail-content .cc-field > label { margin-bottom: 8px; }
 .course-detail-content .cc-optional { font-weight: 400; color: #60776c; }
 .course-detail-content .cc-form textarea {
@@ -672,4 +674,62 @@
   .creation-card-body {
     animation: none !important;
   }
+}
+
+/* ---- Post Edit Attachment Green Card Styling ---- */
+.course-detail-content .cc-chip--edit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #176c5d;
+  border-radius: 12px;
+  background: #edf6f2;
+  box-sizing: border-box;
+}
+
+.course-detail-content .cc-chip--edit .cc-chip__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.course-detail-content .cc-chip--edit .cc-chip__name {
+  font-weight: 700;
+  color: #183e35;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.course-detail-content .cc-chip--edit .cc-chip__size {
+  font-size: 12px;
+  color: #60776c;
+}
+
+.course-detail-content .cc-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #e1baba;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #a32e36;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.course-detail-content .cc-chip__remove:hover {
+  background: #a32e36;
+  border-color: #a32e36;
+  color: #ffffff;
+  transform: scale(1.08);
 }
