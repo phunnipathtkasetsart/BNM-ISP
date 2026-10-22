@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -8,6 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Course, CoursePost, CourseTA, Enrollment, Material, PostAttachment, Topic
 from .services import assign_ta, create_course
@@ -799,6 +801,68 @@ class ContentViewTests(TestCase):
         self.assertContains(page, "Welcome")
         self.assertContains(page, self.url("download_attachment", self.course.pk, att.pk))
 
+    def test_43_edit_post_replace_and_remove_attachment(self):
+        """Test replacing and removing announcement attachments during edit."""
+        post = self.make_post(file=self.upload("original.pdf", b"old content"))
+        old_att = post.attachments.get()
+        storage, old_name = old_att.file.storage, old_att.file.name
+
+        self.sign_in(self.teacher)
+
+        # Replace attachment with a new file
+        with self.captureOnCommitCallbacks(execute=True):
+            resp = self.send("edit_post", self.course.pk, post.pk,
+                             title="Post Updated", body="Body",
+                             attachment=self.upload("replacement.pdf", b"new content"))
+        self.assertEqual(resp.status_code, 302)
+        post.refresh_from_db()
+        self.assertEqual(post.title, "Post Updated")
+        self.assertFalse(storage.exists(old_name))
+        new_att = post.attachments.get()
+        self.assertEqual(new_att.original_name, "replacement.pdf")
+
+        # Remove attachment without uploading a new one
+        new_storage, new_name = new_att.file.storage, new_att.file.name
+        with self.captureOnCommitCallbacks(execute=True):
+            resp = self.send("edit_post", self.course.pk, post.pk,
+                             title="Post No File", body="Body",
+                             remove_attachment="true")
+        self.assertEqual(resp.status_code, 302)
+        post.refresh_from_db()
+        self.assertFalse(post.attachments.exists())
+        self.assertFalse(new_storage.exists(new_name))
+
+    def test_43_edit_post_with_add_to_materials(self):
+        """Test adding replaced attachment to materials during edit_post."""
+        post = self.make_post(title="Edit with Material")
+        self.sign_in(self.teacher)
+
+        resp = self.send("edit_post", self.course.pk, post.pk,
+                         title="Edit with Material", body="Body",
+                         attachment=self.upload("edit_mat.pdf", b"data"),
+                         add_to_materials="on", topic="__new", new_topic="Edit Topic")
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(Material.objects.filter(course=self.course, title="edit_mat.pdf").exists())
+        self.assertTrue(Topic.objects.filter(course=self.course, title="Edit Topic").exists())
+
+    def test_43_upcoming_deadlines_7_day_filter(self):
+        """Test that upcoming deadlines filter only captures posts within a 7-day future window."""
+        now = timezone.now()
+        in_3_days = now + timedelta(days=3)
+        in_10_days = now + timedelta(days=10)
+        past_deadline = now - timedelta(days=1)
+
+        p_valid = CoursePost.objects.create(course=self.course, author=self.teacher, title="Valid", deadline=in_3_days)
+        p_far = CoursePost.objects.create(course=self.course, author=self.teacher, title="Far", deadline=in_10_days)
+        p_past = CoursePost.objects.create(course=self.course, author=self.teacher, title="Past", deadline=past_deadline)
+
+        self.sign_in(self.student)
+        resp = self.client.get(self.url("dashboard"))
+        deadlines = list(resp.context["upcoming_deadlines"])
+        self.assertIn(p_valid, deadlines)
+        self.assertNotIn(p_far, deadlines)
+        self.assertNotIn(p_past, deadlines)
+
     def test_43_post_without_attachment_and_invalid_input(self):
         self.sign_in(self.teacher)
         self.assertEqual(self.send("api_create_post", self.course.pk, title="Plain", body="x").status_code, 201)
@@ -1029,6 +1093,20 @@ class ContentViewTests(TestCase):
         self.assertEqual(self.send("api_ta_remove", self.course.pk, self.student.pk).json(), {"removed": True})
         self.assertEqual(self.send("api_ta_remove", self.course.pk, self.student.pk).json(), {"removed": False})
 
+    def test_45_assign_ta_by_nisit_id_or_pk(self):
+        """Test assign_ta searching globally by nisit_id or pk."""
+        self.sign_in(self.teacher)
+        
+        # Search by nisit_id (passed as positional argument for URL reversing)
+        resp = self.send("ta_assign", self.course.pk, self.outsider.nisit_id)
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(CourseTA.objects.filter(course=self.course, user=self.outsider).exists())
+
+        # Search by PK (passed as positional argument for URL reversing)
+        resp = self.send("ta_assign", self.course.pk, self.student.pk)
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(CourseTA.objects.filter(course=self.course, user=self.student).exists())
+
     def test_45_assign_unenrolled_student_auto_enrolls_and_becomes_ta(self):
         self.sign_in(self.teacher)
         # Outsider is not enrolled yet
@@ -1054,6 +1132,15 @@ class ContentViewTests(TestCase):
     def test_45_ta_role_is_per_class(self):
         self.sign_in(self.ta)
         self.assertEqual(self.client.get(self.url("api_detail", self.other_course.pk)).status_code, 404)
+
+    def test_admin_dashboard_search_filter(self):
+        """Test superuser course search filter on dashboard."""
+        self.sign_in(self.dept)
+        resp = self.client.get(self.url("dashboard") + "?q=Content")
+        self.assertEqual(resp.status_code, 200)
+        courses = list(resp.context["courses"])
+        self.assertIn(self.course, courses)
+        self.assertNotIn(self.other_course, courses)
 
 
 class ContentEdgeCaseAndTopicTests(TestCase):
