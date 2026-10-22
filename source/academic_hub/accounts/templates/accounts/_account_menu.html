@@ -17,6 +17,8 @@ outside it.
         <span class="topbar__role">{% if request.session.is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
       </summary>
       <div class="acctmenu__panel">
+        {# On phones the button shrinks to a menu icon, so the role moves in here. #}
+        <p class="acctmenu__who" aria-hidden="true">Signed in as <strong>{% if request.session.is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</strong></p>
         <a class="acctmenu__item" href="{% url 'announcements:public_board' %}">Board</a>
         {% if request.user.is_superuser %}
           <a class="acctmenu__item" href="{% url 'accounts:roles' %}">Manage roles</a>

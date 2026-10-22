@@ -25,7 +25,7 @@
 
   {# Role re-checked in the view; a hidden control is not a permission. #}
   {% if can_manage %}
-    <a class="subnav__action" href="{% url 'announcements:announcement_create' %}">Create Announcement</a>
+    <a class="subnav__action" href="{% url 'announcements:announcement_create' %}"><span class="subnav__action-full">Create Announcement</span><span class="subnav__action-short" aria-hidden="true">+ Create</span></a>
   {% endif %}
 </nav>
 

@@ -188,6 +188,18 @@
 }
 .subnav__action:hover{background:#24463C}
 .subnav__action:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.subnav__action-short{display:none}
+/* Small phones: Home, Course and the full label do not fit on one row, so
+   the button reads "+ Create". Screen readers still hear the whole label. */
+@media (max-width:480px){
+  .subnav__tab{padding:10px 22px 10px 14px;font-size:14px}
+  .subnav__action{font-size:12.5px;padding:6px 12px}
+  .subnav__action-short{display:inline}
+  .subnav__action-full{
+    position:absolute;width:1px;height:1px;overflow:hidden;
+    clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;
+  }
+}
 .post__edit{color:var(--ku-green-800);font-weight:600;text-decoration:none}
 .post__edit:hover{text-decoration:underline}
 /* Marks an item guests cannot see, so a publisher is never puzzled by its
