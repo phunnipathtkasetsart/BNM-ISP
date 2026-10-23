@@ -1,0 +1,131 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block title %}Calendar — KU Student Portal{% endblock %}
+{% block page_css %}
+  <link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">
+  <link rel="stylesheet" href="{% static 'calendar_app/calendar.css' %}">
+{% endblock %}
+
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+{% endblock %}
+
+{% block topbar_right %}
+  <div class="topbar__right">
+    <span class="topbar__role">{% if request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+    {% if request.user.is_superuser %}
+      <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
+    {% endif %}
+    <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
+      {% csrf_token %}
+      <button type="submit" class="topbar__logout">Log out</button>
+    </form>
+  </div>
+{% endblock %}
+
+{% block content %}
+<nav class="subnav" aria-label="Sections">
+  <a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a>
+  <a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>
+  <a class="subnav__tab subnav__tab--on" href="{% url 'calendar:month' %}" aria-current="page">Calendar</a>
+</nav>
+
+<div class="calpage">
+  <section class="panel cal" aria-labelledby="cal-title" data-focus="{{ focus_id }}">
+    <header class="cal__head">
+      <h1 id="cal-title">{{ month_start|date:"F Y" }}</h1>
+      <div class="cal__nav">
+        <a class="cal__btn" href="?year={{ prev.year }}&amp;month={{ prev.month }}" aria-label="Previous month">&lsaquo;</a>
+        <a class="cal__btn cal__btn--today{% if is_current_month %} is-disabled{% endif %}"
+           href="{% url 'calendar:month' %}"{% if is_current_month %} aria-disabled="true" tabindex="-1"{% endif %}>Today</a>
+        {# Always a link so calendar.js can re-aim it at an opened deadline (?after=<id>), even when greyed out here. #}
+        {% if next_deadline %}
+          <a class="cal__btn cal__btn--next" data-next href="?focus={{ next_deadline.id }}"
+             title="Next: {{ next_deadline.title }} · {{ next_deadline.date_label }}, {{ next_deadline.time_label }}">Next deadline &rarr;</a>
+        {% else %}
+          <a class="cal__btn cal__btn--next is-disabled" data-next aria-disabled="true" tabindex="-1"
+             title="{% if focus_id %}This is the last deadline{% else %}No upcoming deadlines{% endif %}">Next deadline &rarr;</a>
+        {% endif %}
+        <a class="cal__btn" href="?year={{ next.year }}&amp;month={{ next.month }}" aria-label="Next month">&rsaquo;</a>
+      </div>
+    </header>
+
+    {# Only problems are shown here (e.g. a note that failed to save); success is silent. #}
+    {% for message in messages %}
+      {% if message.level == DEFAULT_MESSAGE_LEVELS.ERROR %}
+        <p class="cal__notice cal__notice--error" role="alert">{{ message }}</p>
+      {% endif %}
+    {% endfor %}
+
+    <table class="cal__grid">
+      <thead>
+        <tr>
+          {% for name in weekday_names %}<th scope="col">{{ name }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for week in weeks %}
+          <tr>
+            {% for day in week %}
+              <td class="cal__day{% if not day.in_month %} cal__day--out{% endif %}{% if day.is_weekend %} cal__day--weekend{% endif %}{% if day.is_today %} cal__day--today{% endif %}"
+                  data-date="{{ day.date|date:'Y-m-d' }}" data-day-label="{{ day.label }}" data-weekday="{{ day.date|date:'D' }}" data-daynum="{{ day.date.day }}"
+                  {% if day.is_today %}aria-current="date"{% endif %}>
+                <div class="cal__cell">
+                  <time datetime="{{ day.date|date:'Y-m-d' }}" class="cal__num">{{ day.date.day }}</time>
+                  {% if day.events %}
+                    {# Every deadline is rendered; calendar.js hides the ones that do not fit and fills in "+N more". #}
+                    <div class="cal__events" data-events>
+                      {% for ev in day.events %}
+                        <button type="button" class="cal__ev cal__ev--{{ ev.kind }}{% if ev.notify %} cal__ev--notify{% endif %}{% if ev.id == focus_id %} cal__ev--focus{% endif %}" data-event="{{ ev.id }}"
+                                style="--ev:{{ ev.colour }}" title="{% if ev.time_label %}{{ ev.time_label }} · {% endif %}{{ ev.title }} ({{ ev.source }})">
+                          {% if ev.kind == "announcement" %}<span class="cal__dot" aria-hidden="true"></span><span class="cal__time">{{ ev.time_label }}</span>{% endif %}
+                          <span class="cal__evtitle">{{ ev.title }}</span>
+                        </button>
+                      {% endfor %}
+                      <button type="button" class="cal__more" data-more hidden></button>
+                    </div>
+                  {% endif %}
+                </div>
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+
+{# Day-note forms. Rendered here so they carry Django's CSRF token; calendar.js copies one into the popover and fills it in. #}
+<template id="note-form-tpl">
+  <form class="notef" method="post" action="{% url 'calendar:note_create' %}">
+    {% csrf_token %}
+    <input type="hidden" name="date">
+    <p class="notef__day"></p>
+    <label class="notef__label" for="notef-title">Title</label>
+    <input class="notef__input" id="notef-title" name="title" maxlength="120" required autocomplete="off" placeholder="Add a title">
+    <label class="notef__label" for="notef-desc">Description</label>
+    <textarea class="notef__input notef__text" id="notef-desc" name="description" maxlength="2000" rows="4" placeholder="Add a description (optional)"></textarea>
+    <label class="notef__check"><input type="checkbox" name="notify" value="on"> Notify me on this day</label>
+    <div class="notef__actions">
+      <button type="button" class="notef__btn notef__btn--ghost" data-cancel>Cancel</button>
+      <button type="submit" class="notef__btn">Save</button>
+    </div>
+  </form>
+</template>
+<template id="note-delete-tpl">
+  <form method="post" action="">
+    {% csrf_token %}
+    <button type="submit" class="notef__btn notef__btn--danger">Delete</button>
+  </form>
+</template>
+<span hidden data-note-edit-url="{% url 'calendar:note_edit' 0 %}" data-note-delete-url="{% url 'calendar:note_delete' 0 %}"></span>
+
+{# One popover, filled in by calendar.js: a day's full list, one item's details, or the note form. #}
+<div class="calpop" id="calpop" role="dialog" aria-modal="false" aria-labelledby="calpop-title" hidden></div>
+
+{{ popover_events|json_script:"cal-events" }}
+<script src="{% static 'calendar_app/calendar.js' %}" defer></script>
+{% endblock %}

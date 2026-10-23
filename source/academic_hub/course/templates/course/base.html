@@ -37,6 +37,7 @@
 <nav class="subnav" aria-label="Sections">
   <a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a>
   <a class="subnav__tab subnav__tab--on" href="{% url 'course:dashboard' %}" aria-current="page">Course</a>
+  <a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>
 </nav>
 
 {% block before_course_shell %}{% endblock %}
