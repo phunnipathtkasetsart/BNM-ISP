@@ -713,14 +713,41 @@ class ForumQuestionTests(TestCase):
         self.assertContains(public_response, "Everyone question")
         self.assertContains(public_response, "Visible to every reader.")
         self.assertNotContains(public_response, "CPE department content.")
+        detail_response = self.client.get(
+            self.forum_url("forum_question_detail", self.everyone_question.pk)
+        )
+        self.assertEqual(detail_response.status_code, 200)
+        self.assertContains(detail_response, "Everyone question")
 
         department_response = self.client.get(
             self.forum_url("faq_board"),
             {"q": self.cpe_question.pk},
         )
         self.assertEqual(department_response.status_code, 404)
+        private_detail = self.client.get(
+            self.forum_url("forum_question_detail", self.cpe_question.pk)
+        )
+        self.assertEqual(private_detail.status_code, 404)
         self.assertIn("announcements:faq_board", GUEST_ALLOWED_VIEWS)
+        self.assertIn("announcements:forum_question_detail", GUEST_ALLOWED_VIEWS)
         self.assertNotIn("announcements:forum_question_create", GUEST_ALLOWED_VIEWS)
+
+    def test_question_list_links_to_separate_detail_page(self):
+        self.sign_in(self.student)
+        response = self.client.get(self.forum_url("faq_board"))
+        self.assertContains(
+            response,
+            f'href="{self.forum_url("forum_question_detail", self.ske_question.pk)}"',
+        )
+        self.assertNotContains(response, "SKE question comment.")
+
+        detail = self.client.get(
+            self.forum_url("forum_question_detail", self.ske_question.pk)
+        )
+        self.assertEqual(detail.status_code, 200)
+        self.assertContains(detail, "SKE department content.")
+        self.assertContains(detail, "Comments")
+        self.assertNotContains(detail, "Question thread")
 
     def test_guest_cannot_post_a_question(self):
         self.client.post(reverse("accounts:guest_login"))
@@ -927,17 +954,20 @@ class ForumQuestionTests(TestCase):
         self.sign_in(self.lecturer)
         accepted = self.client.post(reply_url, {"body": "Official guidance."})
         self.assertEqual(accepted.status_code, 302)
-        self.assertIn("comments=1", accepted["Location"])
+        self.assertEqual(
+            accepted["Location"],
+            self.forum_url("forum_question_detail", self.ske_question.pk),
+        )
         reply = self.ske_question.replies.get()
         self.assertEqual(reply.author_label, "Forum Lecturer")
         self.assertEqual(reply.author_role, "Lecturer")
         thread = self.client.get(accepted["Location"])
         self.assertContains(
             thread,
-            f'<details id="forum-comments-{self.ske_question.pk}" class="forum-comments" open>',
+            "forum-detail-comments",
         )
         self.assertContains(thread, "Official guidance.")
-        self.assertContains(thread, "Lecturer</span>: Forum Lecturer")
+        self.assertContains(thread, "Lecturer</span> Forum Lecturer")
         self.assertNotContains(thread, "Question thread")
 
     def test_comments_appear_in_main_feed_only_for_questions_reader_can_see(self):
@@ -965,24 +995,50 @@ class ForumQuestionTests(TestCase):
 
         self.sign_in(self.student)
         student_feed = self.client.get(self.forum_url("faq_board"))
-        self.assertContains(student_feed, "Public question comment.")
-        self.assertContains(student_feed, "SKE question comment.")
+        self.assertNotContains(student_feed, "Public question comment.")
+        self.assertNotContains(student_feed, "SKE question comment.")
         self.assertNotContains(student_feed, "CPE question comment.")
-        self.assertContains(student_feed, "Student</span>: Forum Student")
-        self.assertContains(student_feed, "Lecturer</span>: Forum Lecturer")
+        student_public_detail = self.client.get(
+            self.forum_url("forum_question_detail", self.everyone_question.pk)
+        )
+        self.assertContains(student_public_detail, "Public question comment.")
+        student_ske_detail = self.client.get(
+            self.forum_url("forum_question_detail", self.ske_question.pk)
+        )
+        self.assertContains(student_ske_detail, "SKE question comment.")
+        self.assertNotContains(student_ske_detail, "CPE question comment.")
 
         self.client.logout()
         self.client.post(reverse("accounts:guest_login"))
         guest_feed = self.client.get(self.forum_url("faq_board"))
-        self.assertContains(guest_feed, "Public question comment.")
+        self.assertNotContains(guest_feed, "Public question comment.")
         self.assertNotContains(guest_feed, "SKE question comment.")
         self.assertNotContains(guest_feed, "CPE question comment.")
+        guest_detail = self.client.get(
+            self.forum_url("forum_question_detail", self.everyone_question.pk)
+        )
+        self.assertContains(guest_detail, "Public question comment.")
+        self.assertNotContains(guest_detail, "SKE question comment.")
 
         self.sign_in(self.lecturer)
         lecturer_feed = self.client.get(self.forum_url("faq_board"))
-        self.assertContains(lecturer_feed, "Public question comment.")
-        self.assertContains(lecturer_feed, "SKE question comment.")
-        self.assertContains(lecturer_feed, "CPE question comment.")
+        self.assertNotContains(lecturer_feed, "Public question comment.")
+        lecturer_detail = self.client.get(
+            self.forum_url("forum_question_detail", self.everyone_question.pk)
+        )
+        self.assertContains(lecturer_detail, "Public question comment.")
+        self.assertContains(
+            self.client.get(
+                self.forum_url("forum_question_detail", self.ske_question.pk)
+            ),
+            "SKE question comment.",
+        )
+        self.assertContains(
+            self.client.get(
+                self.forum_url("forum_question_detail", self.cpe_question.pk)
+            ),
+            "CPE question comment.",
+        )
 
     def test_lecturer_can_only_edit_and_archive_own_replies(self):
         own_reply = ForumReply.objects.create(
@@ -1120,24 +1176,30 @@ class ForumQuestionTests(TestCase):
         self.assertFalse(self.everyone_question.updated_by_is_author)
 
         response = self.client.get(
-            self.forum_url("faq_board"),
-            {"q": self.everyone_question.pk},
+            self.forum_url("forum_question_detail", self.everyone_question.pk),
         )
         self.assertContains(response, "Updated")
         self.assertContains(response, "(Forum Department)")
         self.assertContains(response, "Comments")
-        self.assertContains(response, "Everyone")
+        self.assertNotContains(
+            response,
+            '<span class="forum-question-audience">Everyone</span>',
+        )
 
     def test_new_question_hides_updated_timestamp_and_shows_department_tag(self):
         self.sign_in(self.student)
         response = self.client.get(
-            self.forum_url("faq_board"),
-            {"q": self.ske_question.pk},
+            self.forum_url("forum_question_detail", self.ske_question.pk),
         )
         self.assertContains(response, "Forum Student")
         self.assertContains(response, "SKE")
+        self.assertContains(
+            response,
+            '<span class="forum-question-audience">SKE</span>',
+        )
         self.assertNotContains(response, "Updated")
         self.assertContains(response, "Comments")
+        self.assertNotContains(response, "Department only")
 
     def test_department_published_checkbox_is_inline_with_label(self):
         self.sign_in(self.department)
@@ -1171,16 +1233,15 @@ class ForumQuestionTests(TestCase):
         self.sign_in(self.lecturer)
         with timezone.override("Asia/Bangkok"):
             response = self.client.get(
-                self.forum_url("faq_board"),
-                {"q": self.everyone_question.pk},
+                self.forum_url("forum_question_detail", self.everyone_question.pk),
             )
             expected_question_time = date_format(
                 timezone.localtime(self.everyone_question.created_at),
-                "j M Y, H:i",
+                "H:i",
             )
             expected_reply_time = date_format(
                 timezone.localtime(reply.created_at),
-                "j M Y, H:i",
+                "H:i",
             )
         self.assertContains(response, "Forum Student")
         self.assertContains(response, "Forum Lecturer")
@@ -1188,6 +1249,59 @@ class ForumQuestionTests(TestCase):
         self.assertContains(response, expected_reply_time)
         self.assertContains(response, "Updated")
         self.assertContains(response, "(Forum Department)")
+        self.assertNotContains(response, "Student:")
+        self.assertNotContains(response, "Lecturer:")
+
+    def test_forum_timestamps_show_time_today_and_date_for_older_posts(self):
+        reply = ForumReply.objects.create(
+            question=self.everyone_question,
+            body="Timestamp formatting reply.",
+            author=self.lecturer,
+            author_label=self.lecturer.get_full_name(),
+            author_role="Lecturer",
+        )
+        old_timestamp = timezone.now() - timedelta(days=2)
+        ForumQuestion.objects.filter(pk=self.everyone_question.pk).update(
+            created_at=old_timestamp,
+            updated_at=old_timestamp,
+            updated_by=self.department,
+            updated_by_label=self.department.get_full_name(),
+            updated_by_is_author=False,
+        )
+        ForumReply.objects.filter(pk=reply.pk).update(
+            created_at=old_timestamp,
+            updated_at=old_timestamp,
+            has_been_edited=True,
+        )
+        self.sign_in(self.lecturer)
+        with timezone.override("Asia/Bangkok"):
+            response = self.client.get(
+                self.forum_url("forum_question_detail", self.everyone_question.pk),
+            )
+            old_date = date_format(timezone.localtime(old_timestamp), "j M Y")
+            old_time = date_format(timezone.localtime(old_timestamp), "H:i")
+        self.assertContains(response, old_date)
+        self.assertNotContains(response, f"{old_date}, {old_time}")
+
+        current_timestamp = timezone.now()
+        ForumQuestion.objects.filter(pk=self.everyone_question.pk).update(
+            created_at=current_timestamp,
+            updated_at=current_timestamp,
+        )
+        ForumReply.objects.filter(pk=reply.pk).update(
+            created_at=current_timestamp,
+            updated_at=current_timestamp,
+        )
+        with timezone.override("Asia/Bangkok"):
+            response = self.client.get(
+                self.forum_url("forum_question_detail", self.everyone_question.pk),
+            )
+            current_time = date_format(
+                timezone.localtime(current_timestamp),
+                "H:i",
+            )
+        self.assertContains(response, current_time)
+        self.assertNotContains(response, old_date)
 
     def test_new_reply_only_displays_posted_timestamp(self):
         reply = ForumReply.objects.create(

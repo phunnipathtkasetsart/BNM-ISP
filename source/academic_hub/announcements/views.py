@@ -249,6 +249,7 @@ def _render_faq_board(
     request,
     *,
     selected_question=None,
+    detail_page=False,
     question_form=None,
     question_edit=False,
     reply_form=None,
@@ -269,7 +270,9 @@ def _render_faq_board(
         )
     )
 
-    if selected_question is None and "q" in request.GET:
+    if selected_question is not None:
+        selected_question = get_object_or_404(questions, pk=selected_question.pk)
+    elif "q" in request.GET:
         try:
             question_id = int(request.GET["q"])
         except (TypeError, ValueError):
@@ -298,7 +301,12 @@ def _render_faq_board(
             slug__iexact=(request.user.department or "").strip(),
         ).exists()
 
-    return render(request, "announcements/faq_board.html", {
+    template = (
+        "announcements/forum_question_detail.html"
+        if detail_page
+        else "announcements/faq_board.html"
+    )
+    return render(request, template, {
         "is_guest": is_guest,
         "role": role,
         "threads": page_obj.object_list,
@@ -366,6 +374,29 @@ def faq_board(request):
 
 
 @login_required(login_url="accounts:login")
+def forum_question_detail(request, pk):
+    is_guest = is_guest_request(request)
+    role = _forum_role(request.user)
+    reply_queryset = ForumReply.objects.select_related("author")
+    if role != "department":
+        reply_queryset = reply_queryset.filter(archived_at__isnull=True)
+    question = get_object_or_404(
+        ForumQuestion.objects.visible_to(request.user, is_guest)
+        .select_related("author")
+        .prefetch_related(
+            "departments",
+            Prefetch("replies", queryset=reply_queryset, to_attr="visible_replies"),
+        ),
+        pk=pk,
+    )
+    return _render_faq_board(
+        request,
+        selected_question=question,
+        detail_page=True,
+    )
+
+
+@login_required(login_url="accounts:login")
 @require_http_methods(["GET", "POST"])
 def forum_question_create(request):
     if _forum_mutation_denied(request):
@@ -377,9 +408,7 @@ def forum_question_create(request):
     )
     if request.method == "POST" and form.is_valid():
         question = _save_forum_question(form, request)
-        return redirect(
-            f"{reverse('announcements:faq_board')}?q={question.pk}"
-        )
+        return redirect("announcements:forum_question_detail", pk=question.pk)
 
     return _render_faq_board(request, question_form=form)
 
@@ -405,13 +434,12 @@ def forum_question_edit(request, pk):
     )
     if request.method == "POST" and form.is_valid():
         question = _save_forum_question(form, request, instance=question)
-        return redirect(
-            f"{reverse('announcements:faq_board')}?q={question.pk}"
-        )
+        return redirect("announcements:forum_question_detail", pk=question.pk)
 
     return _render_faq_board(
         request,
         selected_question=question,
+        detail_page=True,
         question_form=form,
         question_edit=True,
     )
@@ -438,6 +466,8 @@ def forum_question_archive(request, pk):
 
     question.archived_at = timezone.now()
     question.save(update_fields=["archived_at", "updated_at"])
+    if request.user.is_superuser:
+        return redirect("announcements:forum_question_detail", pk=question.pk)
     return redirect("announcements:faq_board")
 
 
@@ -452,9 +482,7 @@ def forum_question_restore(request, pk):
     question = get_object_or_404(ForumQuestion, pk=pk)
     question.archived_at = None
     question.save(update_fields=["archived_at", "updated_at"])
-    return redirect(
-        f"{reverse('announcements:faq_board')}?q={question.pk}"
-    )
+    return redirect("announcements:forum_question_detail", pk=question.pk)
 
 
 @login_required(login_url="accounts:login")
@@ -477,13 +505,12 @@ def forum_reply_create(request, pk):
         reply.author_label = _forum_author_label(request.user)
         reply.author_role = _forum_role_label(request.user)
         reply.save()
-        return redirect(
-            f"{reverse('announcements:faq_board')}?q={question.pk}&comments=1#forum-comments-{question.pk}"
-        )
+        return redirect("announcements:forum_question_detail", pk=question.pk)
 
     return _render_faq_board(
         request,
         selected_question=question,
+        detail_page=True,
         reply_form=form,
     )
 
@@ -515,13 +542,12 @@ def forum_reply_edit(request, pk):
         reply = form.save(commit=False)
         reply.has_been_edited = True
         reply.save()
-        return redirect(
-            f"{reverse('announcements:faq_board')}?q={question.pk}&comments=1#forum-comments-{question.pk}"
-        )
+        return redirect("announcements:forum_question_detail", pk=question.pk)
 
     return _render_faq_board(
         request,
         selected_question=question,
+        detail_page=True,
         reply_edit_form=form,
         editing_reply=reply,
     )
@@ -548,9 +574,7 @@ def forum_reply_archive(request, pk):
 
     reply.archived_at = timezone.now()
     reply.save(update_fields=["archived_at", "updated_at"])
-    return redirect(
-        f"{reverse('announcements:faq_board')}?q={question.pk}&comments=1#forum-comments-{question.pk}"
-    )
+    return redirect("announcements:forum_question_detail", pk=question.pk)
 
 
 @login_required(login_url="accounts:login")
@@ -568,5 +592,6 @@ def forum_reply_restore(request, pk):
     reply.archived_at = None
     reply.save(update_fields=["archived_at", "updated_at"])
     return redirect(
-        f"{reverse('announcements:faq_board')}?q={reply.question_id}&comments=1#forum-comments-{reply.question_id}"
+        "announcements:forum_question_detail",
+        pk=reply.question_id,
     )

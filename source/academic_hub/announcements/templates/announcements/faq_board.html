@@ -67,119 +67,44 @@
         {% endfor %}
         <div class="forum-form__actions">
           <button type="submit" class="daterow__go">{% if question_edit %}Save changes{% else %}Post question{% endif %}</button>
-          <a class="forum-form__cancel" href="{% if selected_question %}{% url 'announcements:faq_board' %}?q={{ selected_question.pk }}{% else %}{% url 'announcements:faq_board' %}{% endif %}">Cancel</a>
+          <a class="forum-form__cancel" href="{% if selected_question %}{% url 'announcements:forum_question_detail' selected_question.pk %}{% else %}{% url 'announcements:faq_board' %}{% endif %}">Cancel</a>
         </div>
       </form>
     {% endif %}
 
     <div class="feed">
       {% for t in threads %}
-        <article class="post{% if t.archived_at %} post--archived{% endif %}">
+        <article class="post forum-question-card{% if t.archived_at %} post--archived{% endif %}">
           <div class="post__top">
             <h2 class="post__title">
-              <a class="forum-question-link" href="{% url 'announcements:faq_board' %}?q={{ t.pk }}&amp;page={{ page_obj.number }}">{{ t.title }}</a>
+              <a class="forum-question-link" href="{% url 'announcements:forum_question_detail' t.pk %}">{{ t.title }}</a>
             </h2>
             {% if not t.is_published %}<span class="badge badge--closed">UNPUBLISHED</span>{% endif %}
             {% if t.archived_at %}<span class="badge badge--closed">ARCHIVED</span>{% endif %}
           </div>
           <p class="post__meta">
-            <span class="forum-author-role">{{ t.author_role }}</span>: {{ t.author_label }} &middot; Posted
-            {% timezone "Asia/Bangkok" %}{{ t.created_at|date:"j M Y, H:i" }}{% endtimezone %}
+            <span class="forum-author-role">{{ t.author_role }}</span> {{ t.author_label }} &middot; Posted
+            {% timezone "Asia/Bangkok" %}
+              {% now "Y-m-d" as today %}
+              {% if t.created_at|date:"Y-m-d" == today %}{{ t.created_at|date:"H:i" }}{% else %}{{ t.created_at|date:"j M Y" }}{% endif %}
+            {% endtimezone %}
             {% if t.updated_by_label %}
               &middot; Updated
-              {% timezone "Asia/Bangkok" %}{{ t.updated_at|date:"j M Y, H:i" }}{% endtimezone %}
+              {% timezone "Asia/Bangkok" %}
+                {% now "Y-m-d" as today %}
+                {% if t.updated_at|date:"Y-m-d" == today %}{{ t.updated_at|date:"H:i" }}{% else %}{{ t.updated_at|date:"j M Y" }}{% endif %}
+              {% endtimezone %}
               {% if not t.updated_by_is_author %}({{ t.updated_by_label }}){% endif %}
             {% endif %}
-            &middot;
-            {% if t.visibility == "everyone" %}
-              Everyone
-            {% else %}
-              {% for tag in t.departments.all %}{% if not forloop.first %}, {% endif %}{{ tag.label }}{% empty %}Department only{% endfor %}
+            {% if t.visibility != "everyone" %}
+              &middot;
+              <span class="forum-question-audience">{% for tag in t.departments.all %}{% if not forloop.first %}, {% endif %}{{ tag.label }}{% empty %}Department only{% endfor %}</span>
             {% endif %}
           </p>
           <p class="post__body">{{ t.body|truncatewords:32 }}</p>
-          {% if role == "department" or role == "lecturer" or role == "student" and t.author_id == request.user.pk %}
-            <div class="forum-actions">
-              <a class="post__edit" href="{% url 'announcements:forum_question_edit' t.pk %}">{% if role == "lecturer" %}Edit tags{% else %}Edit{% endif %}</a>
-              {% if role == "department" and t.archived_at %}
-                <form method="post" action="{% url 'announcements:forum_question_restore' t.pk %}">
-                  {% csrf_token %}<button type="submit" class="forum-action-button">Restore</button>
-                </form>
-              {% elif role == "department" or role == "student" and not t.archived_at %}
-                <form method="post" action="{% url 'announcements:forum_question_archive' t.pk %}">
-                  {% csrf_token %}<button type="submit" class="forum-action-button">Archive</button>
-                </form>
-              {% endif %}
-            </div>
-          {% endif %}
-          <details id="forum-comments-{{ t.pk }}" class="forum-comments"{% if comments_open and selected_question and selected_question.pk == t.pk %} open{% endif %}>
-            <summary class="forum-comments__summary">
-              <span>Comments</span>
-              <span class="forum-comments__count">{{ t.visible_replies|length }}</span>
-              <span class="forum-comments__toggle">Show / hide</span>
-            </summary>
-            <div class="forum-comments__content">
-              {% for reply in t.visible_replies %}
-                <article class="forum-reply{% if reply.archived_at %} forum-reply--archived{% endif %}">
-                  <p class="post__meta">
-                    <span class="forum-author-role">{{ reply.author_role }}</span>: {{ reply.author_label }} &middot; Posted
-                    {% timezone "Asia/Bangkok" %}{{ reply.created_at|date:"j M Y, H:i" }}{% endtimezone %}
-                    {% if reply.has_been_edited %}
-                      &middot; Updated
-                      {% timezone "Asia/Bangkok" %}{{ reply.updated_at|date:"j M Y, H:i" }}{% endtimezone %}
-                    {% endif %}
-                    {% if reply.archived_at %}&middot; Archived{% endif %}
-                  </p>
-                  {% if editing_reply and editing_reply.pk == reply.pk %}
-                    <form method="post" action="{% url 'announcements:forum_reply_edit' reply.pk %}" class="forum-form forum-form--reply">
-                      {% csrf_token %}
-                      {{ reply_edit_form.non_field_errors }}
-                      {% for field in reply_edit_form %}
-                        <div class="forum-form__field">
-                          {{ field.label_tag }}{{ field }}
-                          {% for error in field.errors %}<span class="forum-form__error">{{ error }}</span>{% endfor %}
-                        </div>
-                      {% endfor %}
-                      <button type="submit" class="daterow__go">Save reply</button>
-                    </form>
-                  {% else %}
-                    <div class="thread__body">{{ reply.body|linebreaks }}</div>
-                    {% if role == "department" and reply.archived_at %}
-                      <form method="post" action="{% url 'announcements:forum_reply_restore' reply.pk %}">
-                        {% csrf_token %}<button type="submit" class="forum-action-button">Restore reply</button>
-                      </form>
-                    {% elif role == "department" or role == "lecturer" and reply.author_id == request.user.pk and not reply.archived_at %}
-                      <div class="forum-actions">
-                        <a class="post__edit" href="{% url 'announcements:forum_reply_edit' reply.pk %}?q={{ t.pk }}&amp;page={{ page_obj.number }}">Edit reply</a>
-                        <form method="post" action="{% url 'announcements:forum_reply_archive' reply.pk %}">
-                          {% csrf_token %}<button type="submit" class="forum-action-button">Archive reply</button>
-                        </form>
-                      </div>
-                    {% endif %}
-                  {% endif %}
-                </article>
-              {% empty %}
-                <p class="forum-comments__empty">No comments yet. Start the conversation.</p>
-              {% endfor %}
-              {% if can_reply and not editing_reply %}
-                {% if not reply_form_error_question or reply_form_error_question == t.pk %}
-                  <form method="post" action="{% url 'announcements:forum_reply_create' t.pk %}" class="forum-form forum-form--reply">
-                    {% csrf_token %}
-                    {% if reply_form_error_question == t.pk %}{{ reply_form.non_field_errors }}{% endif %}
-                    {% for field in reply_form %}
-                      <div class="forum-form__field">
-                        {{ field.label_tag }}{{ field }}
-                        {% if reply_form_error_question == t.pk %}
-                          {% for error in field.errors %}<span class="forum-form__error">{{ error }}</span>{% endfor %}
-                        {% endif %}
-                      </div>
-                    {% endfor %}
-                    <button type="submit" class="daterow__go">Comment</button>
-                  </form>
-                {% endif %}
-              {% endif %}
-            </div>
-          </details>
+          <p class="forum-card__comments">
+            {{ t.visible_replies|length }} comment{{ t.visible_replies|length|pluralize }}
+          </p>
         </article>
       {% empty %}
         <p class="feed__empty">No questions are available for you to read yet.</p>

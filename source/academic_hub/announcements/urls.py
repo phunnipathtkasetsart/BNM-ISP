@@ -8,6 +8,11 @@ urlpatterns = [
     path("", views.public_board, name="public_board"),
     path("faq/", views.faq_board, name="faq_board"),
     path(
+        "faq/questions/<int:pk>/",
+        views.forum_question_detail,
+        name="forum_question_detail",
+    ),
+    path(
         "faq/questions/new/",
         views.forum_question_create,
         name="forum_question_create",
