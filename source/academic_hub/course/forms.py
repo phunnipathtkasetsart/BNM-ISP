@@ -12,19 +12,8 @@ from django.contrib.auth import get_user_model
 # CourseForm สืบทอด forms.Form เพื่อรับและตรวจข้อมูลสร้าง/แก้ไขคลาส ไม่บันทึกฐานข้อมูลเอง section ใช้
 # RegexField เพื่อตรวจรูปแบบ
 class CourseForm(forms.Form):
-    section = forms.RegexField(
-        # label เป็นชื่อช่อง regex ^[0-9]+$ หมายถึงตั้งแต่ต้นจนจบต้องเป็นเลข 0–9 อย่างน้อยหนึ่งตัว ความยาวไม่เกิน
-        # 20 ถ้าผิดรูปแบบใช้ข้อความ invalid ที่กำหนด ไม่ได้ตั้ง required=False จึงต้องกรอก
-        label="Section (Sec)", regex=r"^[0-9]+$", max_length=20,
-        error_messages={"invalid": "Section must contain digits 0–9 only."},
-        # widget กำหนดช่อง HTML: placeholder เป็นตัวอย่าง inputmode แนะนำคีย์บอร์ดตัวเลข pattern
-        # ให้เบราว์เซอร์ตรวจรูปแบบ data-numeric-section เป็นตัวระบุให้ JavaScript กรองตัวที่ไม่ใช่เลข title
-        # เป็นคำแนะนำ ทั้งหมดนี้ยังต้องมี RegexField ตรวจฝั่งเซิร์ฟเวอร์
-        widget=forms.TextInput(attrs={"placeholder": "e.g. 001", "inputmode": "numeric",
-                                      "pattern": "[0-9]+", "data-numeric-section": "",
-                                      "title": "Use digits 0–9 only."}),
-    )
-    # name รับข้อความสูงสุด 120 ตัว widget เป็นช่องกรอกข้อความพร้อมตัวอย่าง และ autofocus ขอให้โฟกัสช่องนี้
+    section = forms.CharField(label="Section (Sec)", max_length=20,
+                              widget=forms.TextInput(attrs={"placeholder": "e.g. 001"}))
     name = forms.CharField(label="Class name", max_length=120,
                           widget=forms.TextInput(attrs={"placeholder": "e.g. Software Engineering", "autofocus": True}))
     # กำหนดลำดับแสดงชื่อก่อน Sec แม้ประกาศ section ไว้ก่อน
