@@ -158,3 +158,93 @@ class PostAttachment(StoredFile):
     @property
     def course(self):
         return self.post.course
+
+
+class CourseQuestion(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="questions")
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="course_questions",
+    )
+    author_label = models.CharField(max_length=301)
+    author_role_label = models.CharField(max_length=30)
+    title = models.CharField(max_length=200)
+    body = models.TextField(max_length=5000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    is_pinned = models.BooleanField(default=False)
+    pinned_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-is_pinned", "-created_at", "-pk"]
+        indexes = [
+            models.Index(
+                fields=["course", "archived_at", "is_pinned", "-created_at"],
+                name="course_q_list_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class CourseAnswer(models.Model):
+    question = models.ForeignKey(
+        CourseQuestion,
+        on_delete=models.CASCADE,
+        related_name="answers",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="course_answers",
+    )
+    author_label = models.CharField(max_length=301)
+    author_role_label = models.CharField(max_length=30)
+    body = models.TextField(max_length=5000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    is_verified = models.BooleanField(default=False)
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-is_verified", "created_at", "pk"]
+        indexes = [
+            models.Index(
+                fields=["question", "archived_at", "is_verified", "created_at"],
+                name="course_a_thread_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Answer to {self.question_id}"

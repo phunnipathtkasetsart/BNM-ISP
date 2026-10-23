@@ -5,7 +5,16 @@ from django.db import IntegrityError, transaction
 # Lower แปลงเป็นตัวพิมพ์เล็ก และ Trim ตัดช่องว่างหัวท้ายในคำสั่งฐานข้อมูล
 from django.db.models.functions import Lower, Trim
 
-from .models import Course, CourseTA, Enrollment, Material, Topic, generate_class_code
+from .models import (
+    Course,
+    CourseAnswer,
+    CourseQuestion,
+    CourseTA,
+    Enrollment,
+    Material,
+    Topic,
+    generate_class_code,
+)
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -169,3 +178,45 @@ def assign_ta(course, student_id):
 def remove_ta(course, student_id):
     deleted, _ = CourseTA.objects.filter(course=course, user_id=student_id).delete()
     return bool(deleted)
+
+
+def qa_author_role_label(user, course):
+    if user.is_superuser:
+        return "Department"
+    if CourseTA.objects.filter(course=course, user=user).exists():
+        return "Teaching Assistant"
+    if user.is_staff:
+        return "Lecturer"
+    return "Student"
+
+
+def qa_notification_hook(created_item):
+    """No-op hook for the notifications iteration."""
+    return None
+
+
+def create_course_question(*, course, author, title, body):
+    with transaction.atomic():
+        question = CourseQuestion.objects.create(
+            course=course,
+            author=author,
+            author_label=author.get_full_name().strip(),
+            author_role_label=qa_author_role_label(author, course),
+            title=title,
+            body=body,
+        )
+        transaction.on_commit(lambda: qa_notification_hook(question))
+    return question
+
+
+def create_course_answer(*, question, author, body):
+    with transaction.atomic():
+        answer = CourseAnswer.objects.create(
+            question=question,
+            author=author,
+            author_label=author.get_full_name().strip(),
+            author_role_label=qa_author_role_label(author, question.course),
+            body=body,
+        )
+        transaction.on_commit(lambda: qa_notification_hook(answer))
+    return answer

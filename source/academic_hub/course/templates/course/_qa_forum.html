@@ -1,0 +1,50 @@
+<div class="qa-forum" data-course-qa
+  data-api-base="/course/api/{{ course.pk }}/questions/"
+  data-is-department="{{ is_department|yesno:'true,false' }}">
+  <form hidden aria-hidden="true">{% csrf_token %}</form>
+  <label class="sr-only" for="course-forum-search">Search course questions</label>
+  <input id="course-forum-search" class="course-tool__search qa-search-input" type="search" maxlength="200" placeholder="Search course questions…" data-qa-search>
+  {% if is_department %}
+    <label class="sr-only" for="course-forum-status">Filter questions</label>
+    <select id="course-forum-status" class="course-tool__search qa-status" data-qa-status>
+      <option value="">All questions</option>
+      <option value="answered">Answered</option>
+      <option value="unanswered">Unanswered</option>
+      <option value="mine">My questions</option>
+      <option value="archived">Archived</option>
+    </select>
+  {% endif %}
+  <p class="qa-message" data-qa-message role="status" aria-live="polite">Search questions or browse recent discussions.</p>
+  <div class="qa-list" data-qa-list aria-live="polite"></div>
+  <nav class="qa-pagination" data-qa-pagination aria-label="Question pages"></nav>
+
+  <dialog class="qa-dialog qa-ask-dialog" data-qa-ask-dialog aria-labelledby="qa-ask-title">
+    <div class="qa-dialog__head">
+      <div><p class="eyebrow">COURSE FORUM</p><h2 id="qa-ask-title">Ask a question</h2></div>
+      <button type="button" class="qa-dialog__close" data-qa-close-ask aria-label="Close">×</button>
+    </div>
+    {% if can_ask_question %}
+      <form class="qa-compose" data-qa-question-form>
+        {% csrf_token %}
+        <label for="qa-question-title">Question title</label>
+        <input id="qa-question-title" name="title" type="text" maxlength="200" required placeholder="What would you like to know?">
+        <label for="qa-question-body">Details</label>
+        <textarea id="qa-question-body" name="body" maxlength="5000" rows="5" required placeholder="Add enough detail to help others answer."></textarea>
+        <div class="qa-form-foot">
+          <span class="qa-hint">Keep it clear and course-related.</span>
+          <button type="submit" class="course-btn">Post question</button>
+        </div>
+      </form>
+    {% else %}
+      <p class="qa-note">Only students enrolled in this course can post a question.</p>
+    {% endif %}
+  </dialog>
+
+  <dialog class="qa-dialog qa-thread" data-qa-thread aria-labelledby="qa-thread-title">
+    <div class="qa-thread-head">
+      <div><p class="eyebrow">COURSE DISCUSSION</p><h2 id="qa-thread-title">Question and answers</h2></div>
+      <button type="button" class="qa-dialog__close" data-qa-close-thread aria-label="Close">×</button>
+    </div>
+    <div class="qa-thread__content" data-qa-thread-content></div>
+  </dialog>
+</div>
