@@ -245,6 +245,7 @@ def detail_context(request, post_form=None, material_form=None):
         "can_manage": request.can_manage_roster,
         "can_manage_content": manage,
         "can_delete_any": request.is_owner or request.is_dept_override,
+        "can_filter_questions": request.can_manage_content,
         "can_ask_question": (
             not request.user.is_staff
             and not request.user.is_superuser
@@ -789,8 +790,12 @@ def qa_question_data(request, question, *, include_body=False):
         data["body"] = question.body
     else:
         data["body_excerpt"] = question.body[:240]
-    if request.is_dept_override:
+    if request.can_manage_content:
         data["archived_at"] = question.archived_at
+        data["can_restore"] = question.archived_at is not None and (
+            request.is_dept_override
+            or question.archived_by_id == request.user.pk
+        )
     return data
 
 
@@ -818,7 +823,12 @@ def qa_answer_data(request, question, answer):
             or (can_manage_content and is_mine)
         ),
         "can_verify": active and can_manage_content,
-        **({"archived_at": answer.archived_at} if is_department else {}),
+        **({
+            "archived_at": answer.archived_at,
+            "can_restore": answer.archived_at is not None and (
+                is_department or answer.archived_by_id == request.user.pk
+            ),
+        } if can_manage_content else {}),
     }
 
 
@@ -844,8 +854,8 @@ def qa_question_list(request, pk):
     status_filter = request.GET.get("status", "")
     if status_filter not in {"", "answered", "unanswered", "mine", "archived"}:
         return qa_error("Unknown status filter.", field="status")
-    if status_filter == "archived" and not request.is_dept_override:
-        return qa_error("Only Department may request archived questions.", field="status")
+    if status_filter == "archived" and not request.can_manage_content:
+        return qa_error("Only course staff may request archived questions.", field="status")
 
     def positive_integer(name, default):
         raw = request.GET.get(name)
@@ -906,10 +916,10 @@ def qa_question_detail(request, pk, question_id):
         qa_question_queryset(request.course),
         pk=question_id,
     )
-    if question.archived_at is not None and not request.is_dept_override:
+    if question.archived_at is not None and not request.can_manage_content:
         raise Http404
     answers = CourseAnswer.objects.filter(question=question).select_related("author")
-    if not request.is_dept_override:
+    if not request.can_manage_content:
         answers = answers.filter(archived_at__isnull=True)
     answers = answers.order_by("-is_verified", "created_at", "pk")
     return JsonResponse({

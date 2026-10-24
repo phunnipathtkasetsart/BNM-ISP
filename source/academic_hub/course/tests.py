@@ -1421,11 +1421,76 @@ class CourseQATests(TestCase):
         self.assertIn('course-qa.css', html)
         self.assertNotIn('id="tab-qa"', html)
         self.assertNotIn('Archived (Department)', html)
+        self.assertNotIn('id="course-forum-status"', html)
+
+        self.sign_in(self.ta)
+        ta_page = self.client.get(self.url("detail", self.course.pk))
+        self.assertEqual(ta_page.status_code, 200)
+        ta_html = ta_page.content.decode()
+        self.assertIn('id="course-forum-status"', ta_html)
+        self.assertIn('value="answered"', ta_html)
+        self.assertIn('value="unanswered"', ta_html)
+        self.assertIn('value="mine"', ta_html)
+        self.assertIn('value="archived"', ta_html)
+
+        self.sign_in(self.teacher)
+        lecturer_page = self.client.get(self.url("detail", self.course.pk))
+        self.assertEqual(lecturer_page.status_code, 200)
+        lecturer_html = lecturer_page.content.decode()
+        self.assertIn('id="course-forum-status"', lecturer_html)
+        self.assertIn('value="answered"', lecturer_html)
+        self.assertIn('value="unanswered"', lecturer_html)
+        self.assertIn('value="mine"', lecturer_html)
+        self.assertIn('value="archived"', lecturer_html)
 
         self.sign_in(self.department)
         department_page = self.client.get(self.url("detail", self.course.pk))
         self.assertEqual(department_page.status_code, 200)
         self.assertIn('value="archived"', department_page.content.decode())
+
+    def test_course_staff_can_list_and_read_archived_questions(self):
+        question = self.make_question(title="Archived course question")
+        answer = self.make_answer(question, body="Archived course answer")
+        archived_at = timezone.now()
+        CourseQuestion.objects.filter(pk=question.pk).update(
+            archived_at=archived_at,
+            archived_by=self.ta,
+        )
+        CourseAnswer.objects.filter(pk=answer.pk).update(
+            archived_at=archived_at,
+            archived_by=self.ta,
+        )
+        list_url = self.url("api_qa_questions", self.course.pk)
+        detail_url = self.url("api_qa_question_detail", self.course.pk, question.pk)
+
+        self.sign_in(self.student)
+        self.assertEqual(self.client.get(list_url, {"status": "archived"}).status_code, 400)
+        self.assertEqual(self.client.get(detail_url).status_code, 404)
+
+        for user in (self.teacher, self.ta):
+            with self.subTest(user=user.pk):
+                self.sign_in(user)
+                listing = self.client.get(list_url, {"status": "archived"})
+                self.assertEqual(listing.status_code, 200)
+                self.assertEqual(listing.json()["count"], 1)
+                listed_question = listing.json()["results"][0]
+                self.assertEqual(listed_question["id"], question.pk)
+                self.assertIsNotNone(listed_question["archived_at"])
+                detail = self.client.get(detail_url)
+                self.assertEqual(detail.status_code, 200)
+                self.assertIsNotNone(detail.json()["question"]["archived_at"])
+                self.assertEqual(len(detail.json()["answers"]), 1)
+                archived_answer = detail.json()["answers"][0]
+                self.assertEqual(archived_answer["body"], "Archived course answer")
+                self.assertIsNotNone(archived_answer["archived_at"])
+                can_restore = user == self.ta
+                self.assertEqual(detail.json()["question"]["can_restore"], can_restore)
+                self.assertEqual(archived_answer["can_restore"], can_restore)
+
+        self.sign_in(self.ta)
+        archived_by_ta = self.client.get(detail_url).json()
+        self.assertTrue(archived_by_ta["question"]["can_restore"])
+        self.assertTrue(archived_by_ta["answers"][0]["can_restore"])
 
     def test_course_scope_and_students_cannot_answer(self):
         question = self.make_question()
