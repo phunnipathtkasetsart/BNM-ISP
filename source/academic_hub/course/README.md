@@ -82,16 +82,19 @@ they cannot edit another user's question or answer. Department can edit,
 archive, and restore any Q&A item. Only Department may restore a
 student-archived question.
 
-Archived questions and answers are hidden from non-Department readers. Only
-Department may list archived questions with `status=archived`; that filter
-returns 400 to all other roles. A mutation on an archived question, answer, or
-thread returns 404 until the archived item (and any archived parent question)
-is restored. Department must restore first too. There is no hard delete.
+Archived questions and answers are visible to course owners, course TAs, and
+Department; students cannot see them. Course owners and TAs can list archived
+questions only in their course with `status=archived`, while Department can do
+so in any course. Other roles receive 400 for that filter. A mutation on an
+archived question, answer, or thread returns 404 until the archived item (and
+any archived parent question) is restored. Course owners and TAs can restore
+only items they archived; Department may restore any item. There is no hard
+delete.
 
 | Method | Path | Body / purpose |
 |---|---|---|
 | GET | `/course/api/<id>/questions/` | Optional `page`, `page_size`, `status=answered\|unanswered\|mine`, `q` |
-| GET | `/course/api/<id>/questions/?status=archived` | Department-only archived question list |
+| GET | `/course/api/<id>/questions/?status=archived` | Course owner, TA, or Department archived question list |
 | POST | `/course/api/<id>/questions/` | `{"title":"...", "body":"..."}`; enrolled student |
 | GET | `/course/api/<id>/questions/<question_id>/` | Question detail and visible answers |
 | POST | `/course/api/<id>/questions/<question_id>/edit/` | `{"title":"...", "body":"..."}` |

@@ -95,7 +95,7 @@
     if (question.can_archive) {
       container.append(actionButton('Archive', 'archive-question', 'qa-action qa-action--danger'));
     }
-    if (question.archived_at && root.dataset.isDepartment === 'true') {
+    if (question.can_restore) {
       container.append(actionButton('Restore question', 'restore-question'));
     }
   };
@@ -223,7 +223,7 @@
     if (answer.can_archive) {
       actions.append(actionButton('Archive', 'archive-answer', 'qa-action qa-action--danger'));
     }
-    if (answer.archived_at && !question.archived_at && root.dataset.isDepartment === 'true') {
+    if (answer.can_restore && !question.archived_at) {
       actions.append(actionButton('Restore answer', 'restore-answer'));
     }
     card.append(actions);
