@@ -255,6 +255,16 @@ class NextDeadlineTests(TestCase):
         self.assertContains(response, 'data-focus=""')
         self.assertNotContains(response, "Other class")
 
+    def test_passed_deadlines_are_flagged(self):
+        self.assertTrue(find_event(self.student, f"post-{self.past.pk}")["passed"])
+        self.assertFalse(find_event(self.student, f"post-{self.first.pk}")["passed"])
+
+    def test_passed_deadline_is_drawn_grey(self):
+        self.client.force_login(self.student)
+        page = self.client.get(reverse("calendar:month"), {"focus": f"post-{self.past.pk}"})
+        self.assertContains(page, "cal__ev--passed", count=1)
+        self.assertContains(page, "Already due (Algorithms · Sec 001) · passed")
+
     def test_after_redirects_to_the_following_deadline(self):
         self.client.force_login(self.student)
         response = self.client.get(reverse("calendar:month"), {"after": f"post-{self.first.pk}"})
@@ -315,6 +325,12 @@ class DayNoteTests(TestCase):
         self.assertContains(page, "cal__ev--note cal__ev--notify", count=1)
         self.assertNotContains(page, "cal__bell")
         self.assertNotContains(page, "&#128276;")
+
+    def test_notes_on_past_days_keep_their_colour(self):
+        DayNote.objects.create(user=self.me, date=date(2020, 1, 15), title="Old note")
+        page = self.client.get(reverse("calendar:month"), {"year": 2020, "month": 1})
+        self.assertContains(page, "Old note")
+        self.assertNotContains(page, "cal__ev--passed")
 
     def test_notify_defaults_to_off(self):
         self.create()

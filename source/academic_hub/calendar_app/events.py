@@ -59,6 +59,8 @@ def _bounds(first_day, last_day):
 def _event(*, uid, kind, title, body, deadline, colour, source, url, link_label):
     local = timezone.localtime(deadline)
     return {
+        # Drawn in a grey tone of its colour once the due time has gone by.
+        "passed": deadline < timezone.now(),
         "id": uid,
         "kind": kind,
         "title": title,
@@ -205,6 +207,7 @@ def _note_event(note):
         "colour": NOTIFY_COLOUR if note.notify else NOTE_COLOUR,
         "source": "Your note",
         "notify": note.notify,
+        "passed": False,  # notes are not deadlines; they keep their colour
         "url": "",
         "link_label": "",
     }
@@ -237,6 +240,7 @@ def popover_data(days):
             "url": e["url"],
             "link_label": e["link_label"],
             "notify": e.get("notify", False),
+            "passed": e.get("passed", False),
             "pk": e.get("pk"),
         }
         for items in days.values()

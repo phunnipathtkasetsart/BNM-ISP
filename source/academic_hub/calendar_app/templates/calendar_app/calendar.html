@@ -79,8 +79,8 @@
                     {# Every deadline is rendered; calendar.js hides the ones that do not fit and fills in "+N more". #}
                     <div class="cal__events" data-events>
                       {% for ev in day.events %}
-                        <button type="button" class="cal__ev cal__ev--{{ ev.kind }}{% if ev.notify %} cal__ev--notify{% endif %}{% if ev.id == focus_id %} cal__ev--focus{% endif %}" data-event="{{ ev.id }}"
-                                style="--ev:{{ ev.colour }}" title="{% if ev.time_label %}{{ ev.time_label }} · {% endif %}{{ ev.title }} ({{ ev.source }})">
+                        <button type="button" class="cal__ev cal__ev--{{ ev.kind }}{% if ev.notify %} cal__ev--notify{% endif %}{% if ev.passed %} cal__ev--passed{% endif %}{% if ev.id == focus_id %} cal__ev--focus{% endif %}" data-event="{{ ev.id }}"
+                                style="--ev:{{ ev.colour }}" title="{% if ev.time_label %}{{ ev.time_label }} · {% endif %}{{ ev.title }} ({{ ev.source }}){% if ev.passed %} · passed{% endif %}">
                           {% if ev.kind == "announcement" %}<span class="cal__dot" aria-hidden="true"></span><span class="cal__time">{{ ev.time_label }}</span>{% endif %}
                           <span class="cal__evtitle">{{ ev.title }}</span>
                         </button>

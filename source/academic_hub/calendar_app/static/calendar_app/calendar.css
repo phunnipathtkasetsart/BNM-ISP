@@ -111,13 +111,18 @@
 .cal__dot{flex:none;width:calc(8 * var(--u));height:calc(8 * var(--u));border-radius:50%;background:var(--ev)}
 .cal__time{flex:none;font-weight:500;color:var(--ink-soft)}
 .cal__evtitle{overflow:hidden;text-overflow:ellipsis;min-width:0}
-.cal__more{background:transparent;color:var(--ink);font-weight:700}
+.cal__more{background:#2c7a7b;color:var(--ink);font-weight:700}
 .cal__more:hover{background:#EEF2EF}
 .cal__ev:focus-visible,.cal__more:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:1px}
 /* The deadline "Next deadline" landed on. Drawn inside the chip, because
    the day's list clips anything outside it. */
 .cal__ev--focus{outline:2px solid var(--ink);outline-offset:-2px;box-shadow:inset 0 0 0 3px #fff}
 .cal__ev--announcement.cal__ev--focus{background:#E4EDE8;box-shadow:none}
+
+/* A deadline whose due time has gone by: the same colour, in a grey tone.
+   The filter keeps a hint of the class colour, so bars stay tellable apart. */
+.cal__ev--passed,.calpop__swatch--passed{filter:grayscale(.75) opacity(.7)}
+.cal__ev--passed.cal__ev--course:hover{filter:grayscale(.75) opacity(.85) brightness(.95)}
 
 /* Your own note: soft amber, so it never reads as a class deadline. */
 .cal__ev--note{background:#FBF0D9;color:#6B4A0E;box-shadow:inset 3px 0 0 var(--ev)}

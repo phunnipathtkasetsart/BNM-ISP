@@ -183,7 +183,8 @@
   }
 
   function chip(e) {
-    var b = el("button", "cal__ev cal__ev--" + e.kind + (e.notify ? " cal__ev--notify" : ""));
+    var b = el("button", "cal__ev cal__ev--" + e.kind + (e.notify ? " cal__ev--notify" : "") +
+      (e.passed ? " cal__ev--passed" : ""));
     b.type = "button";
     b.style.setProperty("--ev", e.colour);
     if (e.kind === "announcement") {
@@ -236,13 +237,15 @@
     var head = el("div", "calpop__head");
     var swatch = el("span", "calpop__swatch");
     swatch.style.background = e.colour;
+    if (e.passed) swatch.classList.add("calpop__swatch--passed");
     swatch.setAttribute("aria-hidden", "true");
     var text = el("div");
     var title = el("h2", "calpop__title", e.title);
     title.id = "calpop-title";
     text.appendChild(title);
     text.appendChild(el("p", "calpop__when",
-      e.kind === "note" ? e.date_label : e.date_label + " · Due " + e.time_label));
+      e.kind === "note" ? e.date_label :
+        e.date_label + (e.passed ? " · Was due " : " · Due ") + e.time_label));
     head.appendChild(swatch);
     head.appendChild(text);
     pop.appendChild(head);
