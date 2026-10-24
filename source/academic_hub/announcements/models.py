@@ -241,3 +241,153 @@ class Faq(models.Model):
 
     def __str__(self):
         return self.question
+
+
+class ForumQuestionQuerySet(models.QuerySet):
+    def visible_to(self, user, is_guest=False):
+        if is_guest or not user.is_authenticated:
+            return self.filter(
+                visibility=ForumQuestion.Visibility.EVERYONE,
+                is_published=True,
+                archived_at__isnull=True,
+            )
+
+        if user.is_superuser:
+            return self.all()
+
+        visible = self.filter(is_published=True, archived_at__isnull=True)
+        if user.is_staff:
+            return visible
+
+        programme = Tag.objects.filter(
+            kind=Tag.Kind.PROGRAMME,
+            slug__iexact=(user.department or "").strip(),
+        )
+        return visible.filter(
+            Q(visibility=ForumQuestion.Visibility.EVERYONE)
+            | Q(
+                visibility=ForumQuestion.Visibility.DEPARTMENT,
+                departments__in=programme,
+            )
+        ).distinct()
+
+
+class ForumQuestion(models.Model):
+    class Visibility(models.TextChoices):
+        EVERYONE = "everyone", "Everyone"
+        DEPARTMENT = "department", "My department"
+
+    title = models.CharField(max_length=200)
+    body = models.TextField(max_length=5000)
+    visibility = models.CharField(
+        max_length=20,
+        choices=Visibility.choices,
+        default=Visibility.DEPARTMENT,
+    )
+    departments = models.ManyToManyField(
+        Tag,
+        blank=True,
+        related_name="forum_questions",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="forum_questions",
+        db_constraint=False,
+    )
+    author_label = models.CharField(max_length=305, default="Unknown author")
+    author_role = models.CharField(max_length=20, default="Student")
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="forum_question_edits",
+        db_constraint=False,
+    )
+    updated_by_label = models.CharField(max_length=305, blank=True, default="")
+    updated_by_is_author = models.BooleanField(default=True)
+    is_published = models.BooleanField(default=True)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    archived_at = models.DateTimeField(blank=True, null=True)
+
+    objects = ForumQuestionQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [
+            models.Index(
+                fields=["visibility", "is_published", "archived_at", "-created_at"],
+                name="forum_question_scope_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class ForumReply(models.Model):
+    body = models.TextField(max_length=5000)
+    author_label = models.CharField(max_length=305, default="Unknown author")
+    author_role = models.CharField(max_length=20, default="Student")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+    has_been_edited = models.BooleanField(default=False)
+    archived_at = models.DateTimeField(blank=True, null=True)
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="forum_replies",
+        db_constraint=False,
+    )
+    question = models.ForeignKey(
+        ForumQuestion,
+        on_delete=models.CASCADE,
+        related_name="replies",
+    )
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+        indexes = [
+            models.Index(
+                fields=["question", "archived_at", "created_at"],
+                name="forum_reply_question_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Reply to {self.question_id}"
+
+
+class UserDepartment(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        db_constraint=False,
+        on_delete=models.CASCADE,
+        related_name="forum_department_assignments",
+    )
+    department = models.ForeignKey(
+        Tag,
+        on_delete=models.CASCADE,
+        related_name="forum_user_assignments",
+    )
+
+    class Meta:
+        ordering = ["department__label", "user__nisit_id"]
+        indexes = [
+            models.Index(
+                fields=["department", "user"],
+                name="forum_dept_user_idx",
+            ),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "department"],
+                name="unique_forum_user_department",
+            ),
+        ]

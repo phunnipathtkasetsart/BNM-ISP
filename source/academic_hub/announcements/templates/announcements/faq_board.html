@@ -1,5 +1,5 @@
 {% extends "accounts/base.html" %}
-{% load static %}
+{% load static tz %}
 {% block title %}FAQ — KU Student Portal{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">{% endblock %}
 
@@ -14,7 +14,7 @@
 
 {% block topbar_right %}
   <div class="topbar__right">
-    <span class="topbar__role">{% if is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+    <span class="topbar__role">{% if is_guest %}Guest{% elif role == "department" %}Department{% elif role == "lecturer" %}Lecturer{% else %}Student{% endif %}</span>
     {% if is_guest %}
       <span class="guestclock" data-expires="{{ guest_expires_at }}"
             title="Your guest session ends then">&mdash;</span>
@@ -32,59 +32,98 @@
   {% if not is_guest %}<a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see your courses">Course</span>{% endif %}
 </nav>
 
-<div class="board">
+<div class="board faq-board">
   <section class="board__main panel">
-    <div class="faqhead">
-      <span class="faqhead__tab faqhead__tab--on">FAQ</span>
-      
-      <span class="faqhead__tab faqhead__tab--off" aria-disabled="true"
-            title="{% if can_post %}Coming in Iteration 5{% else %}Guests cannot post{% endif %}">Create Post</span>
+    <div class="panel__head faq-board__head">
+      <h1>FAQ Forum</h1>
+      {% if can_create_question %}
+        <a class="subnav__action" href="{% url 'announcements:forum_question_create' %}">Create question</a>
+      {% endif %}
     </div>
+
+    {% if department_unavailable %}
+      <p class="forum-notice" role="status">
+        Your department is not configured for department-only questions. You can
+        still post questions for everyone; contact the Department to correct
+        your department mapping.
+      </p>
+    {% endif %}
+
+    {% if question_form %}
+      <form method="post" class="forum-form">
+        {% csrf_token %}
+        <h2>{% if question_edit %}Edit question{% else %}Ask a question{% endif %}</h2>
+        {{ question_form.non_field_errors }}
+        {% for field in question_form %}
+          <div class="forum-form__field{% if field.name == 'is_published' %} forum-form__field--checkbox{% endif %}">
+            {% if field.name == "is_published" %}
+              <div class="forum-form__checkbox-control">{{ field.label_tag }}{{ field }}</div>
+            {% else %}
+              {{ field.label_tag }}{{ field }}
+            {% endif %}
+            {% if field.help_text %}<span class="forum-form__help">{{ field.help_text }}</span>{% endif %}
+            {% for error in field.errors %}<span class="forum-form__error">{{ error }}</span>{% endfor %}
+          </div>
+        {% endfor %}
+        <div class="forum-form__actions">
+          <button type="submit" class="daterow__go">{% if question_edit %}Save changes{% else %}Post question{% endif %}</button>
+          <a class="forum-form__cancel" href="{% if selected_question %}{% url 'announcements:forum_question_detail' selected_question.pk %}{% else %}{% url 'announcements:faq_board' %}{% endif %}">Cancel</a>
+        </div>
+      </form>
+    {% endif %}
 
     <div class="feed">
       {% for t in threads %}
-        <article class="post">
+        <article class="post forum-question-card{% if t.archived_at %} post--archived{% endif %}">
           <div class="post__top">
-            <h2 class="post__title">{{ t.question }}</h2>
+            <h2 class="post__title">
+              <a class="forum-question-link" href="{% url 'announcements:forum_question_detail' t.pk %}">{{ t.title }}</a>
+            </h2>
+            {% if not t.is_published %}<span class="badge badge--closed">UNPUBLISHED</span>{% endif %}
+            {% if t.archived_at %}<span class="badge badge--closed">ARCHIVED</span>{% endif %}
           </div>
           <p class="post__meta">
-            Department &middot; {{ t.published_at|date:"M j, Y" }}
-            {% if t.audience != "public" %}
-              <span class="post__scope">{{ t.get_audience_display }}</span>
+            <span class="forum-author-role">{{ t.author_role }}</span> {{ t.author_label }} &middot; Posted
+            {% timezone "Asia/Bangkok" %}
+              {% now "Y-m-d" as today %}
+              {% if t.created_at|date:"Y-m-d" == today %}{{ t.created_at|date:"H:i" }}{% else %}{{ t.created_at|date:"j M Y" }}{% endif %}
+            {% endtimezone %}
+            {% if t.updated_by_label %}
+              &middot; Updated
+              {% timezone "Asia/Bangkok" %}
+                {% now "Y-m-d" as today %}
+                {% if t.updated_at|date:"Y-m-d" == today %}{{ t.updated_at|date:"H:i" }}{% else %}{{ t.updated_at|date:"j M Y" }}{% endif %}
+              {% endtimezone %}
+              {% if not t.updated_by_is_author %}({{ t.updated_by_label }}){% endif %}
+            {% endif %}
+            {% if t.visibility != "everyone" %}
+              &middot;
+              <span class="forum-question-audience">{% for tag in t.departments.all %}{% if not forloop.first %}, {% endif %}{{ tag.label }}{% empty %}Department only{% endfor %}</span>
             {% endif %}
           </p>
-          <p class="post__body">{{ t.answer|truncatewords:28 }}</p>
-          {% if t.tags.all %}
-            <div class="post__tags">
-              {% for tag in t.tags.all %}<span class="chip chip--sm">#{{ tag.label }}</span>{% endfor %}
-            </div>
-          {% endif %}
+          <p class="post__body">{{ t.body|truncatewords:32 }}</p>
+          <p class="forum-card__comments">
+            {{ t.visible_replies|length }} comment{{ t.visible_replies|length|pluralize }}
+          </p>
         </article>
       {% empty %}
-        <p class="feed__empty">Nothing published for you to read yet.</p>
+        <p class="feed__empty">No questions are available for you to read yet.</p>
       {% endfor %}
-      <p class="feed__empty">
-        Posting and replies are Iteration&nbsp;5 (US-10, US-11). These are the
-        published FAQs shown as threads so the page is not empty.
-      </p>
     </div>
+
+    {% if page_obj.paginator.num_pages > 1 %}
+      <nav class="forum-pagination" aria-label="Question pages">
+        {% if page_obj.has_previous %}
+          <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&amp;q={{ request.GET.q }}{% endif %}">Previous</a>
+        {% endif %}
+        <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+          <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&amp;q={{ request.GET.q }}{% endif %}">Next</a>
+        {% endif %}
+      </nav>
+    {% endif %}
   </section>
 
-  <aside class="board__side">
-    <section class="panel sidepanel">
-      <div class="sidepanel__head">
-        <h2>{% if open_thread %}{{ open_thread.question }}{% else %}Title of the thread{% endif %}</h2>
-      </div>
-      <div class="sidepanel__body">
-        {% if open_thread %}
-          <p class="thread__body">{{ open_thread.answer }}</p>
-          <p class="sidepanel__soon">Comments and replies arrive in Iteration&nbsp;5.</p>
-        {% else %}
-          <p class="sidepanel__soon">A thread and its comments will open here.</p>
-        {% endif %}
-      </div>
-    </section>
-  </aside>
 </div>
 
 <a class="switcher switcher--back" href="{% url 'announcements:public_board' %}"

@@ -220,6 +220,7 @@
             <p class="feed__empty">{% if query %}No FAQs match <strong>{{ query }}</strong>.{% else %}No questions published yet.{% endif %}</p>
           {% endfor %}
         </div>
+        <a class="faq__forum-link" href="{% url 'announcements:faq_board' %}">Open the FAQ forum</a>
       </div>
     </section>
   </aside>

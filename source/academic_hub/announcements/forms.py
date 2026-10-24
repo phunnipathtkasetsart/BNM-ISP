@@ -8,7 +8,13 @@ boundary that actually holds.
 from django import forms
 from django.utils import timezone
 
-from .models import Announcement, Audience, Tag
+from .models import (
+    Announcement,
+    Audience,
+    ForumQuestion,
+    ForumReply,
+    Tag,
+)
 
 
 class AnnouncementForm(forms.ModelForm):
@@ -123,3 +129,166 @@ class AnnouncementForm(forms.ModelForm):
                 "Only the Department can publish an announcement to guests."
             )
         return audience
+
+
+class ForumQuestionForm(forms.ModelForm):
+    class Meta:
+        model = ForumQuestion
+        fields = ["title", "body", "visibility", "departments", "is_published"]
+        widgets = {
+            "title": forms.TextInput(attrs={"autocomplete": "off"}),
+            "body": forms.Textarea(attrs={"rows": 5}),
+            "departments": forms.CheckboxSelectMultiple,
+        }
+        labels = {
+            "title": "Question",
+            "body": "Details",
+            "visibility": "Who can see this question?",
+            "departments": "Department tags",
+            "is_published": "Published",
+        }
+        help_texts = {
+            "is_published": (
+                "When checked, this question is visible to users allowed by "
+                "its audience and department. Uncheck it to hide the question "
+                "from students, lecturers, and guests; the Department can "
+                "still view and manage it."
+            ),
+        }
+
+    def __init__(self, *args, author=None, instance=None, **kwargs):
+        super().__init__(*args, instance=instance, **kwargs)
+        self.author = author
+        self.role = self._role_for(author)
+        self.fields["departments"].queryset = Tag.objects.filter(
+            kind=Tag.Kind.PROGRAMME
+        ).order_by("label")
+        self.fields["departments"].label_from_instance = lambda tag: tag.label
+        self.fields["title"].max_length = 200
+        self.fields["body"].max_length = 5000
+        self.fields["body"].strip = True
+
+        if self.role != "department":
+            self.fields.pop("is_published")
+
+        if self.role == "student":
+            self.fields.pop("departments")
+            self.fields["visibility"].choices = [
+                (ForumQuestion.Visibility.EVERYONE, "Everyone"),
+                (ForumQuestion.Visibility.DEPARTMENT, "My department only"),
+            ]
+        elif self.role == "lecturer":
+            self.fields["visibility"].choices = [
+                (ForumQuestion.Visibility.EVERYONE, "Everyone"),
+                (ForumQuestion.Visibility.DEPARTMENT, "Department only"),
+            ]
+            if instance is not None:
+                self.fields.pop("title")
+                self.fields.pop("body")
+                self.fields.pop("visibility")
+                self.fields.pop("is_published", None)
+                self.fields["departments"].initial = instance.departments.all()
+                self.fields["departments"].required = (
+                    instance.visibility == ForumQuestion.Visibility.DEPARTMENT
+                )
+
+        self._student_department = None
+
+    @staticmethod
+    def _role_for(author):
+        if author is not None and author.is_superuser:
+            return "department"
+        if author is not None and author.is_staff:
+            return "lecturer"
+        return "student"
+
+    def clean(self):
+        cleaned_data = super().clean()
+        visibility = cleaned_data.get(
+            "visibility",
+            self.instance.visibility if self.instance.pk else None,
+        )
+        departments = cleaned_data.get("departments")
+
+        if self.role == "student" and "departments" in self.data:
+            allowed_department = Tag.objects.filter(
+                kind=Tag.Kind.PROGRAMME,
+                slug__iexact=(getattr(self.author, "department", "") or "").strip(),
+            ).first()
+            allowed_id = str(allowed_department.pk) if allowed_department else None
+            getlist = getattr(self.data, "getlist", None)
+            submitted_ids = (
+                getlist("departments")
+                if getlist is not None
+                else self.data.get("departments", [])
+            )
+            if isinstance(submitted_ids, str):
+                submitted_ids = [submitted_ids]
+            elif not isinstance(submitted_ids, (list, tuple)):
+                submitted_ids = [submitted_ids]
+            if any(submitted_id != allowed_id for submitted_id in submitted_ids):
+                self.add_error(
+                    None,
+                    "Students may only use their own department tag.",
+                )
+
+        if (
+            visibility == ForumQuestion.Visibility.DEPARTMENT
+            and self.role == "student"
+        ):
+            department = (getattr(self.author, "department", "") or "").strip()
+            self._student_department = Tag.objects.filter(
+                kind=Tag.Kind.PROGRAMME,
+                slug__iexact=department,
+            ).first()
+            if self._student_department is None:
+                self.add_error(
+                    "visibility",
+                    "Your department is not configured for FAQ questions. "
+                    "Please contact the Department.",
+                )
+        elif (
+            visibility == ForumQuestion.Visibility.DEPARTMENT
+            and not departments
+        ):
+            self.add_error(
+                "departments",
+                "Choose at least one department for a department-only question.",
+            )
+
+        if self.role == "lecturer" and self.instance.pk:
+            if visibility != self.instance.visibility:
+                self.add_error(
+                    None,
+                    "Lecturers may change department tags but cannot change "
+                    "a question's visibility.",
+                )
+
+        return cleaned_data
+
+    def selected_departments(self):
+        visibility = self.cleaned_data.get(
+            "visibility",
+            self.instance.visibility if self.instance.pk else None,
+        )
+        if self.role == "student":
+            if (
+                visibility == ForumQuestion.Visibility.DEPARTMENT
+                and self._student_department is not None
+            ):
+                return [self._student_department]
+            return []
+        return list(self.cleaned_data.get("departments", []))
+
+
+class ForumReplyForm(forms.ModelForm):
+    class Meta:
+        model = ForumReply
+        fields = ["body"]
+        widgets = {"body": forms.Textarea(attrs={"rows": 3})}
+        labels = {"body": "Your reply"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["body"].max_length = 5000
+        self.fields["body"].strip = True
