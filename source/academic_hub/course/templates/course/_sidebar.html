@@ -24,7 +24,7 @@
     <header class="course-tool__header">
       <span class="course-tool__icon" aria-hidden="true">?</span>
       <h2 id="tool-faq">FAQ <small>Course forum</small></h2>
-      <button class="course-tool__button qa-ask-trigger" type="button" data-qa-open-ask {% if not can_ask_question %}hidden{% endif %}>+ Ask question</button>
+      {% if can_ask_question %}<button class="course-tool__button qa-ask-trigger" type="button" data-qa-open-ask>+ Ask question</button>{% endif %}
     </header>
     <div class="course-tool__body">{% include "course/_qa_forum.html" %}</div>
   </section>

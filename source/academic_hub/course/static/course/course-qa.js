@@ -105,8 +105,12 @@
     if (!questions.length) {
       const empty = element('p', 'qa-empty', state.search
         ? 'No matching questions. Try another search.'
+        : state.status === 'answered'
+          ? 'No questions answered yet.'
         : state.status === 'archived'
           ? 'No archived questions.'
+          : state.status === 'unanswered'
+            ? 'No unanswered questions.'
           : 'No questions yet. Ask the first one!');
       list.append(empty);
       return;
