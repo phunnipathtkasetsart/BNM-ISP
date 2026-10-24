@@ -250,6 +250,7 @@ def detail_context(request, post_form=None, material_form=None):
             not request.user.is_staff
             and not request.user.is_superuser
             and course.enrollments.filter(student=request.user).exists()
+            and not course.ta_links.filter(user=request.user).exists()
         ),
         "is_department": request.is_dept_override,
 
@@ -930,8 +931,12 @@ def qa_question_detail(request, pk, question_id):
 
 def qa_question_create_response(request, pk):
     if (request.user.is_staff or request.user.is_superuser
+            or CourseTA.objects.filter(course=request.course, user=request.user).exists()
             or not Enrollment.objects.filter(course=request.course, student=request.user).exists()):
-        return qa_error("Only enrolled students may post questions.", status=403)
+        return qa_error(
+            "Only enrolled students who are not course TAs may post questions.",
+            status=403,
+        )
     data, error = qa_payload(request)
     if error:
         return error

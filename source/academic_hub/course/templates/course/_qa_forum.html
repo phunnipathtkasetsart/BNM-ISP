@@ -10,7 +10,6 @@
       <option value="">All questions</option>
       <option value="answered">Answered</option>
       <option value="unanswered">Unanswered</option>
-      <option value="mine">My questions</option>
       {% if is_department or can_manage_content %}<option value="archived">Archived</option>{% endif %}
     </select>
   {% endif %}
@@ -36,7 +35,7 @@
         </div>
       </form>
     {% else %}
-      <p class="qa-note">Only students enrolled in this course can post a question.</p>
+      <p class="qa-note">Only enrolled students who are not course TAs can post a question.</p>
     {% endif %}
   </dialog>
 

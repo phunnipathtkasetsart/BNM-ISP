@@ -1430,8 +1430,12 @@ class CourseQATests(TestCase):
         self.assertIn('id="course-forum-status"', ta_html)
         self.assertIn('value="answered"', ta_html)
         self.assertIn('value="unanswered"', ta_html)
-        self.assertIn('value="mine"', ta_html)
         self.assertIn('value="archived"', ta_html)
+        self.assertNotIn('value="mine"', ta_html)
+        ta_faq_header = ta_html.split('class="course-tool__header"', 2)[2].split("</header>", 1)[0]
+        self.assertNotIn('data-qa-open-ask', ta_faq_header)
+        self.assertNotIn('data-qa-question-form', ta_html)
+        self.assertIn('not course TAs can post a question', ta_html)
 
         self.sign_in(self.teacher)
         lecturer_page = self.client.get(self.url("detail", self.course.pk))
@@ -1440,13 +1444,30 @@ class CourseQATests(TestCase):
         self.assertIn('id="course-forum-status"', lecturer_html)
         self.assertIn('value="answered"', lecturer_html)
         self.assertIn('value="unanswered"', lecturer_html)
-        self.assertIn('value="mine"', lecturer_html)
         self.assertIn('value="archived"', lecturer_html)
+        self.assertNotIn('value="mine"', lecturer_html)
 
         self.sign_in(self.department)
         department_page = self.client.get(self.url("detail", self.course.pk))
         self.assertEqual(department_page.status_code, 200)
         self.assertIn('value="archived"', department_page.content.decode())
+
+    def test_ta_cannot_ask_question_from_ui_or_api(self):
+        self.sign_in(self.ta)
+        page = self.client.get(self.url("detail", self.course.pk))
+        self.assertEqual(page.status_code, 200)
+        html = page.content.decode()
+        faq_header = html.split('class="course-tool__header"', 2)[2].split("</header>", 1)[0]
+        self.assertNotIn('data-qa-open-ask', faq_header)
+        self.assertNotIn('data-qa-question-form', html)
+
+        response = self.client.post(
+            self.url("api_qa_questions", self.course.pk),
+            {"title": "TA question", "body": "TA should not ask"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("not course TAs", response.json()["error"])
+        self.assertFalse(CourseQuestion.objects.filter(title="TA question").exists())
 
     def test_course_staff_can_list_and_read_archived_questions(self):
         question = self.make_question(title="Archived course question")

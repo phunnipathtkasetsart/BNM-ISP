@@ -61,9 +61,11 @@ valid batch, so a retry is safe.
 
 Open a course and use the **FAQ** card in the right sidebar. Search results
 appear beneath the search field; selecting a question opens its answer thread.
-The **Ask question** button opens the question form. Enrolled students can post
-questions; course owners, TAs, and Department can reply and use their permitted
-moderation actions. Verified answers appear first and carry a verified badge.
+The **Ask question** button opens the question form. Enrolled students who are
+not TAs can post questions; course owners, TAs, and Department can reply and use
+their permitted moderation actions. The staff status filter includes all,
+answered, unanswered, and (for authorized staff) archived questions. Verified
+answers appear first and carry a verified badge.
 Questions with verified answers are surfaced after manually pinned questions
 with a pinned verified badge.
 
