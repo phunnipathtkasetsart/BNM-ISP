@@ -33,8 +33,8 @@ section until an owner edits them; no section is guessed during migration.
 - Removing a member immediately revokes course access, but does not delete their
   account. They may join again if they still have the code. Removal is not a ban.
 - Deleting a class removes its enrollments, not user accounts.
-- Assignment/recent-work content, co-teacher roles and account creation are outside
-  this scope. The Figma sketches guide the teal cards, dialogs and members table.
+- Course Q&A rendering, groups, notifications, and account creation are outside
+  this backend API task. The Figma sketches guide the separate Q&A UI iteration.
 
 ## JSON endpoints
 
@@ -56,6 +56,84 @@ Both import endpoints return `added`, `already_enrolled`, `duplicates_skipped`,
 and a `rejected` list with `row`, `student_id`, and `reason`. A partial success
 returns 200; no valid student rows returns 400. Database failures roll back the
 valid batch, so a retry is safe.
+
+### Course Q&A
+
+Open a course and use the **FAQ** card in the right sidebar. Search results
+appear beneath the search field; selecting a question opens its answer thread.
+The **Ask question** button opens the question form. Enrolled students who are
+not TAs can post questions; course owners, TAs, and Department can reply and use
+their permitted moderation actions. The staff status filter includes all,
+answered, unanswered, and (for authorized staff) archived questions. Verified
+answers appear first and carry a verified badge.
+Questions with verified answers are surfaced after manually pinned questions
+with a pinned verified badge.
+
+Each course has its own Q&A. Enrolled students and the course owner can read
+active questions and answers. Course TAs can read and perform official answer,
+pin, and verify actions. Department users can manage Q&A in any course using the
+existing Department override; this API does not add access to other course
+features. Guests continue to be redirected to the public board and receive no
+Q&A data. Users outside the course receive 404.
+
+Students can post questions, edit their own questions until the first active
+answer exists, and archive their own questions at any time. The course owner and
+course TAs can answer, pin/unpin, verify/unverify, archive any question or
+answer, and restore only items they archived. They may edit their own answers;
+they cannot edit another user's question or answer. Department can edit,
+archive, and restore any Q&A item. Only Department may restore a
+student-archived question.
+
+Archived questions and answers are visible to course owners, course TAs, and
+Department; students cannot see them. Course owners and TAs can list archived
+questions only in their course with `status=archived`, while Department can do
+so in any course. Other roles receive 400 for that filter. A mutation on an
+archived question, answer, or thread returns 404 until the archived item (and
+any archived parent question) is restored. Course owners and TAs can restore
+only items they archived; Department may restore any item. There is no hard
+delete.
+
+| Method | Path | Body / purpose |
+|---|---|---|
+| GET | `/course/api/<id>/questions/` | Optional `page`, `page_size`, `status=answered\|unanswered\|mine`, `q` |
+| GET | `/course/api/<id>/questions/?status=archived` | Course owner, TA, or Department archived question list |
+| POST | `/course/api/<id>/questions/` | `{"title":"...", "body":"..."}`; enrolled student |
+| GET | `/course/api/<id>/questions/<question_id>/` | Question detail and visible answers |
+| POST | `/course/api/<id>/questions/<question_id>/edit/` | `{"title":"...", "body":"..."}` |
+| POST | `/course/api/<id>/questions/<question_id>/archive/` | Soft archive a question |
+| POST | `/course/api/<id>/questions/<question_id>/restore/` | Restore permitted archived question |
+| POST | `/course/api/<id>/questions/<question_id>/pin/` | `{"is_pinned":true}` or `false` |
+| POST | `/course/api/<id>/questions/<question_id>/answers/` | `{"body":"..."}`; owner Lecturer, TA, or Department |
+| POST | `/course/api/<id>/questions/<question_id>/answers/<answer_id>/edit/` | `{"body":"..."}` |
+| POST | `/course/api/<id>/questions/<question_id>/answers/<answer_id>/archive/` | Soft archive an answer |
+| POST | `/course/api/<id>/questions/<question_id>/answers/<answer_id>/restore/` | Restore permitted archived answer |
+| POST | `/course/api/<id>/questions/<question_id>/answers/<answer_id>/verify/` | `{"is_verified":true}` or `false` |
+
+Question titles are trimmed, required, and limited to 200 characters. Question
+and answer bodies are trimmed, required, and limited to 5,000 characters.
+Validation errors return 400. JSON moderation toggles require booleans; form
+submissions use `"true"` or `"false"`. Every mutation is POST-only and retains
+normal session and CSRF protection. Creates return 201; successful other
+mutations return 200; unsupported methods return 405.
+
+The list response is `{"count":n,"page":n,"page_size":n,"results":[...]}`.
+Each item includes `id`, `title`, plain-text `body_excerpt` (up to 240
+characters), `author_name`, `author_role_label`, `created_at`, `updated_at`,
+`edited_at`, `is_pinned`, active `answer_count`, `has_verified_answer`,
+`is_mine`, `can_edit`, `can_archive`, `can_answer`, `can_pin`, and `can_verify`.
+Detail returns the full plain-text question body plus answers with author name
+and role label, timestamps, `is_verified`, `is_mine`, `can_edit`,
+`can_archive`, and `can_verify`. Question detail also contains the six question
+capability fields above. Timestamps are timezone-aware ISO-8601 values; dates
+are not formatted for Bangkok in the API.
+
+Pagination defaults to page 1 and 20 items; `page_size` must be 1–100. Invalid
+pagination or status values return 400. Search `q` is case-insensitive over
+question title and body. Questions sort manually pinned first, then questions
+with verified answers, then newest-first. Answers sort verified-first, then
+chronologically. Multiple verified answers are allowed. `edited_at` is set only
+when question title/body or answer body changes;
+pin, verify, archive, and restore do not set it.
 
 All paths are under `/course/api/`, use existing login sessions, and retain Django
 CSRF protection. Send the CSRF token in `X-CSRFToken` for JSON mutations. POST

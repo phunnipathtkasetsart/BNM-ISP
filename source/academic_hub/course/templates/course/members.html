@@ -3,24 +3,101 @@
 {% block title %}Class members — {{ course.name }}{% endblock %}
 {% block course_content %}
 <a class="course-back" href="{% url 'course:detail' course.pk %}">← Back to class</a>
-<div class="course-heading"><div><p class="eyebrow">{{ course.name }}{% if course.section %} · Sec {{ course.section }}{% endif %}</p><h1>{% if can_manage %}Manage members{% else %}Class members{% endif %}</h1><p>{{ members|length }} student{{ members|length|pluralize }}</p></div>{% if can_manage %}<a class="course-btn" href="#add-students">+ Add students</a>{% endif %}</div>
+<div class="course-heading">
+  <div>
+    <p class="eyebrow">{{ course.name }}{% if course.section %} · Sec {{ course.section }}{% endif %}</p>
+    <h1>{% if can_manage %}Manage members{% else %}Class members{% endif %}</h1>
+    <p>{{ members|length }} student{{ members|length|pluralize }}</p>
+  </div>
+  {% if can_manage %}
+    <a class="course-btn" href="#add-students">+ Add students</a>
+  {% endif %}
+</div>
+
 {% if import_report %}
 <section class="course-add" aria-labelledby="import-result-title">
   <h2 id="import-result-title">Import results</h2>
   <p role="status">{{ import_report.added }} added · {{ import_report.already_enrolled }} already enrolled · {{ import_report.duplicates_skipped }} duplicate rows skipped · {{ import_report.rejected|length }} rejected</p>
   <p>Valid students have been processed. Correct the rejected entries below and import them again.</p>
-  <div class="table-scroll"><table class="roster"><thead><tr><th>Row / entry</th><th>Student ID</th><th>Reason</th></tr></thead><tbody>
-  {% for item in import_report.rejected %}<tr><td>Line {{ item.row }}</td><td>{{ item.student_id }}</td><td>{{ item.reason }}</td></tr>{% endfor %}
-  </tbody></table></div>
+  <div class="table-scroll">
+    <table class="roster">
+      <thead>
+        <tr><th>Row / entry</th><th>Student ID</th><th>Reason</th></tr>
+      </thead>
+      <tbody>
+        {% for item in import_report.rejected %}
+          <tr><td>Line {{ item.row }}</td><td>{{ item.student_id }}</td><td>{{ item.reason }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </section>
 {% endif %}
-<section class="roster-section"><h3>Lecturer</h3><div class="lecturer-row"><span class="member-avatar" aria-hidden="true">{{ course.owner.first_name|first|upper }}</span><strong>{{ course.owner.get_full_name }}</strong><span class="course-badge">Class owner</span></div></section>
-<section class="roster-section"><h3>Students</h3><div class="table-scroll"><table class="roster"><thead><tr><th scope="col">Name</th><th scope="col">Student ID</th>{% if can_manage %}<th scope="col">Action</th>{% endif %}</tr></thead><tbody>
-{% for member in members %}<tr><td><span class="member-avatar" aria-hidden="true">{{ member.student.first_name|first|upper }}</span>{{ member.student.get_full_name }}</td><td>{{ member.student_id }}</td>{% if can_manage %}<td><form method="post" action="{% url 'course:remove_member' course.pk member.student_id %}" data-confirm="Remove this student from the class?"><!-- Removal does not delete the student's account. -->{% csrf_token %}<button type="submit" class="course-remove" aria-label="Remove {{ member.student.get_full_name }}">Remove</button></form></td>{% endif %}</tr>
-{% empty %}<tr><td colspan="{% if can_manage %}3{% else %}2{% endif %}" class="course-empty">No students yet.{% if can_manage %} Share the class code or add student IDs below.{% endif %}</td></tr>{% endfor %}
-</tbody></table></div></section>
-{% if can_manage %}<section class="course-add" id="add-students"><h2>Add students</h2><p>Students must already have an active account in the portal.</p><form method="post" action="{% url 'course:import_members' course.pk %}">{% csrf_token %}{{ roster_form.as_p }}<button class="course-btn" type="submit">Add students</button></form></section>{% endif %}
+
+<!-- Lecturer Section -->
+<section class="roster-section">
+  <h3>Lecturer</h3>
+  <div class="lecturer-row">
+    <span class="member-avatar" aria-hidden="true">{{ course.owner.first_name|first|upper }}</span>
+    <strong>{{ course.owner.get_full_name }}</strong>
+    <span class="course-badge">Class owner</span>
+  </div>
+</section>
+
+<!-- Students Section -->
+<section class="roster-section">
+  <h3>Students</h3>
+  <div class="table-scroll">
+    <table class="roster">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Student ID</th>
+          {% if can_manage %}<th scope="col">Action</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for member in members %}
+        <tr>
+          <td>
+            <span class="member-avatar" aria-hidden="true">{{ member.student.first_name|first|upper }}</span>
+            {{ member.student.get_full_name }}
+            {% if member.student_id in ta_ids %}
+              <span class="course-badge" style="margin-left: 8px;color: #54397d;background-color: #fce8e6;">TA</span>
+            {% endif %}
+          </td>
+          <td>{{ member.student_id }}</td>
+          {% if can_manage %}
+          <td>
+            <form method="post" action="{% url 'course:remove_member' course.pk member.student_id %}" data-confirm="Remove this student from the class?">
+              {% csrf_token %}
+              <button type="submit" class="course-remove" aria-label="Remove {{ member.student.get_full_name }}">Remove</button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="{% if can_manage %}3{% else %}2{% endif %}" class="course-empty">
+            No students yet.{% if can_manage %} Share the class code or add student IDs below.{% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
 {% if can_manage %}
+<section class="course-add" id="add-students">
+  <h2>Add students</h2>
+  <p>Students must already have an active account in the portal.</p>
+  <form method="post" action="{% url 'course:import_members' course.pk %}">
+    {% csrf_token %}{{ roster_form.as_p }}
+    <button class="course-btn" type="submit">Add students</button>
+  </form>
+</section>
+
 <section class="course-add" id="import-csv">
   <h2>Import students from CSV</h2>
   <p>Upload student IDs to add existing student accounts to this class. Valid students are imported even if some IDs are invalid. Rejected rows are listed after import.</p>

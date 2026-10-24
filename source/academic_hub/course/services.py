@@ -5,8 +5,20 @@ from django.db import IntegrityError, transaction
 # Lower แปลงเป็นตัวพิมพ์เล็ก และ Trim ตัดช่องว่างหัวท้ายในคำสั่งฐานข้อมูล
 from django.db.models.functions import Lower, Trim
 
-# นำเข้าโมเดลคลาส โมเดลสมาชิก และฟังก์ชันสุ่มรหัสคลาสจาก package เดียวกัน
-from .models import Course, Enrollment, generate_class_code
+from .models import (
+    Course,
+    CourseAnswer,
+    CourseQuestion,
+    CourseTA,
+    Enrollment,
+    Material,
+    Topic,
+    generate_class_code,
+)
+
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
 
 # เก็บข้อความแจ้งคลาสซ้ำเป็นค่าคงที่ เพื่อให้การสร้างและแก้ไขใช้ข้อความเดียวกัน
 DUPLICATE_CLASS = "You already have a class with this name and section. Use a different name or section."
@@ -103,3 +115,108 @@ def add_students(course, students):
         added += int(created)
     # คืนจำนวนที่เพิ่มใหม่ให้ view ใช้ทำรายงานผลการนำเข้า
     return added
+
+def _topic_match(course, title):
+    return (Topic.objects.annotate(key=Lower(Trim("title")))
+            .filter(course=course, key=title.lower()).first())
+
+
+def get_or_create_topic(course, title):
+    title = " ".join(title.split())[:120]
+    found = _topic_match(course, title)
+    if found:
+        return found
+    try:
+        with transaction.atomic():
+            return Topic.objects.create(course=course, title=title)
+    except IntegrityError:  # another request created it first
+        return _topic_match(course, title)
+
+
+def add_materials(course, topic, files, user):
+    created = []
+    try:
+        with transaction.atomic():
+            for upload in files:
+                created.append(Material.objects.create(
+                    course=course, topic=topic, file=upload,
+                    title=upload.name[:150], created_by=user))
+    except Exception:
+        # Rows rolled back; remove the files already written to disk.
+        for material in created:
+            material.file.storage.delete(material.file.name)
+        raise
+    return created
+
+
+
+
+def assign_ta(course, student_id):
+    """Assign any active student in the database as a TA by Nisit ID or PK."""
+    User = get_user_model()
+    target_id = str(student_id).strip()
+
+    # Search by nisit_id or primary key
+    student = User.objects.filter(
+        models.Q(nisit_id=target_id) | models.Q(pk=target_id),
+        is_active=True
+    ).first()
+
+    if not student:
+        raise ValidationError(f"No active student found with ID '{target_id}'. Check the Nisit ID and try again.")
+    if student.is_staff or student.is_superuser:
+        raise ValidationError("Staff or department users cannot be assigned as TAs.")
+
+    with transaction.atomic():
+        # Ensure student is enrolled so permissions and views allow course access
+        Enrollment.objects.get_or_create(course=course, student=student)
+        _, created = CourseTA.objects.get_or_create(course=course, user=student)
+
+    return created
+
+
+def remove_ta(course, student_id):
+    deleted, _ = CourseTA.objects.filter(course=course, user_id=student_id).delete()
+    return bool(deleted)
+
+
+def qa_author_role_label(user, course):
+    if user.is_superuser:
+        return "Department"
+    if CourseTA.objects.filter(course=course, user=user).exists():
+        return "Teaching Assistant"
+    if user.is_staff:
+        return "Lecturer"
+    return "Student"
+
+
+def qa_notification_hook(created_item):
+    """No-op hook for the notifications iteration."""
+    return None
+
+
+def create_course_question(*, course, author, title, body):
+    with transaction.atomic():
+        question = CourseQuestion.objects.create(
+            course=course,
+            author=author,
+            author_label=author.get_full_name().strip(),
+            author_role_label=qa_author_role_label(author, course),
+            title=title,
+            body=body,
+        )
+        transaction.on_commit(lambda: qa_notification_hook(question))
+    return question
+
+
+def create_course_answer(*, question, author, body):
+    with transaction.atomic():
+        answer = CourseAnswer.objects.create(
+            question=question,
+            author=author,
+            author_label=author.get_full_name().strip(),
+            author_role_label=qa_author_role_label(author, question.course),
+            body=body,
+        )
+        transaction.on_commit(lambda: qa_notification_hook(answer))
+    return answer
