@@ -30,6 +30,7 @@
 <nav class="subnav" aria-label="Sections">
   <a class="subnav__tab subnav__tab--on" href="{% url 'announcements:faq_board' %}">Home</a>
   {% if not is_guest %}<a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see your courses">Course</span>{% endif %}
+  {% if not is_guest %}<a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see the calendar">Calendar</span>{% endif %}
 </nav>
 
 <div class="board faq-board">
