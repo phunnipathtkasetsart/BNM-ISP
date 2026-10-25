@@ -8,6 +8,7 @@ from .models import CoursePost
 from .validators import validate_upload_size
 
 class CourseForm(forms.Form):
+<<<<<<< HEAD
     section = forms.RegexField(
         label="Section (Sec)", regex=r"^[0-9]+$", max_length=20, strip=True,
         error_messages={"invalid": "Section must contain digits 0–9 only."},
@@ -15,6 +16,10 @@ class CourseForm(forms.Form):
                                       "pattern": "[0-9]+", "data-numeric-section": "",
                                       "title": "Use digits 0–9 only."}),
     )
+=======
+    section = forms.CharField(label="Section (Sec)", max_length=20,
+                              widget=forms.TextInput(attrs={"placeholder": "e.g. 001"}))
+>>>>>>> 3391f8a6c7eced8603b16854bb53316f50594d57
     name = forms.CharField(label="Class name", max_length=120,
                           widget=forms.TextInput(attrs={"placeholder": "e.g. Software Engineering", "autofocus": True}))
     field_order = ["name", "section"]
