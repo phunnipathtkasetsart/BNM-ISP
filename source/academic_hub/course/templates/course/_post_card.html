@@ -1,0 +1,155 @@
+{% load course_extras %}
+
+<article class="cc-post-card" id="post-{{ post.pk }}" {% if post.deadline %}data-deadline-time="{{ post.deadline|date:'c' }}"{% endif %}>
+  <header class="cc-post__header">
+    <div class="cc-post__author-block">
+      <span class="cc-avatar" aria-hidden="true">
+        {% if post.author %}{{ post.author.first_name|slice:":1" }}{{ post.author.last_name|slice:":1" }}{% else %}?{% endif %}
+      </span>
+      <div class="cc-post__meta">
+        <div class="cc-post__author-row">
+          <span class="cc-post__name">{{ post.author.get_full_name|default:"Former member" }}</span>
+          {% if post.author_id == course.owner_id %}
+            <span class="cc-role">Lecturer</span>
+          {% elif post.author.is_superuser %}
+            <span class="cc-role">Department</span>
+          {% elif post.author %}
+            <span class="cc-role cc-role--ta">TA</span>
+          {% endif %}
+        </div>
+
+        {% if post.deadline %}
+          <div class="cc-post__due-badge">
+            <svg viewBox="0 0 24 24" class="cc-post__due-icon" aria-hidden="true">
+              <path fill="currentColor" d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+            </svg>
+            <span class="cc-post__due-text">Due {{ post.deadline|date:"M j, Y @ H:i" }}</span>
+          </div>
+        {% else %}
+          <time class="cc-post__when" datetime="{{ post.created_at|date:'c' }}">
+            {{ post.created_at|date:"M j" }}
+          </time>
+        {% endif %}
+      </div>
+    </div>
+
+    {% if manage and can_delete_any or manage and post.author_id == request.user.pk %}
+      <div class="cc-post__actions" style="display: flex; gap: 0.5rem; align-items: center;">
+        
+        <!-- EDIT BUTTON -->
+              <button type="button" class="cc-icon-btn" aria-label="Edit announcement" data-post-edit>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+          </svg>
+        </button>
+
+        <!-- DELETE BUTTON -->
+        <form method="post" action="{% url 'course:delete_post' course.pk post.pk %}" data-confirm="Delete this announcement? Its attachments will be removed too.">
+          {% csrf_token %}
+          <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete announcement">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+            </svg>
+          </button>
+        </form>
+      </div>
+    {% endif %}
+  </header>
+
+  <!-- POST DISPLAY CONTENT -->
+     <div class="cc-post__content" data-post-display>
+    {% if post.title %}
+      <h3 class="cc-post__title">{{ post.title }}</h3>
+    {% endif %}
+
+    {% if post.body %}
+      <div class="cc-post__body">{{ post.body|urlize|linebreaksbr }}</div>
+    {% endif %}
+
+    {% with files=post.attachments.all %}
+      {% if files %}
+        <ul class="cc-chips" aria-label="Attachments">
+          {% for att in files %}
+            <li>
+              <a class="cc-chip" href="{% url 'course:download_attachment' course.pk att.pk %}">
+                <span class="cc-ext cc-ext--{{ att.original_name|file_kind }}" aria-hidden="true">{{ att.original_name|file_ext }}</span>
+                <span class="cc-chip__name">{{ att.original_name|default:"Attachment" }}</span>
+                <span class="cc-chip__size">{{ att.size|filesizeformat }}</span>
+                <span class="cc-chip__dl">Download</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <!-- HIDDEN EDIT FORM -->
+  {% if manage and can_delete_any or manage and post.author_id == request.user.pk %}
+    <form action="{% url 'course:edit_post' pk=course.pk post_id=post.pk %}" method="post" enctype="multipart/form-data" data-post-editform hidden style="padding: 0 1.25rem 1.25rem 1.25rem; margin-top: 1rem;">
+      {% csrf_token %}
+      
+      <div style="margin-bottom: 1rem;">
+        <label for="id_title_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Title</label>
+        <input type="text" id="id_title_{{ post.pk }}" name="title" value="{{ post.title }}" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px;">
+      </div>
+      
+      <div style="margin-bottom: 1rem;">
+        <label for="id_body_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Message</label>
+        <textarea id="id_body_{{ post.pk }}" name="body" rows="4" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical;">{{ post.body }}</textarea>
+      </div>
+      
+      <div style="margin-bottom: 1rem;">
+        <label for="id_deadline_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Deadline <span style="font-weight: 400; color: #6b7280;">(optional)</span></label>
+        <input type="datetime-local" id="id_deadline_{{ post.pk }}" name="deadline" 
+               value="{% if post.deadline %}{{ post.deadline|date:'Y-m-d\TH:i' }}{% endif %}" 
+               style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit;">
+      </div>
+
+      <!-- FILE ATTACHMENT EDIT SECTION -->
+      {% with files=post.attachments.all %}
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.35rem;">
+            Attachment
+          </label>
+
+          {% if files %}
+            {% for att in files %}
+              <div class="cc-attachment-edit-wrapper" data-attachment-container style="margin-bottom: 10px;">
+                <input type="hidden" name="remove_attachment" value="false" data-remove-attachment-input>
+                <div class="cc-chip cc-chip--edit">
+                  <span class="cc-ext cc-ext--{{ att.original_name|file_kind }}" aria-hidden="true">{{ att.original_name|file_ext }}</span>
+                  <div class="cc-chip__main">
+                    <span class="cc-chip__name">{{ att.original_name|default:"Attachment" }}</span>
+                    <span class="cc-chip__size">{{ att.size|filesizeformat }}</span>
+                  </div>
+                  <button type="button" class="cc-chip__remove" data-remove-attachment-btn aria-label="Remove attachment" title="Remove attachment">
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+
+          <div class="cc-field" data-file-picker {% if files %}hidden{% endif %}>
+            <div class="cc-filebox">
+              <label class="cc-pick" for="id_attachment_{{ post.pk }}">Choose file</label>
+              <input type="file" id="id_attachment_{{ post.pk }}" name="attachment" data-file-input>
+              <span class="cc-names" data-file-names>No file chosen</span>
+            </div>
+            <p class="cc-hint" style="margin-top: 6px;">Select a new file to replace or attach. Up to 50 MB.</p>
+          </div>
+        </div>
+      {% endwith %}
+      
+      <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+        <button type="submit" class="course-btn">Save Changes</button>
+        <button type="button" class="course-btn secondary" data-post-edit-cancel>Cancel</button>
+      </div>
+    </form>
+  {% endif %}
+
+</article>

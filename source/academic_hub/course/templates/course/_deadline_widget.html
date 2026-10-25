@@ -1,3 +1,22 @@
 <section class="course-shell deadline-widget" aria-labelledby="deadline-title">
   <h2 id="deadline-title">Upcoming deadlines</h2>
+  {% if upcoming_deadlines %}
+    <ul class="deadline-list">
+      {% for post in upcoming_deadlines %}
+        <li class="deadline-item">
+          <a href="{% url 'course:detail' post.course.pk %}" class="deadline-link">
+            <div class="deadline-main">
+              <span class="deadline-course">{{ post.course.name }}</span>
+              <strong class="deadline-title">{{ post.title }}</strong>
+            </div>
+            <time class="deadline-time" datetime="{{ post.deadline|date:'c' }}">
+              {{ post.deadline|date:"M j, Y g:i A" }}
+            </time>
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="cc-empty">No upcoming deadlines across your classes.</p>
+  {% endif %}
 </section>
