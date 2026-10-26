@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'accounts',
     'announcements',
     'course',
+    'calendar_app',
 ]
 
 AUTH_USER_MODEL = "accounts.User"
