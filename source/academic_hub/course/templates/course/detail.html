@@ -1,7 +1,7 @@
 {% extends "course/base.html" %}
 {% load static course_extras %}
 
-{% block page_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'course/course-content.css' %}">{% endblock %}
+{% block page_css %}{{ block.super }}<link rel="stylesheet" href="{% static 'course/course-content.css' %}"><link rel="stylesheet" href="{% static 'course/course-qa.css' %}">{% endblock %}
 
 {% block course_layout %}
 <div class="course-detail-layout">
@@ -355,4 +355,5 @@
 
 
 <script src="{% static 'course/course-tabs.js' %}" defer></script>
+<script src="{% static 'course/course-qa.js' %}" defer></script>
 {% endblock %}

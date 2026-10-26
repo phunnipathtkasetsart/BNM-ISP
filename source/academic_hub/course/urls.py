@@ -44,6 +44,19 @@ urlpatterns = [
     path("api/<int:pk>/materials/<int:material_id>/edit/", views.edit_material, name="api_edit_material"),
     path("api/<int:pk>/materials/<int:material_id>/delete/", views.delete_material, name="api_delete_material"),
 
+    # Task 5.2: course Q&A JSON API
+    path("api/<int:pk>/questions/", views.qa_question_list, name="api_qa_questions"),
+    path("api/<int:pk>/questions/<int:question_id>/", views.qa_question_detail, name="api_qa_question_detail"),
+    path("api/<int:pk>/questions/<int:question_id>/edit/", views.qa_question_edit, name="api_qa_question_edit"),
+    path("api/<int:pk>/questions/<int:question_id>/archive/", views.qa_question_archive, name="api_qa_question_archive"),
+    path("api/<int:pk>/questions/<int:question_id>/restore/", views.qa_question_restore, name="api_qa_question_restore"),
+    path("api/<int:pk>/questions/<int:question_id>/pin/", views.qa_question_pin, name="api_qa_question_pin"),
+    path("api/<int:pk>/questions/<int:question_id>/answers/", views.qa_answer_create, name="api_qa_answer_create"),
+    path("api/<int:pk>/questions/<int:question_id>/answers/<int:answer_id>/edit/", views.qa_answer_edit, name="api_qa_answer_edit"),
+    path("api/<int:pk>/questions/<int:question_id>/answers/<int:answer_id>/archive/", views.qa_answer_archive, name="api_qa_answer_archive"),
+    path("api/<int:pk>/questions/<int:question_id>/answers/<int:answer_id>/restore/", views.qa_answer_restore, name="api_qa_answer_restore"),
+    path("api/<int:pk>/questions/<int:question_id>/answers/<int:answer_id>/verify/", views.qa_answer_verify, name="api_qa_answer_verify"),
+
     path("<int:pk>/posts/<int:post_id>/edit/", views.edit_post, name="edit_post"),
 
         # Task 4.5: teaching assistants
