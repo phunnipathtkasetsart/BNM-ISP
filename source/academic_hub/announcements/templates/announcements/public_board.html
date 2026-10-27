@@ -14,26 +14,7 @@
 {% endblock %}
 
 {% block topbar_right %}
-  <div class="topbar__right">
-    {% if request.user.is_authenticated %}
-      <span class="topbar__role">{% if is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
-      {% if is_guest %}
-        
-        <span class="guestclock" data-expires="{{ guest_expires_at }}"
-              title="Your guest session ends then">&mdash;</span>
-      {% endif %}
-      {% if request.user.is_superuser %}
-        <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
-      {% endif %}
-      <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
-        {% csrf_token %}
-        <button type="submit" class="topbar__logout">Log out</button>
-      </form>
-    {% else %}
-      <span class="topbar__role">Guest</span>
-      <a class="topbar__link" href="{% url 'accounts:login' %}">Sign in</a>
-    {% endif %}
-  </div>
+  {% include "accounts/_account_menu.html" %}
 {% endblock %}
 
 {% block content %}
@@ -41,10 +22,11 @@
 <nav class="subnav" aria-label="Sections">
   <a class="subnav__tab subnav__tab--on" href="{% url 'announcements:public_board' %}">Home</a>
   {% if not is_guest %}<a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see your courses">Course</span>{% endif %}
+  {% if not is_guest %}<a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see the calendar">Calendar</span>{% endif %}
 
   {# Role re-checked in the view; a hidden control is not a permission. #}
   {% if can_manage %}
-    <a class="subnav__action" href="{% url 'announcements:announcement_create' %}">Create Announcement</a>
+    <a class="subnav__action" href="{% url 'announcements:announcement_create' %}"><span class="subnav__action-full">Create Announcement</span><span class="subnav__action-short" aria-hidden="true">+<span class="subnav__action-word"> Create</span></span></a>
   {% endif %}
 </nav>
 
@@ -220,6 +202,7 @@
             <p class="feed__empty">{% if query %}No FAQs match <strong>{{ query }}</strong>.{% else %}No questions published yet.{% endif %}</p>
           {% endfor %}
         </div>
+        <a class="faq__forum-link" href="{% url 'announcements:faq_board' %}">Open the FAQ forum</a>
       </div>
     </section>
   </aside>

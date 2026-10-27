@@ -906,130 +906,26 @@
     transform: none !important;
   }
 }
-/* ==========================================================================
-   Responsive Topbar & Mobile Navigation Menu
-   ========================================================================== */
 
-/* Hide hamburger toggle button on Desktop (>768px) by default */
-.topbar__toggle {
-  display: none !important;
-  background: none;
-  border: none;
-  padding: 6px;
-  cursor: pointer;
-  color: inherit;
-}
-
-.topbar__hamburger,
-.topbar__hamburger::before,
-.topbar__hamburger::after {
-  display: block;
-  width: 22px;
-  height: 2px;
-  background-color: currentColor;
-  transition: transform 0.25s ease, opacity 0.25s ease;
-  position: relative;
-}
-
-.topbar__hamburger::before,
-.topbar__hamburger::after {
+/* Course tools fold: on narrow screens the panel moves above the classes
+   and starts closed, so it no longer lands at the bottom of a long page. */
+.course-sidebar__fold > summary { list-style: none; cursor: pointer; }
+.course-sidebar__fold > summary::-webkit-details-marker { display: none; }
+.course-sidebar__fold > summary::after {
   content: "";
-  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin-left: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
+  transition: transform .15s ease;
 }
-.topbar__hamburger::before { top: -6px; }
-.topbar__hamburger::after { top: 6px; }
-
-/* Desktop view (> 768px): standard horizontal menu without toggle */
-@media (min-width: 769px) {
-  .topbar,
-  header.topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-  }
-
-  .topbar__right {
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: center !important;
-    gap: 16px !important;
-    position: static !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-  }
-}
-
-/* Mobile & Tablet view (<= 768px): show hamburger and drop menu */
-@media (max-width: 768px) {
-  .topbar,
-  header.topbar {
-    display: flex !important;
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-    align-items: center !important;
-    justify-content: space-between !important;
-    position: relative !important;
-    padding: 12px 20px !important;
-  }
-
-  .topbar__left {
-    display: inline-flex !important;
-    align-items: center !important;
-    white-space: nowrap !important;
-  }
-
-  /* Show toggle button only on mobile */
-  .topbar__toggle {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin-left: auto !important;
-    z-index: 1001 !important;
-  }
-
-  .topbar__hamburger {
-    margin: 0 !important;
-  }
-
-  /* Mobile menu dropdown panel */
-  .topbar__right {
-    display: none !important;
-    position: absolute !important;
-    top: 100% !important;
-    left: 0 !important;
-    right: 0 !important;
-    width: 100% !important;
-    background: #183e35 !important;
-    padding: 16px 20px !important;
-    flex-direction: column !important;
-    gap: 12px !important;
-    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.2) !important;
-    z-index: 1000 !important;
-  }
-
-  .topbar__right.is-open {
-    display: flex !important;
-    animation: navSlideDown 0.2s ease forwards;
-  }
-
-  /* Animated Hamburger to X icon when open */
-  .topbar__toggle[aria-expanded="true"] .topbar__hamburger {
-    background-color: transparent;
-  }
-  .topbar__toggle[aria-expanded="true"] .topbar__hamburger::before {
-    transform: rotate(45deg);
-    top: 0;
-  }
-  .topbar__toggle[aria-expanded="true"] .topbar__hamburger::after {
-    transform: rotate(-45deg);
-    top: 0;
-  }
-}
-
-@keyframes navSlideDown {
-  from { opacity: 0; transform: translateY(-8px); }
-  to { opacity: 1; transform: translateY(0); }
+.course-sidebar__fold[open] > summary::after { transform: rotate(-135deg) translateY(-1px); }
+.course-sidebar__fold > summary:focus-visible { outline: 2px solid #35705b; outline-offset: 4px; border-radius: 4px; }
+.course-sidebar__fold > summary .course-sidebar__preview { margin-left: auto; }
+.course-sidebar__body { display: grid; gap: 14px; margin-top: 14px; }
+@media (max-width: 1000px) {
+  .course-detail-layout > .course-sidebar { order: -1; padding: 14px 16px; }
+  .course-sidebar__fold > summary { min-height: 32px; }
 }

@@ -10,6 +10,7 @@ GUEST_ALLOWED_VIEWS = {
     GUEST_LANDING_VIEW,
     # Guests read the FAQ board too - they just cannot post on it.
     "announcements:faq_board",
+    "announcements:forum_question_detail",
     "accounts:logout",
     # The way out of guest mode; without both, a guest has no route to an account.
     "accounts:login",
