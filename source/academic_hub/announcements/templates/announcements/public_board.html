@@ -69,6 +69,7 @@
         <a class="chip{% if tag.slug == active_tag %} chip--on{% endif %}" role="listitem"
            href="?tag={{ tag.slug }}{% if query %}&amp;q={{ query|urlencode }}{% endif %}">#{{ tag.label }}</a>
       {% endfor %}
+
     </div>
 
     <form class="daterow{% if date_filtered %} daterow--on{% endif %}" method="get">

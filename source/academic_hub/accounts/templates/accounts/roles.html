@@ -55,6 +55,7 @@
               {% for r in roles %}
                 <option value="{{ r.key }}" {% if r.key == p.role %}selected{% endif %}>{{ r.label }}</option>
               {% endfor %}
+
             </select>
             <button type="submit" class="btn btn--small">Save</button>
           </form>
