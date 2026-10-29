@@ -53,7 +53,7 @@
     <div class="cc-section">
       <h2 class="cc-section-title">Announcements <span class="cc-count">{{ posts|length }}</span></h2>
       {% for post in posts %}
-        {% include "course/_post_card.html" with manage=False %}
+        {% include "course/_post_card.html" with manage=can_manage_content %}
       {% empty %}
         <p class="cc-empty">No announcements have been posted yet.</p>
       {% endfor %}
@@ -101,7 +101,6 @@
   </section>
 
   {# ---- Manage Content: lecturer and TA only ---- #}
-
   {% if can_manage_content %}
     <section class="cc-panel" id="panel-manage" role="tabpanel" aria-labelledby="tab-manage" hidden>
       
@@ -109,31 +108,55 @@
       <div class="manage-subtabs">
         <button type="button" class="subtab-btn active" data-subtab="announcements">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <path d="m3 11 18-5v12L3 13v-2z"/>
-  <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
-</svg>
- Announcements
+            <path d="m3 11 18-5v12L3 13v-2z"/>
+            <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/>
+          </svg>
+          Announcements
         </button>
         <button type="button" class="subtab-btn" data-subtab="materials">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L8.6 3.3A2 2 0 0 0 7.1 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>
-</svg>
- Course Materials
+            <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L8.6 3.3A2 2 0 0 0 7.1 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/>
+          </svg>
+          Course Materials
         </button>
       </div>
 
       <!-- ANNOUNCEMENTS SUB-PANEL -->
       <div id="subpanel-announcements" class="manage-tab-content">
         
+        <!-- TOP: ARCHIVED ANNOUNCEMENTS (Collapsible) -->
+        {% if archived_posts %}
+          <details class="creation-card" style="margin-bottom: 1.5rem; border-color: #d1d5db; background: #f9fafb;">
+            <summary class="creation-card-header" style="color: #4b5563;">
+              <span style="align-items: center; display: flex; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 8v13H3V8"/>
+                  <path d="M1 3h22v5H1z"/>
+                  <path d="M10 12h4"/>
+                </svg>
+                Archived Announcements <span class="cc-count" style="background: #e5e7eb; color: #374151;">{{ archived_posts|length }}</span>
+              </span>
+              <svg class="chevron" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </summary>
+            <div class="creation-card-body" style="padding-top: 1rem;">
+              {% for post in archived_posts %}
+                {% include "course/_post_card.html" with manage=True %}
+              {% endfor %}
+            </div>
+          </details>
+        {% endif %}
+
         <!-- Collapsible Announcement Form -->
         <details class="creation-card">
           <summary class="creation-card-header">
-            <span style="align-items: center;display: flex;gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <circle cx="12" cy="12" r="10"/>
-  <path d="M8 12h8"/>
-  <path d="M12 8v8"/>
-</svg>
- Create New Announcement</span>
+            <span style="align-items: center; display: flex; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 12h8"/>
+                <path d="M12 8v8"/>
+              </svg>
+              Create New Announcement
+            </span>
             <svg class="chevron" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </summary>
           <div class="creation-card-body">
@@ -192,6 +215,7 @@
           </div>
         </details>
 
+        <!-- Active Announcements -->
         <div class="cc-section">
           <h2 class="cc-section-title">Posted announcements <span class="cc-count">{{ posts|length }}</span></h2>
           {% for post in posts %}
@@ -205,15 +229,66 @@
       <!-- MATERIALS SUB-PANEL -->
       <div id="subpanel-materials" class="manage-tab-content" hidden>
         
+        <!-- TOP: ARCHIVED MATERIALS (Collapsible) -->
+        {% if archived_materials %}
+          <details class="creation-card" style="margin-bottom: 1.5rem; border-color: #d1d5db; background: #f9fafb;">
+            <summary class="creation-card-header" style="color: #4b5563;">
+              <span style="align-items: center; display: flex; gap: 8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 8v13H3V8"/>
+                  <path d="M1 3h22v5H1z"/>
+                  <path d="M10 12h4"/>
+                </svg>
+                Archived Materials <span class="cc-count" style="background: #e5e7eb; color: #374151;">{{ archived_materials|length }}</span>
+              </span>
+              <svg class="chevron" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </summary>
+            <div class="creation-card-body" style="padding-top: 1rem;">
+              <div class="cc-card" style="box-shadow: none; border: none; padding: 0;">
+                <ul class="cc-files">
+                  {% for m in archived_materials %}
+                    <li class="cc-file" id="material-{{ m.pk }}">
+                      <span class="cc-ext cc-ext--{{ m.original_name|file_kind }}" aria-hidden="true">{{ m.original_name|file_ext }}</span>
+                      <div class="cc-file__main">
+                        <span class="cc-file__name">
+                          {{ m.title }}
+                          <span class="cc-badge" style="background: #f3f4f6; color: #4b5563; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 6px;">Archived</span>
+                        </span>
+                        <span class="cc-file__meta">{{ m.size|filesizeformat }} · Posted {{ m.created_at|date:"M j" }}</span>
+                      </div>
+
+                      <!-- Restore Material -->
+                      <form method="post" action="{% url 'course:restore_material' course.pk m.pk %}">
+                        {% csrf_token %}
+                        <button type="submit" class="course-btn secondary" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;" aria-label="Restore {{ m.title }}">Restore</button>
+                      </form>
+
+                      <!-- Permanent Delete Material -->
+                      <form method="post" action="{% url 'course:delete_material' course.pk m.pk %}" data-confirm="Permanently delete {{ m.title }}? The file will be removed from disk.">
+                        {% csrf_token %}
+                        <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete {{ m.title }} permanently" title="Delete permanently">
+                          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                      </form>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </div>
+            </div>
+          </details>
+        {% endif %}
+
         <!-- Collapsible Material Form -->
         <details class="creation-card">
           <summary class="creation-card-header">
-            <span style="align-items: center;display: flex;gap: 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-  <circle cx="12" cy="12" r="10"/>
-  <path d="M8 12h8"/>
-  <path d="M12 8v8"/>
-</svg>
- Upload New Material</span>
+            <span style="align-items: center; display: flex; gap: 8px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M8 12h8"/>
+                <path d="M12 8v8"/>
+              </svg>
+              Upload New Material
+            </span>
             <svg class="chevron" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </summary>
           <div class="creation-card-body">
@@ -249,6 +324,7 @@
           </div>
         </details>
 
+        <!-- Active Materials List -->
         <div class="cc-section">
           <h2 class="cc-section-title">Manage materials <span class="cc-count">{{ material_count }}</span></h2>
           {% for g in topic_groups %}
@@ -262,15 +338,23 @@
                       <span class="cc-file__name">{{ m.title }}</span>
                       <span class="cc-file__meta">{{ m.size|filesizeformat }} · Posted {{ m.created_at|date:"M j" }}</span>
                     </div>
-                    <button type="button" class="cc-icon-btn" data-edit-toggle="edit-{{ m.pk }}" aria-label="Edit {{ m.title }}">
+
+                    <!-- Edit Toggle -->
+                    <button type="button" class="cc-icon-btn" data-edit-toggle="edit-{{ m.pk }}" aria-label="Edit {{ m.title }}" title="Edit">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </button>
-                    <form method="post" action="{% url 'course:delete_material' course.pk m.pk %}" data-confirm="Delete {{ m.title }}? The file will be removed.">
+
+                    <!-- Archive Material -->
+                    <form method="post" action="{% url 'course:archive_material' course.pk m.pk %}" data-confirm="Archive {{ m.title }}?">
                       {% csrf_token %}
-                      <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete {{ m.title }}">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                      <button type="submit" class="cc-icon-btn" aria-label="Archive {{ m.title }}" title="Archive">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path fill="currentColor" d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12.14l.81 1H5.12z"/>
+                        </svg>
                       </button>
                     </form>
+
+                    <!-- Hidden Edit Form -->
                     <form class="cc-edit" id="edit-{{ m.pk }}" method="post" action="{% url 'course:edit_material' course.pk m.pk %}" hidden>
                       {% csrf_token %}
                       <div>
@@ -301,58 +385,57 @@
 
     </section>
   {% endif %}
+
   {# ---- Settings: class owner only ---- #}
-{% if can_manage %}
-  <section class="cc-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
-    <div class="cc-section">
-      <h2 class="cc-section-title">Teaching assistants <span class="cc-count">{{ ta_ids|length }}</span></h2>
-      <p class="cc-hint">A TA can post announcements and manage materials. Assigning a student as TA automatically enrolls them if they are not already in the class.</p>
+  {% if can_manage %}
+    <section class="cc-panel" id="panel-settings" role="tabpanel" aria-labelledby="tab-settings" hidden>
+      <div class="cc-section">
+        <h2 class="cc-section-title">Teaching assistants <span class="cc-count">{{ ta_ids|length }}</span></h2>
+        <p class="cc-hint">A TA can post announcements and manage materials. Assigning a student as TA automatically enrolls them if they are not already in the class.</p>
 
-      <!-- NISIT ID INPUT FORM -->
-      <div class="cc-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
-        <form method="post" action="{% url 'course:ta_assign_form' course.pk %}" style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
-          {% csrf_token %}
-          <div style="flex: 1; min-width: 240px;">
-            <label for="student_id_input" style="display: block; font-weight: 600; margin-bottom: 0.25rem; font-size: 0.9rem;">Assign TA by Student ID (Nisit ID)</label>
-            <input type="text" 
-                   id="student_id_input" 
-                   name="student_id" 
-                   placeholder="e.g. 6610540001" 
-                   required 
-                   style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit;">
-          </div>
-          <button type="submit" class="course-btn">Assign as TA</button>
-        </form>
-      </div>
+        <!-- NISIT ID INPUT FORM -->
+        <div class="cc-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+          <form method="post" action="{% url 'course:ta_assign_form' course.pk %}" style="display: flex; gap: 0.75rem; align-items: flex-end; flex-wrap: wrap;">
+            {% csrf_token %}
+            <div style="flex: 1; min-width: 240px;">
+              <label for="student_id_input" style="display: block; font-weight: 600; margin-bottom: 0.25rem; font-size: 0.9rem;">Assign TA by Student ID (Nisit ID)</label>
+              <input type="text" 
+                     id="student_id_input" 
+                     name="student_id" 
+                     placeholder="e.g. 6610540001" 
+                     required 
+                     style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 4px; font-family: inherit;">
+            </div>
+            <button type="submit" class="course-btn">Assign as TA</button>
+          </form>
+        </div>
 
-      <!-- CURRENT ASSIGNED TAs LIST -->
-      <div class="cc-card">
-        <ul class="cc-files">
-          {% for e in enrollments %}
-            {% if e.student_id in ta_ids %}
-              <li class="cc-file">
-                <div class="cc-file__main">
-                  <span class="cc-file__name">{{ e.student.get_full_name }} <span class="cc-role cc-role--ta">TA</span></span>
-                  <span class="cc-file__meta">{{ e.student_id }}</span>
-                </div>
-                <form method="post" action="{% url 'course:ta_remove' course.pk e.student_id %}" data-confirm="Remove {{ e.student.get_full_name }} as TA?">
-                  {% csrf_token %}
-                  <button type="submit" class="course-btn secondary">Remove TA</button>
-                </form>
-              </li>
-            {% endif %}
-          {% empty %}
-            <li class="cc-empty">No TAs assigned yet.</li>
-          {% endfor %}
-        </ul>
+        <!-- CURRENT ASSIGNED TAs LIST -->
+        <div class="cc-card">
+          <ul class="cc-files">
+            {% for e in enrollments %}
+              {% if e.student_id in ta_ids %}
+                <li class="cc-file">
+                  <div class="cc-file__main">
+                    <span class="cc-file__name">{{ e.student.get_full_name }} <span class="cc-role cc-role--ta">TA</span></span>
+                    <span class="cc-file__meta">{{ e.student_id }}</span>
+                  </div>
+                  <form method="post" action="{% url 'course:ta_remove' course.pk e.student_id %}" data-confirm="Remove {{ e.student.get_full_name }} as TA?">
+                    {% csrf_token %}
+                    <button type="submit" class="course-btn secondary">Remove TA</button>
+                  </form>
+                </li>
+              {% endif %}
+            {% empty %}
+              <li class="cc-empty">No TAs assigned yet.</li>
+            {% endfor %}
+          </ul>
+        </div>
       </div>
-    </div>
-  </section>
-{% endif %}
+    </section>
+  {% endif %}
 
 </div>
-
-
 
 <script src="{% static 'course/course-tabs.js' %}" defer></script>
 <script src="{% static 'course/course-qa.js' %}" defer></script>

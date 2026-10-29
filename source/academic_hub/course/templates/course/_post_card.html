@@ -1,6 +1,6 @@
 {% load course_extras %}
 
-<article class="cc-post-card" id="post-{{ post.pk }}" {% if post.deadline %}data-deadline-time="{{ post.deadline|date:'c' }}"{% endif %}>
+<article class="cc-post-card {% if post.archived_at %}cc-post-card--archived{% endif %}" id="post-{{ post.pk }}" {% if post.deadline %}data-deadline-time="{{ post.deadline|date:'c' }}"{% endif %}>
   <header class="cc-post__header">
     <div class="cc-post__author-block">
       <span class="cc-avatar" aria-hidden="true">
@@ -15,6 +15,12 @@
             <span class="cc-role">Department</span>
           {% elif post.author %}
             <span class="cc-role cc-role--ta">TA</span>
+          {% endif %}
+
+          {% if post.archived_at %}
+            <span class="cc-badge cc-badge--archived" style="background: #f3f4f6; color: #4b5563; padding: 2px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; margin-left: 4px;">
+              Archived
+            </span>
           {% endif %}
         </div>
 
@@ -33,31 +39,55 @@
       </div>
     </div>
 
-    {% if manage and can_delete_any or manage and post.author_id == request.user.pk %}
-      <div class="cc-post__actions" style="display: flex; gap: 0.5rem; align-items: center;">
-        
-        <!-- EDIT BUTTON -->
-              <button type="button" class="cc-icon-btn" aria-label="Edit announcement" data-post-edit>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-          </svg>
-        </button>
+    {% if manage %}
+      {% if can_delete_any or post.author_id == request.user.pk %}
+        <div class="cc-post__actions" style="display: flex; gap: 0.5rem; align-items: center;">
+          
+          {% if post.archived_at %}
+            <!-- PHASE 2: RESTORE BUTTON -->
+            <form method="post" action="{% url 'course:restore_post' course.pk post.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="course-btn secondary" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;" aria-label="Restore announcement">
+                Restore
+              </button>
+            </form>
 
-        <!-- DELETE BUTTON -->
-        <form method="post" action="{% url 'course:delete_post' course.pk post.pk %}" data-confirm="Delete this announcement? Its attachments will be removed too.">
-          {% csrf_token %}
-          <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete announcement">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-            </svg>
-          </button>
-        </form>
-      </div>
+            <!-- PHASE 2: PERMANENT DELETE BUTTON -->
+            <form method="post" action="{% url 'course:delete_post' course.pk post.pk %}" data-confirm="Permanently delete this announcement? Its attachments will be removed too.">
+              {% csrf_token %}
+              <button type="submit" class="cc-icon-btn cc-icon-btn--danger" aria-label="Delete announcement permanently" title="Delete permanently">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                </svg>
+              </button>
+            </form>
+
+          {% else %}
+            <!-- PHASE 1: EDIT BUTTON -->
+            <button type="button" class="cc-icon-btn" aria-label="Edit announcement" data-post-edit title="Edit">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+              </svg>
+            </button>
+
+            <!-- PHASE 1: ARCHIVE BUTTON -->
+            <form method="post" action="{% url 'course:archive_post' course.pk post.pk %}" data-confirm="Archive this announcement?">
+              {% csrf_token %}
+              <button type="submit" class="cc-icon-btn" aria-label="Archive announcement" title="Archive">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M20.54 5.23l-1.39-1.68C18.88 3.21 18.47 3 18 3H6c-.47 0-.88.21-1.16.55L3.46 5.23C3.17 5.57 3 6.02 3 6.5V19c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6.5c0-.48-.17-.93-.46-1.27zM12 17.5L6.5 12H10v-2h4v2h3.5L12 17.5zM5.12 5l.81-1h12.14l.81 1H5.12z"/>
+                </svg>
+              </button>
+            </form>
+          {% endif %}
+
+        </div>
+      {% endif %}
     {% endif %}
   </header>
 
   <!-- POST DISPLAY CONTENT -->
-     <div class="cc-post__content" data-post-display>
+  <div class="cc-post__content" data-post-display>
     {% if post.title %}
       <h3 class="cc-post__title">{{ post.title }}</h3>
     {% endif %}
@@ -85,71 +115,75 @@
   </div>
 
   <!-- HIDDEN EDIT FORM -->
-  {% if manage and can_delete_any or manage and post.author_id == request.user.pk %}
-    <form action="{% url 'course:edit_post' pk=course.pk post_id=post.pk %}" method="post" enctype="multipart/form-data" data-post-editform hidden style="padding: 0 1.25rem 1.25rem 1.25rem; margin-top: 1rem;">
-      {% csrf_token %}
-      
-      <div style="margin-bottom: 1rem;">
-        <label for="id_title_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Title</label>
-        <input type="text" id="id_title_{{ post.pk }}" name="title" value="{{ post.title }}" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px;">
-      </div>
-      
-      <div style="margin-bottom: 1rem;">
-        <label for="id_body_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Message</label>
-        <textarea id="id_body_{{ post.pk }}" name="body" rows="4" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical;">{{ post.body }}</textarea>
-      </div>
-      
-      <div style="margin-bottom: 1rem;">
-        <label for="id_deadline_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Deadline <span style="font-weight: 400; color: #6b7280;">(optional)</span></label>
-        <input type="datetime-local" id="id_deadline_{{ post.pk }}" name="deadline" 
-               value="{% if post.deadline %}{{ post.deadline|date:'Y-m-d\TH:i' }}{% endif %}" 
-               style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit;">
-      </div>
-
-      <!-- FILE ATTACHMENT EDIT SECTION -->
-      {% with files=post.attachments.all %}
-        <div style="margin-bottom: 1.25rem;">
-          <label style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.35rem;">
-            Attachment
-          </label>
-
-          {% if files %}
-            {% for att in files %}
-              <div class="cc-attachment-edit-wrapper" data-attachment-container style="margin-bottom: 10px;">
-                <input type="hidden" name="remove_attachment" value="false" data-remove-attachment-input>
-                <div class="cc-chip cc-chip--edit">
-                  <span class="cc-ext cc-ext--{{ att.original_name|file_kind }}" aria-hidden="true">{{ att.original_name|file_ext }}</span>
-                  <div class="cc-chip__main">
-                    <span class="cc-chip__name">{{ att.original_name|default:"Attachment" }}</span>
-                    <span class="cc-chip__size">{{ att.size|filesizeformat }}</span>
-                  </div>
-                  <button type="button" class="cc-chip__remove" data-remove-attachment-btn aria-label="Remove attachment" title="Remove attachment">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <line x1="18" y1="6" x2="6" y2="18"></line>
-                      <line x1="6" y1="6" x2="18" y2="18"></line>
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            {% endfor %}
-          {% endif %}
-
-          <div class="cc-field" data-file-picker {% if files %}hidden{% endif %}>
-            <div class="cc-filebox">
-              <label class="cc-pick" for="id_attachment_{{ post.pk }}">Choose file</label>
-              <input type="file" id="id_attachment_{{ post.pk }}" name="attachment" data-file-input>
-              <span class="cc-names" data-file-names>No file chosen</span>
-            </div>
-            <p class="cc-hint" style="margin-top: 6px;">Select a new file to replace or attach. Up to 50 MB.</p>
+  {% if not post.archived_at %}
+    {% if manage %}
+      {% if can_delete_any or post.author_id == request.user.pk %}
+        <form action="{% url 'course:edit_post' pk=course.pk post_id=post.pk %}" method="post" enctype="multipart/form-data" data-post-editform hidden style="padding: 0 1.25rem 1.25rem 1.25rem; margin-top: 1rem;">
+          {% csrf_token %}
+          
+          <div style="margin-bottom: 1rem;">
+            <label for="id_title_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Title</label>
+            <input type="text" id="id_title_{{ post.pk }}" name="title" value="{{ post.title }}" required style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px;">
           </div>
-        </div>
-      {% endwith %}
-      
-      <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-        <button type="submit" class="course-btn">Save Changes</button>
-        <button type="button" class="course-btn secondary" data-post-edit-cancel>Cancel</button>
-      </div>
-    </form>
+          
+          <div style="margin-bottom: 1rem;">
+            <label for="id_body_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Message</label>
+            <textarea id="id_body_{{ post.pk }}" name="body" rows="4" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; resize: vertical;">{{ post.body }}</textarea>
+          </div>
+          
+          <div style="margin-bottom: 1rem;">
+            <label for="id_deadline_{{ post.pk }}" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.25rem;">Deadline <span style="font-weight: 400; color: #6b7280;">(optional)</span></label>
+            <input type="datetime-local" id="id_deadline_{{ post.pk }}" name="deadline" 
+                   value="{% if post.deadline %}{{ post.deadline|date:'Y-m-d\TH:i' }}{% endif %}" 
+                   style="padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit;">
+          </div>
+
+          <!-- FILE ATTACHMENT EDIT SECTION -->
+          {% with files=post.attachments.all %}
+            <div style="margin-bottom: 1.25rem;">
+              <label style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.35rem;">
+                Attachment
+              </label>
+
+              {% if files %}
+                {% for att in files %}
+                  <div class="cc-attachment-edit-wrapper" data-attachment-container style="margin-bottom: 10px;">
+                    <input type="hidden" name="remove_attachment" value="false" data-remove-attachment-input>
+                    <div class="cc-chip cc-chip--edit">
+                      <span class="cc-ext cc-ext--{{ att.original_name|file_kind }}" aria-hidden="true">{{ att.original_name|file_ext }}</span>
+                      <div class="cc-chip__main">
+                        <span class="cc-chip__name">{{ att.original_name|default:"Attachment" }}</span>
+                        <span class="cc-chip__size">{{ att.size|filesizeformat }}</span>
+                      </div>
+                      <button type="button" class="cc-chip__remove" data-remove-attachment-btn aria-label="Remove attachment" title="Remove attachment">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                          <line x1="18" y1="6" x2="6" y2="18"></line>
+                          <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                {% endfor %}
+              {% endif %}
+
+              <div class="cc-field" data-file-picker {% if files %}hidden{% endif %}>
+                <div class="cc-filebox">
+                  <label class="cc-pick" for="id_attachment_{{ post.pk }}">Choose file</label>
+                  <input type="file" id="id_attachment_{{ post.pk }}" name="attachment" data-file-input>
+                  <span class="cc-names" data-file-names>No file chosen</span>
+                </div>
+                <p class="cc-hint" style="margin-top: 6px;">Select a new file to replace or attach. Up to 50 MB.</p>
+              </div>
+            </div>
+          {% endwith %}
+          
+          <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+            <button type="submit" class="course-btn">Save Changes</button>
+            <button type="button" class="course-btn secondary" data-post-edit-cancel>Cancel</button>
+          </div>
+        </form>
+      {% endif %}
+    {% endif %}
   {% endif %}
 
 </article>
