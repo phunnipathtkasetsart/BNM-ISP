@@ -1,0 +1,35 @@
+{% comment %}
+The right side of the top bar, shared by every signed-in page so the menu
+cannot drift between them. A <details> element rather than a hover menu:
+it opens on tap as well as click, works from the keyboard, and still works
+with JavaScript off. base.html only adds closing on Escape and on a click
+outside it.
+{% endcomment %}
+<div class="topbar__right">
+  {% if request.user.is_authenticated %}
+    {% if guest_expires_at %}
+      <span class="guestclock" data-expires="{{ guest_expires_at }}"
+            title="Your guest session ends then">&mdash;</span>
+    {% endif %}
+    <details class="acctmenu">
+      <summary class="acctmenu__btn">
+        <span class="sr-only">Account menu:</span>
+        <span class="topbar__role">{% if request.session.is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
+      </summary>
+      <div class="acctmenu__panel">
+        {# On phones the button shrinks to a menu icon, so the role moves in here. #}
+        <p class="acctmenu__who" aria-hidden="true">Signed in as <strong>{% if request.session.is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</strong></p>
+        <a class="acctmenu__item" href="{% url 'announcements:public_board' %}">Board</a>
+        {% if request.user.is_superuser %}
+          <a class="acctmenu__item" href="{% url 'accounts:roles' %}">Manage roles</a>
+        {% endif %}
+        <form method="post" action="{% url 'accounts:logout' %}" class="acctmenu__form">
+          {% csrf_token %}
+          <button type="submit" class="acctmenu__item acctmenu__item--logout">Log out</button>
+        </form>
+      </div>
+    </details>
+  {% else %}
+    <a class="topbar__link" href="{% url 'accounts:login' %}">Sign in</a>
+  {% endif %}
+</div>

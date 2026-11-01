@@ -14,29 +14,14 @@
 {% endblock %}
 
 {% block topbar_right %}
-  <!-- Mobile Hamburger Toggle Button -->
-  <button type="button" class="topbar__toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
-    <span class="topbar__hamburger"></span>
-  </button>
-
-  <div class="topbar__right" id="nav-menu">
-    <span class="topbar__role">
-      {% if request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}
-    </span>
-    {% if request.user.is_superuser %}
-      <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
-    {% endif %}
-    <form method="post" action="{% url 'accounts:logout' %}">
-      {% csrf_token %}
-      <button class="topbar__logout" type="submit">Log out</button>
-    </form>
-  </div>
+  {% include "accounts/_account_menu.html" %}
 {% endblock %}
 
 {% block content %}
 <nav class="subnav" aria-label="Sections">
   <a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a>
   <a class="subnav__tab subnav__tab--on" href="{% url 'course:dashboard' %}" aria-current="page">Course</a>
+  <a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>
 </nav>
 
 {% block before_course_shell %}{% endblock %}

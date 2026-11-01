@@ -1,6 +1,8 @@
 {# Static placeholders only: no assignment, messaging, forum or group integration. #}
 <aside class="course-sidebar" aria-label="Course tools preview">
-  <div class="course-sidebar__label"><span>COURSE TOOLS</span></div>
+  <details class="course-sidebar__fold" open data-fold-mobile>
+  <summary class="course-sidebar__label"><span>COURSE TOOLS</span></summary>
+  <div class="course-sidebar__body">
   <section class="course-tool" aria-labelledby="tool-deadlines">
     <header class="course-tool__header"><span class="course-tool__icon" aria-hidden="true">▦</span><h2 id="tool-deadlines">Upcoming deadlines</h2></header>
     <div class="course-tool__body">
@@ -33,4 +35,6 @@
     <div class="course-tool__body"><p class="course-tool__empty">Find classmates and project groups here.</p><div class="course-tool__skeleton" aria-hidden="true"><span></span><span></span></div></div>
   </section>
   <p class="course-sidebar__note">Group gathering · Coming soon.</p>
+  </div>
+  </details>
 </aside>
