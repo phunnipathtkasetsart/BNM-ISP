@@ -205,3 +205,15 @@ def restore_material(material):
     material.archived_at = None
     material.archived_by = None
     material.save(update_fields=["archived_at", "archived_by", "updated_at"])
+
+def archive_course(course, user):
+    """Mark a course as archived."""
+    course.archived_at = timezone.now()
+    course.archived_by = user
+    course.save(update_fields=["archived_at", "archived_by"])
+
+def restore_course(course):
+    """Restore an archived course to active state."""
+    course.archived_at = None
+    course.archived_by = None
+    course.save(update_fields=["archived_at", "archived_by"])

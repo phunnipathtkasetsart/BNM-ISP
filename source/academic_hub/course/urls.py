@@ -73,4 +73,13 @@ urlpatterns = [
     path("api/<int:pk>/questions/<int:question_id>/answers/<int:answer_id>/archive/", views.qa_answer_archive, name="api_qa_answer_archive"),
     path("api/<int:pk>/questions/<int:question_id>/answers/<int:answer_id>/restore/", views.qa_answer_restore, name="api_qa_answer_restore"),
     path("api/<int:pk>/questions/<int:question_id>/answers/<int:answer_id>/verify/", views.qa_answer_verify, name="api_qa_answer_verify"),
+
+    # Course Archive & Restore routes
+    path("<int:pk>/archive/", views.archive_course_view, name="archive_course"),
+    path("<int:pk>/restore/", views.restore_course_view, name="restore_course"),
+
+    # API Course Archive & Restore routes
+    path("api/<int:pk>/archive/", views.archive_course_view, name="api_archive_course"),
+    path("api/<int:pk>/restore/", views.restore_course_view, name="api_restore_course"),
+
 ]

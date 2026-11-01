@@ -29,7 +29,8 @@ from .models import (
 from .permissions import can_teach, course_access, visible_courses
 from .services import (add_materials, add_students, assign_ta, create_course,
                        create_course_answer, create_course_question,
-                       get_or_create_topic, remove_ta, update_course,archive_post, restore_post, archive_material, restore_material)
+                       get_or_create_topic, remove_ta, update_course,archive_post,
+                      restore_post, archive_material, restore_material, archive_course, restore_course)
 
 
 # api_request คืน boolean ว่า path เริ่ม /course/api/ หรือไม่ ฟังก์ชันนี้ใช้เลือกรูปแบบ response
@@ -90,20 +91,24 @@ def form_error(request, form, title, *, course=None, template="course/form.html"
 
 # dashboard ใช้ course_access() ตรวจ login/active/guest และรับเฉพาะ GET เมื่อมีคำขอเข้ามา wrapper
 # ด้านนอกตรวจสิทธิ์ก่อนตัวจำกัด method
+# Iteration 5 , adding archive feature to dashboard view, filtering courses based on archived status and user permissions.
 @course_access()
 @require_http_methods(["GET"])
 def dashboard(request):
     query = request.GET.get("q", "").strip()
-    courses = visible_courses(request.user).select_related("owner")
+    all_courses = visible_courses(request.user).select_related("owner")
 
-    # Admin-only search filter
     if request.user.is_superuser and query:
-        courses = courses.filter(
+        all_courses = all_courses.filter(
             Q(name__icontains=query) |
             Q(section__icontains=query) |
             Q(owner__first_name__icontains=query) |
             Q(owner__last_name__icontains=query)
         ).distinct()
+
+    # Separate active vs. archived courses
+    courses = all_courses.filter(archived_at__isnull=True)
+    archived_courses = all_courses.filter(archived_at__isnull=False) if can_teach(request.user) else []
 
     ta_course_ids = set(
         CourseTA.objects.filter(user=request.user).values_list("course_id", flat=True)
@@ -113,6 +118,7 @@ def dashboard(request):
     upcoming_deadlines = (
         CoursePost.objects.filter(
             course__in=courses,
+            archived_at__isnull=True,
             deadline__isnull=False,
             deadline__gte=now,
             deadline__lte=now + timedelta(days=7)
@@ -122,14 +128,18 @@ def dashboard(request):
     )
 
     if api_request(request):
-        return JsonResponse({"courses": [course_data(c, request.user) for c in courses]})
+        return JsonResponse({
+            "courses": [course_data(c, request.user) for c in courses],
+            "archived_courses": [course_data(c, request.user) for c in archived_courses],
+        })
 
     return render(
         request,
         "course/dashboard.html",
         {
             "courses": courses,
-            "query": query,  # Passed to retain search value in input
+            "archived_courses": archived_courses,
+            "query": query,
             "can_create": can_teach(request.user),
             "can_join": not request.user.is_staff and not request.user.is_superuser,
             "ta_course_ids": ta_course_ids,
@@ -139,6 +149,25 @@ def dashboard(request):
         },
     )
 
+# --- Course Archive & Restore Views ---
+
+@course_access(owner=True)
+@require_POST
+def archive_course_view(request, pk):
+    archive_course(request.course, request.user)
+    if api_request(request):
+        return JsonResponse({"archived": True})
+    messages.success(request, "Class archived successfully.")
+    return redirect("course:dashboard")
+
+@course_access(owner=True)
+@require_POST
+def restore_course_view(request, pk):
+    restore_course(request.course)
+    if api_request(request):
+        return JsonResponse({"restored": True})
+    messages.success(request, "Class restored successfully.")
+    return redirect("course:detail", pk=pk)
 
 # create อนุญาตผู้สอน รับ GET สำหรับแสดงฟอร์ม และ POST สำหรับส่งข้อมูล
 @course_access(lecturer=True)

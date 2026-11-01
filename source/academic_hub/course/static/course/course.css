@@ -929,3 +929,65 @@
   .course-detail-layout > .course-sidebar { order: -1; padding: 14px 16px; }
   .course-sidebar__fold > summary { min-height: 32px; }
 }
+
+
+
+/* Archived Collapsible Component */
+details.archived-card {
+  background-color: #eff6f3;
+  border: 1px solid #dcebe4;
+  border-radius: 12px;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+details.archived-card summary.archived-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1.25rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  color: #374151;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Hide native browser details triangle arrow */
+details.archived-card summary.archived-card-header::-webkit-details-marker,
+details.archived-card summary.archived-card-header::marker {
+  display: none !important;
+}
+
+.archived-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.archived-card-count {
+  background-color: #dbe7e2;
+  color: #374151;
+  padding: 2px 9px;
+  border-radius: 9999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.archived-card-chevron {
+  transition: transform 0.2s ease;
+  color: #4b5563;
+  flex-shrink: 0;
+}
+
+details.archived-card[open] .archived-card-chevron {
+  transform: rotate(180deg);
+}
+
+details.archived-card .archived-card-body {
+  padding: 1.25rem;
+  border-top: 1px solid #dcebe4;
+  background-color: #ffffff;
+}

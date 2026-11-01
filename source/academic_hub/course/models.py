@@ -14,6 +14,8 @@ def generate_class_code():
     return "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
 
 
+
+# Adding archive fields to the Course model.
 class Course(models.Model):
     name = models.CharField(max_length=120)
     section = models.CharField(max_length=20, blank=True, default="")
@@ -22,6 +24,13 @@ class Course(models.Model):
     class_code = models.CharField(max_length=6, unique=True, default=generate_class_code,
                                   editable=False, validators=[RegexValidator(r"^[A-Z0-9]{6}$")])
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Soft-delete / Archive fields
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-created_at", "-pk"]
