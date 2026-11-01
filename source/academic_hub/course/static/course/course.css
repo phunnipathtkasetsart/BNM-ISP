@@ -933,7 +933,7 @@
 
 
 /* Archived Collapsible Component */
-details.archived-card {
+details.archived-card-class {
   background-color: #eff6f3;
   border: 1px solid #dcebe4;
   border-radius: 12px;
@@ -941,7 +941,7 @@ details.archived-card {
   overflow: hidden;
 }
 
-details.archived-card summary.archived-card-header {
+details.archived-card-class summary.archived-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -955,8 +955,8 @@ details.archived-card summary.archived-card-header {
 }
 
 /* Hide native browser details triangle arrow */
-details.archived-card summary.archived-card-header::-webkit-details-marker,
-details.archived-card summary.archived-card-header::marker {
+details.archived-card-class summary.archived-card-header::-webkit-details-marker,
+details.archived-card-class summary.archived-card-header::marker {
   display: none !important;
 }
 
@@ -982,11 +982,11 @@ details.archived-card summary.archived-card-header::marker {
   flex-shrink: 0;
 }
 
-details.archived-card[open] .archived-card-chevron {
+details.archived-card-class[open] .archived-card-chevron {
   transform: rotate(180deg);
 }
 
-details.archived-card .archived-card-body {
+details.archived-card-class .archived-card-body {
   padding: 1.25rem;
   border-top: 1px solid #dcebe4;
   background-color: #ffffff;
