@@ -1,4 +1,7 @@
 # json ใช้แปลง request body ที่เป็น JSON ให้เป็นข้อมูล Python
+import os
+
+
 import json
 from datetime import timedelta
 from functools import wraps
@@ -422,9 +425,11 @@ def create_post(request, pk):
             return JsonResponse({"errors": form.errors.get_json_data()}, status=400)
         return render(request, "course/detail.html", detail_context(request, post_form=form), status=400)
 
-    # Validate topic outside atomic transaction to avoid orphaned files on 404
+    uploads = form.cleaned_data.get("attachment") or []
+
+    # Validate topic outside atomic transaction
     existing_topic = None
-    if form.cleaned_data.get("attachment") and form.cleaned_data.get("add_to_materials"):
+    if uploads and form.cleaned_data.get("add_to_materials"):
         choice = form.cleaned_data["topic"]
         if choice != MaterialUploadForm.NEW_TOPIC:
             existing_topic = get_object_or_404(request.course.topics, pk=choice)
@@ -435,16 +440,19 @@ def create_post(request, pk):
         post.author = request.user
         post.save()
 
-        upload = form.cleaned_data.get("attachment")
-        if upload:
-            attachment = PostAttachment.objects.create(post=post, file=upload)
+        if uploads:
+            topic = None
             if form.cleaned_data.get("add_to_materials"):
                 topic = existing_topic or get_or_create_topic(request.course, form.cleaned_data["new_topic"])
-                Material.objects.create(
-                    course=request.course, topic=topic, created_by=request.user,
-                    title=attachment.original_name[:150], file=attachment.file.name,
-                    original_name=attachment.original_name, size=attachment.size
-                )
+
+            for upload in uploads:
+                attachment = PostAttachment.objects.create(post=post, file=upload)
+                if topic:
+                    Material.objects.create(
+                        course=request.course, topic=topic, created_by=request.user,
+                        title=attachment.original_name[:150], file=attachment.file.name,
+                        original_name=attachment.original_name, size=attachment.size
+                    )
 
     if api_request(request):
         return JsonResponse({"id": post.pk, "title": post.title}, status=201)
@@ -468,12 +476,15 @@ def delete_post(request, pk, post_id):
 
 
 def file_download(attachment):
-    """
-    Helper function to safely stream an attachment file.
-    """
+    """Safely stream an attachment or material file with correct filename & extension."""
     try:
-        # Obtain original filename safely
-        filename = getattr(attachment, 'original_name', None) or getattr(attachment, 'name', None) or 'attachment'
+        filename = (
+            getattr(attachment, 'display_name', '').strip()
+            or getattr(attachment, 'original_name', '').strip()
+            or getattr(attachment, 'title', '').strip()
+            or (os.path.basename(attachment.file.name) if attachment.file and attachment.file.name else '')
+            or 'attachment'
+        )
         
         return FileResponse(
             attachment.file.open('rb'),
@@ -575,25 +586,25 @@ def edit_post(request, pk, post_id):
                 post = form.save()
 
                 remove_att = form.cleaned_data.get("remove_attachment") or request.POST.get("remove_attachment") == "true"
-                new_upload = form.cleaned_data.get("attachment")
+                new_uploads = form.cleaned_data.get("attachment") or []
 
-                # If removing attachment or uploading a replacement, delete old attachment(s)
-                if remove_att or new_upload:
+                # If removing attachments or uploading replacements, delete existing attachment(s)
+                if remove_att or new_uploads:
                     for att in post.attachments.all():
                         att.delete()
 
-                # If a new file was uploaded, attach it
-                if new_upload:
-                    attachment = PostAttachment.objects.create(post=post, file=new_upload)
+                # If new file(s) were uploaded, attach all of them
+                if new_uploads:
+                    choice = form.cleaned_data.get("topic")
+                    topic = None
                     if form.cleaned_data.get("add_to_materials"):
-                        choice = form.cleaned_data.get("topic")
                         if choice == MaterialUploadForm.NEW_TOPIC:
                             topic = get_or_create_topic(request.course, form.cleaned_data.get("new_topic"))
                         elif choice:
                             topic = get_object_or_404(request.course.topics, pk=choice)
-                        else:
-                            topic = None
 
+                    for upload in new_uploads:
+                        attachment = PostAttachment.objects.create(post=post, file=upload)
                         if topic:
                             Material.objects.create(
                                 course=request.course, topic=topic, created_by=request.user,

@@ -137,7 +137,7 @@
             <svg class="chevron" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </summary>
           <div class="creation-card-body">
-            <form class="cc-form" action="{% url 'course:create_post' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose data-max-mb="50">
+            <form class="cc-form" action="{% url 'course:create_post' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose>
               {% csrf_token %}
               {% if post_form.errors %}
                 <div class="errorlist" role="alert">
@@ -164,7 +164,7 @@
                   {{ post_form.attachment }}
                   <span class="cc-names" data-file-names>No file chosen</span>
                 </div>
-                <p class="cc-hint">Students download it from the announcement. Up to 50 MB.</p>
+                <p class="cc-hint">Students download it from the announcement. Up to 25 MB.</p>
                 <p class="cc-error" data-file-error role="alert" hidden></p>
               </div>
 
@@ -217,7 +217,7 @@
             <svg class="chevron" viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
           </summary>
           <div class="creation-card-body">
-            <form class="cc-form" action="{% url 'course:upload_materials' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose data-max-mb="50">
+            <form class="cc-form" action="{% url 'course:upload_materials' course.pk %}" method="post" enctype="multipart/form-data" data-cc-compose>
               {% csrf_token %}
               {% if material_form.errors %}
                 <div class="errorlist" role="alert">
@@ -239,7 +239,7 @@
                   {{ material_form.files }}
                   <span class="cc-names" data-file-names>No file chosen</span>
                 </div>
-                <p class="cc-hint">Select one or more files. Up to 50 MB each.</p>
+                <p class="cc-hint">Select one or more files. Up to 25 mb in total.</p>
                 <p class="cc-error" data-file-error role="alert" hidden></p>
               </div>
               <div class="cc-form__actions">

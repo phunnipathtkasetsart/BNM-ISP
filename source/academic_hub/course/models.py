@@ -7,7 +7,7 @@ from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.functions import Lower, Trim
 
-from .validators import validate_upload_size
+from .validators import validate_upload_size, validate_file_security
 
 def generate_class_code():
     # O/0 and I/1 are omitted so codes are easier to read aloud.
@@ -57,10 +57,13 @@ def course_upload_path(instance, filename):
     return f"course_files/{instance.course_id}/{uuid.uuid4().hex}{extension}"
 
 
+
 class StoredFile(models.Model):
-    """Shared fields for an uploaded file; subclasses must provide ``course``."""
-    file = models.FileField(upload_to=course_upload_path, max_length=255,
-                            validators=[validate_upload_size])
+    file = models.FileField(
+        upload_to=course_upload_path, 
+        max_length=255,
+        validators=[validate_upload_size, validate_file_security]
+    )
     original_name = models.CharField(max_length=255, blank=True, editable=False)
     size = models.PositiveBigIntegerField(default=0, editable=False)
 
@@ -68,13 +71,38 @@ class StoredFile(models.Model):
         abstract = True
 
     def save(self, *args, **kwargs):
-        # A fresh upload still carries the browser's file name here; after
-        # super().save() it has been replaced by the random storage path.
-        if self.file and not self.original_name:
-            self.original_name = os.path.basename(self.file.name)[:255]
-        if self.file and not self.size:
-            self.size = self.file.size
+        if self.file:
+            # Capture original filename from upload object before save
+            if not self.original_name and hasattr(self.file, 'name') and self.file.name:
+                self.original_name = os.path.basename(self.file.name)[:255]
+            # Capture file size
+            if not self.size:
+                try:
+                    self.size = self.file.size
+                except (AttributeError, OSError, ValueError):
+                    pass
         super().save(*args, **kwargs)
+
+    @property
+    def display_name(self):
+        """Returns original filename, or falls back to storage filename with extension."""
+        if self.original_name and self.original_name.strip():
+            return self.original_name
+        if self.file and self.file.name:
+            return os.path.basename(self.file.name)
+        return "Attachment"
+
+    @property
+    def actual_size(self):
+        """Returns saved size or inspects physical file size on disk."""
+        if self.size:
+            return self.size
+        if self.file:
+            try:
+                return self.file.size
+            except (AttributeError, OSError, ValueError):
+                pass
+        return 0
 
 
 class CourseTA(models.Model):

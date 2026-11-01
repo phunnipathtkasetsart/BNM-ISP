@@ -37,70 +37,229 @@
     if (start) show(start);
   });
 
-  // 2. Compose forms: Consolidated file validation, topic checks, and double-submit prevention
+// 2. Compose forms: Consolidated file validation, topic checks, and double-submit prevention
   document.querySelectorAll('[data-cc-compose]').forEach(form => {
     const input = form.querySelector('input[type="file"]');
     const names = form.querySelector('[data-file-names]');
     const error = form.querySelector('[data-file-error]');
-    const maxMb = Number(form.dataset.maxMb || 50);
+    const maxMb = Number(form.dataset.maxMb || 25);
     const maxBytes = maxMb * 1024 * 1024;
+    const MAX_FILES = 10; // Maximum allowed files limit
 
-    // File selection display & size check
-    input?.addEventListener('change', () => {
-      const files = Array.from(input.files);
-      const big = files.find(f => f.size > maxBytes);
-      if (error) error.hidden = true;
+    const ALLOWED_EXTENSIONS = [
+      'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 
+      'txt', 'csv', 'rtf', 'jpg', 'jpeg', 'png', 'gif', 
+      'webp', 'mp4', 'mp3', 'zip', 'rar'
+    ];
 
-      if (big) {
-        if (error) {
-          error.textContent = `${big.name} is larger than ${maxMb} MB. Choose smaller files.`;
-          error.hidden = false;
+    const BLOCKED_EXTENSIONS = [
+      'exe', 'bat', 'cmd', 'sh', 'com', 'msi', 'scr', 'pif', 
+      'application', 'gadget', 'ps1', 'vbs', 'js', 'jar', 'php', 'py'
+    ];
+
+    // Vertical Block List Container for selected file widgets
+    let previewList = form.querySelector('[data-file-preview]');
+    if (!previewList && input) {
+      previewList = document.createElement('ul');
+      previewList.className = 'cc-file-preview-list';
+      previewList.style.maxHeight = '280px';
+      previewList.style.overflowY = 'auto';
+      const container = input.closest('.cc-field') || form;
+      container.appendChild(previewList);
+    }
+
+    // Persistent file store & error tracking flag
+    let accumulatedFiles = new DataTransfer();
+    let hasBlockingError = false;
+
+    const getExt = name => {
+      const hasDot = name.includes('.');
+      return hasDot ? name.split('.').pop().toLowerCase() : '';
+    };
+
+    const formatBytes = bytes => {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    };
+
+    // Render file widgets using course-content.css styles & update pill label
+    const renderAndSync = () => {
+      if (!input) return;
+      input.files = accumulatedFiles.files;
+      const count = accumulatedFiles.files.length;
+      const filesArr = Array.from(accumulatedFiles.files);
+
+      // Clean pill text display logic:
+      // 0 -> "No file chosen"
+      // 1 -> "filename.ext"
+      // 2 -> "file1.ext, file2.ext"
+      // > 2 -> "selected (n) files"
+      if (names) {
+        if (count === 0) {
+          names.textContent = 'No file chosen';
+        } else if (count === 1) {
+          names.textContent = filesArr[0].name;
+        } else if (count === 2) {
+          names.textContent = `${filesArr[0].name}, ${filesArr[1].name}`;
+        } else {
+          names.textContent = `selected (${count}) files`;
         }
-        input.value = '';
-        if (names) names.textContent = 'No file chosen';
+      }
+
+      previewList.innerHTML = '';
+
+      filesArr.forEach((file, index) => {
+        const li = document.createElement('li');
+        const ext = getExt(file.name);
+        
+        li.innerHTML = `
+          <div class="cc-chip cc-chip--edit">
+            <span class="cc-ext cc-ext--${ext}" aria-hidden="true">${ext.toUpperCase() || 'FILE'}</span>
+            <div class="cc-chip__main">
+              <span class="cc-chip__name">${file.name}</span>
+              <span class="cc-chip__size">${formatBytes(file.size)}</span>
+            </div>
+            <button type="button" class="cc-chip__remove" aria-label="Discard ${file.name}" title="Discard file">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        `;
+
+        // Discard individual file handler
+        li.querySelector('.cc-chip__remove').addEventListener('click', (e) => {
+          e.preventDefault();
+          const nextDt = new DataTransfer();
+          Array.from(accumulatedFiles.files).forEach((f, i) => {
+            if (i !== index) nextDt.items.add(f);
+          });
+          accumulatedFiles = nextDt;
+          validateAndSync();
+        });
+
+        previewList.appendChild(li);
+      });
+
+      syncShare();
+    };
+
+    // Validate size and extensions
+    const validateAndSync = () => {
+      hasBlockingError = false;
+      if (error) error.hidden = true;
+      const files = Array.from(accumulatedFiles.files);
+
+      if (files.length === 0) {
+        renderAndSync();
         return;
       }
 
-      if (names) {
-        names.textContent = !files.length ? 'No file chosen'
-          : files.length === 1 ? files[0].name
-          : `${files.length} files: ${files.map(f => f.name).join(', ')}`;
+      // 1. Check cumulative total size
+      const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
+      if (totalBytes > maxBytes) {
+        hasBlockingError = true;
+        if (error) {
+          const totalMb = (totalBytes / (1024 * 1024)).toFixed(1);
+          error.textContent = `Total size of files (${totalMb} MB) exceeds limit of ${maxMb} MB. Choose smaller files.`;
+          error.hidden = false;
+        }
+      }
+
+      // 2. Check extension whitelist & blacklist
+      for (const file of files) {
+        const ext = getExt(file.name);
+        if (!ext || BLOCKED_EXTENSIONS.includes(ext) || !ALLOWED_EXTENSIONS.includes(ext)) {
+          hasBlockingError = true;
+          if (error) {
+            error.textContent = `"${file.name}" is an executable or unsupported file type.`;
+            error.hidden = false;
+          }
+        }
+      }
+
+      renderAndSync();
+    };
+
+    // File input selection event
+    form.addEventListener('change', (e) => {
+      if (e.target !== input) return;
+      e.stopImmediatePropagation();
+
+      const newlyPicked = Array.from(input.files);
+      if (!newlyPicked.length) return;
+
+      let countExceeded = false;
+      let duplicateFound = false;
+
+      for (const file of newlyPicked) {
+        // Enforce 10 files max limit
+        if (accumulatedFiles.files.length >= MAX_FILES) {
+          countExceeded = true;
+          break;
+        }
+
+        const isDuplicate = Array.from(accumulatedFiles.files).some(
+          existing => existing.name === file.name && existing.size === file.size
+        );
+
+        if (!isDuplicate) {
+          accumulatedFiles.items.add(file);
+        } else {
+          duplicateFound = true;
+        }
+      }
+
+      validateAndSync();
+
+      // Non-blocking red warning display for excess files or duplicate files
+      if (countExceeded && error && !hasBlockingError) {
+        error.textContent = `Maximum limit of ${MAX_FILES} files reached. Excess files were not added.`;
+        error.hidden = false;
+      } else if (duplicateFound && error && !hasBlockingError) {
+        error.textContent = `Duplicate file(s) already selected were skipped.`;
+        error.hidden = false;
       }
     });
 
-    // "Add attachment to Materials" toggle fields visibility
+    // "Add attachment to Materials" toggle visibility
     const toggle = form.querySelector('[data-share-toggle]');
-    if (toggle) {
-      const fields = form.querySelector('[data-share-fields]');
-      const box = form.querySelector('input[name="add_to_materials"]');
-      const syncShare = () => {
-        const hasFile = Boolean(input && input.files && input.files.length > 0);
-        if (!hasFile && box) box.checked = false;
-        toggle.hidden = !hasFile;
-        if (fields) fields.hidden = !(hasFile && box && box.checked);
-      };
-      input?.addEventListener('change', syncShare);
-      box?.addEventListener('change', syncShare);
-      syncShare();
-    }
+    const fields = form.querySelector('[data-share-fields]');
+    const box = form.querySelector('input[name="add_to_materials"]');
+    
+    const syncShare = () => {
+      if (!toggle) return;
+      const hasFile = Boolean(accumulatedFiles.files.length > 0);
+      if (!hasFile && box) box.checked = false;
+      toggle.hidden = !hasFile;
+      if (fields) fields.hidden = !(hasFile && box && box.checked);
+    };
 
-    // Form Submit Handler
+    box?.addEventListener('change', syncShare);
+
+    // Form submit handler
     form.addEventListener('submit', (e) => {
-      const box = form.querySelector('input[name="add_to_materials"]');
-      const topicSelect = form.querySelector('select[name="topic"]');
-      const newTopicInput = form.querySelector('input[name="new_topic"]');
+      // Only block submission for actual errors (over size limit or invalid extensions)
+      if (hasBlockingError) {
+        e.preventDefault();
+        return false;
+      }
 
       const isMaterialUpload = form.action.includes('upload_materials') || Boolean(form.querySelector('input[name="files"]'));
       const isAddingToMaterials = box && box.checked;
+      const topicSelect = form.querySelector('select[name="topic"]');
+      const newTopicInput = form.querySelector('input[name="new_topic"]');
 
       if (isMaterialUpload || isAddingToMaterials) {
-        if (isMaterialUpload && input && input.files.length === 0) {
+        if (isMaterialUpload && accumulatedFiles.files.length === 0) {
           e.preventDefault();
           if (error) {
             error.textContent = 'Please choose at least one file to upload.';
             error.hidden = false;
           }
-          input.focus();
+          input?.focus();
           return false;
         }
 
