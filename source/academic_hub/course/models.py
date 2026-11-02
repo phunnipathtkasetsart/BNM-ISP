@@ -1,9 +1,10 @@
+import mimetypes
 import os
 import secrets
 import uuid
 
 from django.conf import settings
-from django.core.validators import RegexValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models.functions import Lower, Trim
 
@@ -248,3 +249,160 @@ class CourseAnswer(models.Model):
 
     def __str__(self):
         return f"Answer to {self.question_id}"
+
+
+class GroupWork(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="group_works")
+    title = models.CharField(max_length=150)
+    max_members = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                models.F("course"),
+                Lower(Trim("title")),
+                name="unique_course_group_work_title",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class StudentGroup(models.Model):
+    group_work = models.ForeignKey(GroupWork, on_delete=models.CASCADE, related_name="groups")
+    name = models.CharField(max_length=120)
+    head = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="headed_course_groups",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                models.F("group_work"),
+                Lower(Trim("name")),
+                name="unique_group_work_group_name",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class GroupMembership(models.Model):
+    group_work = models.ForeignKey(GroupWork, on_delete=models.CASCADE, related_name="memberships")
+    group = models.ForeignKey(StudentGroup, on_delete=models.CASCADE, related_name="memberships")
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="course_group_memberships",
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["joined_at", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group_work", "student"],
+                name="unique_group_work_student",
+            ),
+        ]
+
+
+class GroupInvitation(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        DECLINED = "declined", "Declined"
+        CANCELLED = "cancelled", "Cancelled"
+
+    group_work = models.ForeignKey(
+        GroupWork, on_delete=models.CASCADE, related_name="invitations"
+    )
+    group = models.ForeignKey(
+        StudentGroup, on_delete=models.CASCADE, related_name="invitations"
+    )
+    invitee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="course_group_invitations",
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group_work", "invitee"],
+                condition=models.Q(status="pending"),
+                name="unique_pending_group_work_invite",
+            ),
+        ]
+
+
+class GroupMessage(models.Model):
+    group = models.ForeignKey(StudentGroup, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    body = models.TextField(max_length=5000, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at", "pk"]
+
+
+class GroupMessageAttachment(StoredFile):
+    message = models.ForeignKey(
+        GroupMessage, on_delete=models.CASCADE, related_name="attachments"
+    )
+    mime_type = models.CharField(max_length=120, blank=True, default="")
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def course_id(self):
+        return self.message.group.group_work.course_id
+
+    @property
+    def course(self):
+        return self.message.group.group_work.course
+
+    @property
+    def is_inline_image(self):
+        return self.mime_type in {"image/jpeg", "image/png", "image/gif", "image/webp"}
+
+    def save(self, *args, **kwargs):
+        if self.file and not self.mime_type:
+            self.mime_type = mimetypes.guess_type(self.file.name)[0] or "application/octet-stream"
+        super().save(*args, **kwargs)

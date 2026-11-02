@@ -1,0 +1,67 @@
+{% extends "course/base.html" %}
+{% load static %}
+{% block title %}{{ group.name }} chat — {{ course.name }}{% endblock %}
+{% block course_content %}
+<header class="group-page-head group-chat-head">
+  <div>
+    <p class="group-eyebrow">
+      <a href="{% url 'course:detail' course.pk %}">{{ course.name }}</a>
+      <span aria-hidden="true">/</span>
+      <a href="{% url 'course:group_work' course.pk group.group_work_id %}">{{ group.group_work.title }}</a>
+    </p>
+    <h1>{{ group.name }} <span>chat</span></h1>
+    <p class="group-muted">Only members of this group can view this conversation.</p>
+  </div>
+  <a class="group-button group-button--quiet" href="{% url 'course:group_work' course.pk group.group_work_id %}">Members</a>
+</header>
+
+<section class="group-chat" aria-label="Group chat">
+  <div class="group-chat__messages" aria-live="polite">
+    {% for chat_message in chat_messages %}
+      <article class="group-chat-message{% if chat_message.sender_id == request.user.pk %} group-chat-message--mine{% endif %}">
+        <header>
+          <strong>{{ chat_message.sender.get_full_name|default:"Former member" }}</strong>
+          <time datetime="{{ chat_message.created_at|date:'c' }}">{{ chat_message.created_at|date:"M j, H:i" }}</time>
+        </header>
+        {% if chat_message.body %}<p>{{ chat_message.body|linebreaksbr }}</p>{% endif %}
+        {% if chat_message.attachments.all %}
+          <div class="group-chat-message__files">
+            {% for attachment in chat_message.attachments.all %}
+              {% if attachment.is_inline_image %}
+                <a href="{% url 'course:group_attachment' course.pk attachment.pk %}" target="_blank" rel="noopener">
+                  <img src="{% url 'course:group_attachment' course.pk attachment.pk %}" alt="{{ attachment.original_name }}">
+                </a>
+              {% else %}
+                <a class="group-file" href="{% url 'course:group_attachment' course.pk attachment.pk %}">
+                  <span aria-hidden="true">↧</span> {{ attachment.original_name }}
+                  <small>{{ attachment.size|filesizeformat }}</small>
+                </a>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+      </article>
+    {% empty %}
+      <p class="group-empty">No messages yet. Say hello to your group.</p>
+    {% endfor %}
+  </div>
+  <form method="post" enctype="multipart/form-data" class="group-chat__composer">
+    {% csrf_token %}
+    <div class="group-chat__file-preview" data-file-preview aria-live="polite" hidden></div>
+    <label class="sr-only" for="chat-body">Message</label>
+    <div class="group-chat__input-row">
+      <label class="group-file-picker" title="Attach files (maximum 50 MB each)">
+        <input type="file" name="files" multiple aria-label="Attach files, maximum 50 MB each"
+          data-chat-file-input>
+        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="m8.5 12.5 6.7-6.7a4 4 0 0 1 5.7 5.7l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2"></path>
+        </svg>
+      </label>
+      <textarea id="chat-body" name="body" maxlength="5000" rows="1" placeholder="Write a message…"
+        aria-describedby="chat-keyboard-hint"></textarea>
+    </div>
+    <span id="chat-keyboard-hint" class="sr-only">Press Enter to send. Press Shift and Enter for a new line.</span>
+  </form>
+</section>
+<script src="{% static 'course/group-chat.js' %}" defer></script>
+{% endblock %}

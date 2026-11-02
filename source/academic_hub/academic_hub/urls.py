@@ -24,6 +24,7 @@ urlpatterns = [
     path("announcements/", include("announcements.urls")),
     path("course/", include("course.urls")),
     path("calendar/", include("calendar_app.urls")),
+    path("notifications/", include("notifications.urls")),
     # Site root was a 404. Send it to the sign-in page, which is the
     # entry point for every visitor who is not already logged in.
     path("", RedirectView.as_view(pattern_name="accounts:login", permanent=False)),

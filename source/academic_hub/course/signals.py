@@ -2,7 +2,13 @@ from django.db import transaction
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
-from .models import CourseTA, Enrollment, Material, PostAttachment
+from .models import (
+    CourseTA,
+    Enrollment,
+    GroupMessageAttachment,
+    Material,
+    PostAttachment,
+)
 
 
 
@@ -13,7 +19,8 @@ def _remove_file(instance):
 
     def cleanup():
         if (Material.objects.filter(file=name).exists()
-                or PostAttachment.objects.filter(file=name).exists()):
+                or PostAttachment.objects.filter(file=name).exists()
+                or GroupMessageAttachment.objects.filter(file=name).exists()):
             return
         storage.delete(name)
 
@@ -22,6 +29,7 @@ def _remove_file(instance):
 
 @receiver(post_delete, sender=Material)
 @receiver(post_delete, sender=PostAttachment)
+@receiver(post_delete, sender=GroupMessageAttachment)
 def delete_file_with_row(sender, instance, **kwargs):
     """Django never removes files itself; deleting a row would orphan it."""
     _remove_file(instance)

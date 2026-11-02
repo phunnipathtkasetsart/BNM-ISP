@@ -30,6 +30,7 @@ from .permissions import can_teach, course_access, visible_courses
 from .services import (add_materials, add_students, assign_ta, create_course,
                        create_course_answer, create_course_question,
                        get_or_create_topic, remove_ta, update_course)
+from notifications.services import notify_course_material, notify_course_post, notify_deadline
 
 
 # api_request คืน boolean ว่า path เริ่ม /course/api/ หรือไม่ ฟังก์ชันนี้ใช้เลือกรูปแบบ response
@@ -235,6 +236,7 @@ def detail_context(request, post_form=None, material_form=None):
 
     return {
         "course": course,
+        "group_works": course.group_works.all(),
         "posts": course.posts.select_related("author").prefetch_related("attachments"),
         "upcoming_deadlines": upcoming_deadlines,
         "post_form": post_form,
@@ -436,15 +438,22 @@ def create_post(request, pk):
         post.save()
 
         upload = form.cleaned_data.get("attachment")
+        created_material = None
         if upload:
             attachment = PostAttachment.objects.create(post=post, file=upload)
             if form.cleaned_data.get("add_to_materials"):
                 topic = existing_topic or get_or_create_topic(request.course, form.cleaned_data["new_topic"])
-                Material.objects.create(
+                created_material = Material.objects.create(
                     course=request.course, topic=topic, created_by=request.user,
                     title=attachment.original_name[:150], file=attachment.file.name,
                     original_name=attachment.original_name, size=attachment.size
                 )
+
+    notify_course_post(post)
+    if post.deadline:
+        notify_deadline(post)
+    if created_material:
+        notify_course_material(created_material)
 
     if api_request(request):
         return JsonResponse({"id": post.pk, "title": post.title}, status=201)
@@ -571,6 +580,8 @@ def edit_post(request, pk, post_id):
     if request.method == "POST":
         form = CoursePostForm(request.POST, request.FILES, instance=post, course=request.course)
         if form.is_valid():
+            previous_deadline = post.deadline
+            created_material = None
             with transaction.atomic():
                 post = form.save()
 
@@ -595,11 +606,16 @@ def edit_post(request, pk, post_id):
                             topic = None
 
                         if topic:
-                            Material.objects.create(
+                            created_material = Material.objects.create(
                                 course=request.course, topic=topic, created_by=request.user,
                                 title=attachment.original_name[:150], file=attachment.file.name,
                                 original_name=attachment.original_name, size=attachment.size
                             )
+
+            if post.deadline != previous_deadline and post.deadline:
+                notify_deadline(post)
+            if created_material:
+                notify_course_material(created_material)
 
             if api_request(request):
                 return JsonResponse({"id": post.pk, "title": post.title})

@@ -18,6 +18,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.middleware import is_guest_request
+from notifications.services import notify_announcement
 from .forms import AnnouncementForm, ForumQuestionForm, ForumReplyForm
 from .models import (
     Announcement,
@@ -204,6 +205,8 @@ def announcement_form(request, pk=None):
             announcement.save()
             form.save_m2m()
             _refresh_search_vector(announcement)
+            if announcement.is_published:
+                notify_announcement(announcement)
             return redirect("announcements:public_board")
     else:
         form = AnnouncementForm(instance=instance, author=request.user)
