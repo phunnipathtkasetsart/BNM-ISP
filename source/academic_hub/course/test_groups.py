@@ -1,10 +1,6 @@
 import json
-import shutil
-import tempfile
-
 from django.contrib.auth import get_user_model
-from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 
 from .models import (
@@ -12,18 +8,12 @@ from .models import (
     Enrollment,
     GroupInvitation,
     GroupMembership,
-    GroupMessage,
-    GroupMessageAttachment,
     GroupWork,
     StudentGroup,
 )
 from .services import create_course
 
 
-GROUP_MEDIA = tempfile.mkdtemp(prefix="group-test-media-")
-
-
-@override_settings(MEDIA_ROOT=GROUP_MEDIA)
 class GroupWorkTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -57,11 +47,6 @@ class GroupWorkTests(TestCase):
         for student in (cls.ta, cls.student, cls.invitee, cls.other_student):
             Enrollment.objects.create(course=cls.course, student=student)
         CourseTA.objects.create(course=cls.course, user=cls.ta)
-
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        shutil.rmtree(GROUP_MEDIA, ignore_errors=True)
 
     def url(self, name, *args):
         return reverse(f"course:{name}", args=args)
@@ -185,6 +170,72 @@ class GroupWorkTests(TestCase):
         )
         self.assertEqual(response.status_code, 409)
 
+    def test_group_head_can_set_contact_for_members_and_api(self):
+        work = self.make_work(max_members=3)
+        group = self.make_group(work=work)
+        GroupMembership.objects.create(
+            group_work=work, group=group, student=self.invitee
+        )
+        self.client.force_login(self.student)
+        response = self.client.post(
+            self.url("group_contact_update", self.course.pk, work.pk, group.pk),
+            {
+                "third_party_contact": (
+                    "Project coordinator\n"
+                    "Details: https://example.com/contact\n"
+                    "Phone: 012-345-6789"
+                )
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        group.refresh_from_db()
+        self.assertEqual(
+            group.third_party_contact,
+            "Project coordinator\nDetails: https://example.com/contact\nPhone: 012-345-6789",
+        )
+
+        head_page = self.client.get(self.url("group_work", self.course.pk, work.pk))
+        self.assertContains(head_page, "Add third-party contact")
+        self.assertContains(head_page, "Project coordinator")
+        self.assertContains(head_page, "name=\"third_party_contact\"")
+
+        self.client.force_login(self.invitee)
+        member_page = self.client.get(self.url("group_work", self.course.pk, work.pk))
+        self.assertContains(member_page, "Project coordinator")
+        self.assertContains(
+            member_page,
+            '<a target="_blank" href="https://example.com/contact"',
+            html=False,
+        )
+        self.assertContains(member_page, 'rel="noopener noreferrer"', html=False)
+        self.assertNotContains(member_page, "name=\"third_party_contact\"")
+
+        response = self.client.get(self.url("api_group_work", self.course.pk, work.pk))
+        self.assertEqual(
+            response.json()["groups"][0]["third_party_contact"],
+            "Project coordinator\nDetails: https://example.com/contact\nPhone: 012-345-6789",
+        )
+
+        self.client.force_login(self.lecturer)
+        staff_response = self.client.get(
+            self.url("api_group_work", self.course.pk, work.pk)
+        )
+        self.assertIsNone(
+            staff_response.json()["groups"][0]["third_party_contact"]
+        )
+
+    def test_only_group_head_can_update_contact(self):
+        work = self.make_work()
+        group = self.make_group(work=work)
+        self.client.force_login(self.other_student)
+        response = self.client.post(
+            self.url("group_contact_update", self.course.pk, work.pk, group.pk),
+            {"third_party_contact": "Unauthorized"},
+        )
+        self.assertEqual(response.status_code, 403)
+        group.refresh_from_db()
+        self.assertEqual(group.third_party_contact, "")
+
     def test_group_api_accepts_json_mutations(self):
         self.client.force_login(self.lecturer)
         response = self.client.post(
@@ -203,6 +254,25 @@ class GroupWorkTests(TestCase):
         )
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.json()["name"], "JSON team")
+        group_id = response.json()["id"]
+
+        response = self.client.post(
+            self.url("api_group_contact_update", self.course.pk, work.pk, group_id),
+            data=json.dumps({"third_party_contact": "Contact via email@example.test"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["third_party_contact"],
+            "Contact via email@example.test",
+        )
+
+        response = self.client.post(
+            self.url("api_group_contact_update", self.course.pk, work.pk, group_id),
+            data=json.dumps({"third_party_contact": "x" * 501}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
 
     def test_group_gathering_is_available_in_course_sidebar(self):
         work = self.make_work(title="Design project")
@@ -248,69 +318,33 @@ class GroupWorkTests(TestCase):
         )
         self.assertFalse(GroupMembership.objects.filter(group=group, student=self.student).exists())
 
-    def test_department_and_lecturer_can_view_members_but_never_chat(self):
+    def test_department_and_lecturer_can_view_all_group_members(self):
         work = self.make_work()
-        group = self.make_group(work=work)
+        self.make_group(work=work)
         details_url = self.url("group_work", self.course.pk, work.pk)
-        chat_url = self.url("group_chat", self.course.pk, group.pk)
 
         for staff_user in (self.lecturer, self.ta, self.department):
             self.client.force_login(staff_user)
             response = self.client.get(details_url)
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, self.student.nisit_id)
-            self.assertEqual(self.client.get(chat_url).status_code, 403)
 
-    def test_members_can_post_text_and_inline_image_with_50_mb_limit(self):
+    def test_chat_routes_and_group_chat_controls_are_removed(self):
         work = self.make_work()
         group = self.make_group(work=work)
-        chat_url = self.url("group_chat", self.course.pk, group.pk)
         self.client.force_login(self.student)
 
-        response = self.client.post(chat_url, {
-            "body": "Hello team",
-            "files": SimpleUploadedFile(
-                "diagram.png", b"\x89PNG\r\n\x1a\n", content_type="image/png"
-            ),
-        })
-        self.assertEqual(response.status_code, 302)
-        message = GroupMessage.objects.get(group=group)
-        attachment = GroupMessageAttachment.objects.get(message=message)
-        self.assertEqual(message.body, "Hello team")
-        self.assertTrue(attachment.is_inline_image)
-        response = self.client.get(chat_url)
-        self.assertContains(response, "Hello team")
-        html = response.content.decode()
-        input_row = html.split('class="group-chat__input-row"', 1)[1]
-        self.assertLess(
-            input_row.index('class="group-file-picker"'),
-            input_row.index('id="chat-body"'),
-        )
-        self.assertIn("group-chat.js", html)
-        self.assertIn("Press Shift and Enter for a new line", html)
-        self.assertNotIn(">Send message</button>", html)
-        self.assertIn('data-file-preview', html)
-        self.assertIn('data-chat-file-input', html)
+        response = self.client.get(self.url("group_work", self.course.pk, work.pk))
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, "Open chat")
 
-        with override_settings(MAX_UPLOAD_BYTES=10):
-            response = self.client.post(chat_url, {
-                "body": "",
-                "files": SimpleUploadedFile("large.bin", b"x" * 11),
-            })
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(GroupMessage.objects.filter(group=group).count(), 1)
-
-    def test_non_members_cannot_read_group_chat_or_attachments(self):
-        work = self.make_work()
-        group = self.make_group(work=work)
-        message = GroupMessage.objects.create(group=group, sender=self.student, body="Private")
-        attachment = GroupMessageAttachment.objects.create(
-            message=message, file=SimpleUploadedFile("image.png", b"image")
+        self.assertEqual(
+            self.client.get(f"/course/{self.course.pk}/groups/{group.pk}/chat/").status_code,
+            404,
         )
-        self.client.force_login(self.other_student)
-        self.assertEqual(self.client.get(
-            self.url("group_chat", self.course.pk, group.pk)
-        ).status_code, 403)
-        self.assertEqual(self.client.get(
-            self.url("group_attachment", self.course.pk, attachment.pk)
-        ).status_code, 403)
+        self.assertEqual(
+            self.client.get(
+                f"/course/api/{self.course.pk}/groups/{group.pk}/chat/"
+            ).status_code,
+            404,
+        )

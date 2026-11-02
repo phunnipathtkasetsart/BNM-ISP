@@ -43,16 +43,15 @@ section until an owner edits them; no section is guessed during migration.
 Lecturers and course TAs can create separate group works and set a maximum group
 size. Students may create one group per work; the creator is its head. Heads can
 invite enrolled students by Nisit ID, remove members, transfer headship, or
-disband the group. Invitees can accept or decline, and non-head members can
-leave. Group size has no minimum; the maximum includes the head and is checked
-again when an invitation is accepted.
+disband the group and set the group's shared **Add third-party contact** details.
+The contact appears under available invite slots for the group, and only the
+head can edit it. Invitees can accept or decline, and non-head members can leave.
+Group size has no minimum; the maximum includes the head and is checked again
+when an invitation is accepted.
 
-Course staff and Department can view every group, member, and head. Only current
-student group members can open the group chat; staff and Department have no
-chat read or attachment access. Chat supports text and multiple file/image
-attachments up to 50 MB each. Student membership and invitations are scoped to a
-group work, so a student may join a different group for another work in the
-same course.
+Course staff and Department can view every group, member, and head. Group
+membership and invitations are scoped to a group work, so a student may join a
+different group for another work in the same course.
 
 Open **Group work** from a course page. The work selector shows the maximum
 size, group details show member IDs and the head, and the invitation card offers
@@ -98,9 +97,7 @@ valid batch, so a retry is safe.
 ### Group work
 
 Group-work API mutations accept JSON objects with string values or regular form
-submissions. The chat endpoint also accepts multipart uploads in `files`; each
-attachment is limited to 50 MB. All paths require a logged-in course user and
-CSRF protection.
+submissions. All paths require a logged-in course user and CSRF protection.
 
 | Method | Path | Body / purpose |
 |---|---|---|
@@ -108,9 +105,9 @@ CSRF protection.
 | GET | `/course/api/<id>/group-works/<work_id>/` | Work details, visible groups, members, invitations, and live capacity |
 | POST | `/course/api/<id>/group-works/<work_id>/groups/` | Student creates a group with `name` |
 | POST | `/course/api/<id>/group-works/<work_id>/groups/<group_id>/invite/` | Head invites an enrolled student with `nisit_id` |
+| POST | `/course/api/<id>/group-works/<work_id>/groups/<group_id>/contact/` | Group head sets or clears `third_party_contact` (up to 500 characters); only group members can read it |
 | POST | `/course/api/<id>/group-works/<work_id>/invitations/<invitation_id>/<accept\|decline>/` | Invitee responds to an invitation |
 | POST | `/course/api/<id>/group-works/<work_id>/groups/<group_id>/<kick\|transfer\|leave\|disband>/` | Group member or head action; kick/transfer takes `student_id` |
-| GET, POST | `/course/api/<id>/groups/<group_id>/chat/` | Member-only chat; POST takes optional `body` and uploaded `files` |
 
 ### Course Q&A
 

@@ -1,7 +1,7 @@
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -16,13 +16,10 @@ from .models import (
     Enrollment,
     GroupInvitation,
     GroupMembership,
-    GroupMessage,
-    GroupMessageAttachment,
     GroupWork,
     StudentGroup,
 )
 from .permissions import course_access
-from .validators import validate_upload_size
 from .views import payload
 
 
@@ -59,13 +56,11 @@ def _work_url(course_id, work_id):
     return reverse("course:group_work", args=[course_id, work_id])
 
 
-def _invalid_payload_response(request, error, course, work=None, group=None):
+def _invalid_payload_response(request, error, course, work=None):
     message = error.messages[0]
     if _is_api(request):
         return JsonResponse({"error": message}, status=400)
     messages.error(request, message)
-    if group is not None:
-        return redirect("course:group_chat", pk=course.pk, group_id=group.pk)
     if work is not None:
         return redirect(_work_url(course.pk, work.pk))
     return redirect("course:group_work_index", pk=course.pk)
@@ -207,6 +202,11 @@ def group_work_detail(request, pk, work_id):
                 {
                     "id": group.pk,
                     "name": group.name,
+                    "third_party_contact": (
+                        group.third_party_contact
+                        if current_membership and current_membership.group_id == group.pk
+                        else None
+                    ),
                     "head": {
                         "id": group.head_id,
                         "name": group.head.get_full_name(),
@@ -243,7 +243,6 @@ def group_work_detail(request, pk, work_id):
             and not has_pending_invites
         ),
         "is_department": request.is_dept_override,
-        "can_chat": _is_student(request) and current_membership is not None,
     })
 
 
@@ -387,6 +386,44 @@ def group_invite(request, pk, work_id, group_id):
             "group_id": invitation.group_id,
         }, status=201)
     messages.success(request, f"Invitation sent to {invitee.get_full_name()}.")
+    return redirect(_work_url(course.pk, work.pk))
+
+
+@course_access()
+@require_POST
+def group_contact_update(request, pk, work_id, group_id):
+    course = request.course
+    work = get_object_or_404(GroupWork, pk=work_id, course=course)
+    group = get_object_or_404(StudentGroup, pk=group_id, group_work=work)
+    if (
+        not _is_student(request)
+        or group.head_id != request.user.pk
+        or not GroupMembership.objects.filter(
+            group=group, group_work=work, student=request.user
+        ).exists()
+    ):
+        return _forbidden(request)
+
+    try:
+        data = payload(request)
+    except ValidationError as error:
+        return _invalid_payload_response(request, error, course, work)
+    contact = data.get("third_party_contact", "").strip()
+    if len(contact) > 500:
+        error = "Third-party contact must be 500 characters or fewer."
+        if _is_api(request):
+            return JsonResponse({"error": error}, status=400)
+        messages.error(request, error)
+        return redirect(_work_url(course.pk, work.pk))
+
+    group.third_party_contact = contact
+    group.save(update_fields=["third_party_contact"])
+    if _is_api(request):
+        return JsonResponse({
+            "group_id": group.pk,
+            "third_party_contact": group.third_party_contact,
+        })
+    messages.success(request, "Third-party contact updated.")
     return redirect(_work_url(course.pk, work.pk))
 
 
@@ -543,125 +580,3 @@ def group_member_action(request, pk, work_id, group_id, action):
     else:
         raise Http404
     return redirect(_work_url(course.pk, work.pk))
-
-
-@course_access()
-@require_http_methods(["GET", "POST"])
-def group_chat(request, pk, group_id):
-    course = request.course
-    group = get_object_or_404(
-        StudentGroup.objects.select_related("group_work"),
-        pk=group_id,
-        group_work__course=course,
-    )
-    is_member = GroupMembership.objects.filter(
-        group=group, student=request.user
-    ).exists()
-    if not _is_student(request) or not is_member:
-        return _forbidden(request)
-
-    if request.method == "POST":
-        try:
-            data = payload(request)
-        except ValidationError as error:
-            return _invalid_payload_response(
-                request, error, course, group.group_work, group
-            )
-        body = data.get("body", "").strip()
-        uploads = request.FILES.getlist("files")
-        if len(body) > 5000:
-            if _is_api(request):
-                return JsonResponse({"error": "Messages must be 5,000 characters or fewer."}, status=400)
-            messages.error(request, "Messages must be 5,000 characters or fewer.")
-            return redirect("course:group_chat", pk=course.pk, group_id=group.pk)
-        if not body and not uploads:
-            if _is_api(request):
-                return JsonResponse({"error": "Write a message or attach at least one file."}, status=400)
-            messages.error(request, "Write a message or attach at least one file.")
-            return redirect("course:group_chat", pk=course.pk, group_id=group.pk)
-        try:
-            for upload in uploads:
-                validate_upload_size(upload)
-        except ValidationError as error:
-            if _is_api(request):
-                return JsonResponse({"error": error.messages[0]}, status=400)
-            messages.error(request, error.messages[0])
-            return redirect("course:group_chat", pk=course.pk, group_id=group.pk)
-
-        with transaction.atomic():
-            message = GroupMessage.objects.create(
-                group=group, sender=request.user, body=body
-            )
-            for upload in uploads:
-                GroupMessageAttachment.objects.create(message=message, file=upload)
-        if _is_api(request):
-            return JsonResponse({
-                "id": message.pk,
-                "body": message.body,
-                "sender_name": request.user.get_full_name(),
-                "created_at": message.created_at.isoformat(),
-            }, status=201)
-        return redirect("course:group_chat", pk=course.pk, group_id=group.pk)
-
-    chat_messages = group.messages.select_related("sender").prefetch_related("attachments")
-    if _is_api(request):
-        return JsonResponse({
-            "group_id": group.pk,
-            "messages": [
-                {
-                    "id": message.pk,
-                    "body": message.body,
-                    "sender_name": message.sender.get_full_name() if message.sender else "Former member",
-                    "created_at": message.created_at.isoformat(),
-                    "attachments": [
-                        {
-                            "id": attachment.pk,
-                            "name": attachment.original_name,
-                            "size": attachment.size,
-                            "is_image": attachment.is_inline_image,
-                            "url": reverse(
-                                "course:group_attachment",
-                                args=[course.pk, attachment.pk],
-                            ),
-                        }
-                        for attachment in message.attachments.all()
-                    ],
-                }
-                for message in chat_messages
-            ],
-        })
-    return render(request, "course/group_chat.html", {
-        "course": course,
-        "group": group,
-        "chat_messages": chat_messages,
-    })
-
-
-@course_access()
-@require_http_methods(["GET"])
-def group_attachment(request, pk, attachment_id):
-    attachment = get_object_or_404(
-        GroupMessageAttachment.objects.select_related(
-            "message__group__group_work"
-        ),
-        pk=attachment_id,
-        message__group__group_work__course=request.course,
-    )
-    if not _is_student(request) or not GroupMembership.objects.filter(
-        group=attachment.message.group, student=request.user
-    ).exists():
-        return _forbidden(request)
-    try:
-        response = FileResponse(
-            attachment.file.open("rb"),
-            as_attachment=not attachment.is_inline_image,
-            filename=attachment.original_name,
-            content_type=(
-                attachment.mime_type
-                if attachment.is_inline_image
-                else "application/octet-stream"
-            ),
-        )
-    except OSError as error:
-        raise Http404("The attachment is unavailable.") from error
-    return response

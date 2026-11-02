@@ -17,10 +17,9 @@ urlpatterns = [
     path("<int:pk>/group-works/<int:work_id>/", group_views.group_work_detail, name="group_work"),
     path("<int:pk>/group-works/<int:work_id>/groups/create/", group_views.group_create, name="group_create"),
     path("<int:pk>/group-works/<int:work_id>/groups/<int:group_id>/invite/", group_views.group_invite, name="group_invite"),
+    path("<int:pk>/group-works/<int:work_id>/groups/<int:group_id>/contact/", group_views.group_contact_update, name="group_contact_update"),
     path("<int:pk>/group-works/<int:work_id>/invitations/<int:invitation_id>/<str:action>/", group_views.group_invitation_action, name="group_invitation_action"),
     path("<int:pk>/group-works/<int:work_id>/groups/<int:group_id>/<str:action>/", group_views.group_member_action, name="group_member_action"),
-    path("<int:pk>/groups/<int:group_id>/chat/", group_views.group_chat, name="group_chat"),
-    path("<int:pk>/groups/attachments/<int:attachment_id>/", group_views.group_attachment, name="group_attachment"),
 
     # Task 4.3: Course Post & Attachment Routes
     path("<int:pk>/posts/create/", views.create_post, name="create_post"),
@@ -46,9 +45,9 @@ urlpatterns = [
     path("api/<int:pk>/group-works/<int:work_id>/", group_views.group_work_detail, name="api_group_work"),
     path("api/<int:pk>/group-works/<int:work_id>/groups/", group_views.group_create, name="api_group_create"),
     path("api/<int:pk>/group-works/<int:work_id>/groups/<int:group_id>/invite/", group_views.group_invite, name="api_group_invite"),
+    path("api/<int:pk>/group-works/<int:work_id>/groups/<int:group_id>/contact/", group_views.group_contact_update, name="api_group_contact_update"),
     path("api/<int:pk>/group-works/<int:work_id>/invitations/<int:invitation_id>/<str:action>/", group_views.group_invitation_action, name="api_group_invitation_action"),
     path("api/<int:pk>/group-works/<int:work_id>/groups/<int:group_id>/<str:action>/", group_views.group_member_action, name="api_group_member_action"),
-    path("api/<int:pk>/groups/<int:group_id>/chat/", group_views.group_chat, name="api_group_chat"),
     path("api/<int:pk>/members/add/", views.import_members, name="api_import_members"),
     path("api/<int:pk>/members/import-csv/", views.import_csv, name="api_import_csv"),
     path("api/<int:pk>/members/<str:student_id>/remove/", views.remove_member, name="api_remove_member"),

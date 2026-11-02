@@ -1,4 +1,3 @@
-import mimetypes
 import os
 import secrets
 import uuid
@@ -287,6 +286,7 @@ class StudentGroup(models.Model):
         db_constraint=False,
         related_name="headed_course_groups",
     )
+    third_party_contact = models.TextField(blank=True, default="", max_length=500)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -365,44 +365,3 @@ class GroupInvitation(models.Model):
                 name="unique_pending_group_work_invite",
             ),
         ]
-
-
-class GroupMessage(models.Model):
-    group = models.ForeignKey(StudentGroup, on_delete=models.CASCADE, related_name="messages")
-    sender = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        null=True,
-        on_delete=models.SET_NULL,
-        db_constraint=False,
-        related_name="+",
-    )
-    body = models.TextField(max_length=5000, blank=True, default="")
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["created_at", "pk"]
-
-
-class GroupMessageAttachment(StoredFile):
-    message = models.ForeignKey(
-        GroupMessage, on_delete=models.CASCADE, related_name="attachments"
-    )
-    mime_type = models.CharField(max_length=120, blank=True, default="")
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def course_id(self):
-        return self.message.group.group_work.course_id
-
-    @property
-    def course(self):
-        return self.message.group.group_work.course
-
-    @property
-    def is_inline_image(self):
-        return self.mime_type in {"image/jpeg", "image/png", "image/gif", "image/webp"}
-
-    def save(self, *args, **kwargs):
-        if self.file and not self.mime_type:
-            self.mime_type = mimetypes.guess_type(self.file.name)[0] or "application/octet-stream"
-        super().save(*args, **kwargs)
