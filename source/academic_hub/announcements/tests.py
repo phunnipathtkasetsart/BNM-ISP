@@ -359,10 +359,10 @@ class DateFilterTests(TestCase):
 
 
 class LabEditGuardTests(TestCase):
-    """A lecturer cannot edit a post carrying a lab tag.
+    """Who may edit a post that carries a lab tag.
 
-    The form cannot offer a lab tag to a lecturer, so letting the edit through
-    would drop the tag on save without saying so.
+    Lecturers can post with #Lab, so they must also be able to edit those
+    posts. They used to get a 403 on their own Lab post.
     """
 
     @classmethod
@@ -400,9 +400,30 @@ class LabEditGuardTests(TestCase):
     def edit(self, pk):
         return self.client.get(reverse("announcements:announcement_edit", args=[pk]))
 
-    def test_lecturer_cannot_edit_their_own_lab_post(self):
+    def test_lecturer_can_edit_their_own_lab_post(self):
         self.client.force_login(self.lecturer)
-        self.assertEqual(self.edit(self.lab_post.pk).status_code, 403)
+        self.assertEqual(self.edit(self.lab_post.pk).status_code, 200)
+
+    def test_saving_a_lecturers_lab_post_keeps_the_lab_tag(self):
+        self.client.force_login(self.lecturer)
+        response = self.client.post(
+            reverse("announcements:announcement_edit", args=[self.lab_post.pk]),
+            {"title": "Own lab post, edited", "body": "b", "audience": Audience.STUDENTS,
+             "tags": [self.lab.pk], "is_published": "on"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.lab_post.refresh_from_db()
+        self.assertEqual(self.lab_post.title, "Own lab post, edited")
+        self.assertEqual(list(self.lab_post.tags.all()), [self.lab])
+
+    def test_lecturer_still_cannot_edit_someone_elses_lab_post(self):
+        other = Announcement.objects.create(
+            title="Department lab post", body="b",
+            audience=Audience.STUDENTS, author=self.department,
+        )
+        other.tags.set([self.lab])
+        self.client.force_login(self.lecturer)
+        self.assertEqual(self.edit(other.pk).status_code, 403)
 
     def test_lecturer_can_still_edit_their_ordinary_post(self):
         self.client.force_login(self.lecturer)
@@ -416,6 +437,55 @@ class LabEditGuardTests(TestCase):
         self.client.post(reverse("accounts:guest_login"))
         response = self.client.get(reverse("announcements:public_board"))
         self.assertNotContains(response, "Own lab post")
+
+
+class UrgentPinTests(TestCase):
+    """Urgent posts sit on top only until their deadline passes."""
+
+    @classmethod
+    def setUpTestData(cls):
+        from accounts.models import User
+        cls.student = User.objects.create_user(
+            nisit_id="7700000001", email="u7@ku.th", password="pin-12345",
+            first_name="Stu", last_name="P",
+        )
+        now = timezone.now()
+        cls.expired = Announcement.objects.create(
+            title="Old urgent notice", body="b", audience=Audience.PUBLIC,
+            is_urgent=True, deadline=now - timedelta(days=2),
+        )
+        cls.live = Announcement.objects.create(
+            title="Live urgent notice", body="b", audience=Audience.PUBLIC,
+            is_urgent=True, deadline=now + timedelta(days=2),
+        )
+        cls.open_ended = Announcement.objects.create(
+            title="Urgent with no deadline", body="b", audience=Audience.PUBLIC,
+            is_urgent=True,
+        )
+        cls.newest = Announcement.objects.create(
+            title="Fresh ordinary news", body="b", audience=Audience.PUBLIC,
+        )
+        # published_at controls the order among unpinned posts
+        Announcement.objects.filter(pk=cls.expired.pk).update(published_at=now - timedelta(days=5))
+        Announcement.objects.filter(pk=cls.newest.pk).update(published_at=now)
+
+    def board_titles(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("announcements:public_board"))
+        return [a.title for a in response.context["announcements"]], response
+
+    def test_an_expired_urgent_post_drops_below_newer_posts(self):
+        titles, _ = self.board_titles()
+        self.assertLess(titles.index("Fresh ordinary news"), titles.index("Old urgent notice"))
+
+    def test_live_urgent_posts_stay_on_top(self):
+        titles, _ = self.board_titles()
+        self.assertEqual(set(titles[:2]), {"Live urgent notice", "Urgent with no deadline"})
+
+    def test_expired_urgent_post_loses_the_urgent_badge(self):
+        self.assertFalse(Announcement.objects.get(pk=self.expired.pk).is_pinned)
+        self.assertTrue(Announcement.objects.get(pk=self.live.pk).is_pinned)
+        self.assertTrue(Announcement.objects.get(pk=self.open_ended.pk).is_pinned)
 
 
 class ProgrammeTagTests(TestCase):
