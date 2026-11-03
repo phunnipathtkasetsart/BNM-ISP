@@ -355,3 +355,6 @@
   .or{margin:16px 0 12px}
   .field-row{flex-direction:column;gap:0}
 }
+
+/* Touch screens: the round Google button is a whole tap target on its own. */
+@media (pointer:coarse){.oauth__btn{width:44px;height:44px}}

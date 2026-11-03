@@ -360,6 +360,32 @@
 }
 .roster tr:last-child td {
   border-bottom:0}
+/* Phones: the three roster columns fit without sideways scrolling once the
+   desktop padding comes off; the name wraps instead. */
+@media (max-width:600px) {
+  .roster td,.roster th {
+    padding:12px 10px;
+    white-space:nowrap}
+  .roster td:first-child {
+    white-space:normal;
+    overflow-wrap:anywhere}
+  .roster .course-remove {
+    padding:7px 10px}
+  .roster .member-avatar {
+    width:28px;
+    height:28px;
+    margin-right:8px}
+}
+@media (pointer:coarse) {
+  .course-back {
+    display:inline-flex;
+    align-items:center;
+    min-height:40px}
+  .course-view-btn,.course-remove,.course-btn {
+    min-height:40px}
+  .cc-tab {
+    min-height:44px}
+}
 .course-remove {
   background:transparent;
   border:1px solid #e8cdcd;
@@ -586,6 +612,35 @@
   background: #e6eee9;
   cursor: not-allowed;
 }
+.course-tool__button[href] {
+  color: #fff;
+  background: #35705b;
+  border-color: #35705b;
+  cursor: pointer;
+  text-decoration: none;
+}
+.course-tool__button[href]:hover { background: #285b49; }
+.course-tool__group-works {
+  display: grid;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+.course-tool__group-works li {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #edf1ee;
+}
+.course-tool__group-works a,
+.course-tool__link {
+  color: #245d4c;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.course-tool__group-works a:hover,
+.course-tool__link:hover { text-decoration: underline; }
+.course-tool__link { display: inline-block; }
 .course-sidebar .course-tool__search {
   margin-bottom: 12px;
   padding: 9px 10px;

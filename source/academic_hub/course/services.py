@@ -63,8 +63,12 @@ def update_course(course, *, name, section):
 @transaction.atomic
 def add_students(course, students):
     added = 0
+    from notifications.services import notify_roster_addition
+
     for student in students:
-        _, created = Enrollment.objects.get_or_create(course=course, student=student)
+        enrollment, created = Enrollment.objects.get_or_create(course=course, student=student)
+        if created:
+            notify_roster_addition(course, student, enrollment.pk)
         added += int(created)
     return added
 
@@ -107,6 +111,10 @@ def add_materials(course, topic, files, user):
         for material in created:
             material.file.storage.delete(material.file.name)
         raise
+    from notifications.services import notify_course_material
+
+    for material in created:
+        notify_course_material(material)
     return created
 
 
@@ -125,8 +133,12 @@ def assign_ta(course, student_id):
         raise ValidationError("Staff or department users cannot be assigned as TAs.")
 
     with transaction.atomic():
-        Enrollment.objects.get_or_create(course=course, student=student)
+        enrollment, enrolled = Enrollment.objects.get_or_create(course=course, student=student)
         _, created = CourseTA.objects.get_or_create(course=course, user=student)
+        if enrolled:
+            from notifications.services import notify_roster_addition
+
+            notify_roster_addition(course, student, enrollment.pk)
 
     return created
 
@@ -147,7 +159,34 @@ def qa_author_role_label(user, course):
 
 
 def qa_notification_hook(created_item):
-    return None
+    from notifications.services import create_notification
+
+    if isinstance(created_item, CourseQuestion):
+        course = created_item.course
+        recipients = [course.owner]
+        recipients.extend(link.user for link in course.ta_links.select_related("user"))
+        for recipient in recipients:
+            if recipient.pk == created_item.author_id:
+                continue
+            create_notification(
+                recipient=recipient,
+                kind="course_question",
+                event_key=f"course-question:{created_item.pk}:{recipient.pk}",
+                title="New course question",
+                message=created_item.title,
+                url=f"/course/{course.pk}/",
+            )
+    elif isinstance(created_item, CourseAnswer):
+        question = created_item.question
+        if question.author_id and question.author_id != created_item.author_id:
+            create_notification(
+                recipient=question.author,
+                kind="course_answer",
+                event_key=f"course-answer:{created_item.pk}",
+                title="New answer to your question",
+                message=question.title,
+                url=f"/course/{question.course_id}/",
+            )
 
 
 def create_course_question(*, course, author, title, body):
