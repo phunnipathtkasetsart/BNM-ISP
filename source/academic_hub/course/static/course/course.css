@@ -360,6 +360,32 @@
 }
 .roster tr:last-child td {
   border-bottom:0}
+/* Phones: the three roster columns fit without sideways scrolling once the
+   desktop padding comes off; the name wraps instead. */
+@media (max-width:600px) {
+  .roster td,.roster th {
+    padding:12px 10px;
+    white-space:nowrap}
+  .roster td:first-child {
+    white-space:normal;
+    overflow-wrap:anywhere}
+  .roster .course-remove {
+    padding:7px 10px}
+  .roster .member-avatar {
+    width:28px;
+    height:28px;
+    margin-right:8px}
+}
+@media (pointer:coarse) {
+  .course-back {
+    display:inline-flex;
+    align-items:center;
+    min-height:40px}
+  .course-view-btn,.course-remove,.course-btn {
+    min-height:40px}
+  .cc-tab {
+    min-height:44px}
+}
 .course-remove {
   background:transparent;
   border:1px solid #e8cdcd;

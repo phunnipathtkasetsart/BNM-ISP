@@ -201,9 +201,22 @@
     clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;
   }
 }
+/* Only the board's button in the tab row shrinks to a round "+". The FAQ
+   forum reuses .subnav__action for "Create question", which has no short
+   label, so shrinking it there spilled the text out of the circle. */
 @media (max-width:400px){
-  .subnav__action{font-size:17px;line-height:1;width:32px;height:32px;padding:0;display:grid;place-items:center}
-  .subnav__action-word{display:none}
+  .subnav .subnav__action{font-size:17px;line-height:1;width:32px;height:32px;padding:0;display:grid;place-items:center}
+  .subnav .subnav__action-word{display:none}
+}
+@media (pointer:coarse){
+  .subnav__tab{min-height:44px}
+  .subnav__action{min-height:40px;display:inline-flex;align-items:center}
+  .subnav .subnav__action{min-width:40px;justify-content:center}
+  .chips .chip{min-height:34px;display:inline-flex;align-items:center}
+  .daterow__go{min-height:40px}
+  .datefield input{min-height:36px}
+  .forum-back-link{display:inline-flex;align-items:center;min-height:40px}
+  .forum-action-button{min-height:36px}
 }
 .post__edit{color:var(--ku-green-800);font-weight:600;text-decoration:none}
 .post__edit:hover{text-decoration:underline}

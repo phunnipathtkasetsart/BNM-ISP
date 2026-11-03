@@ -18,7 +18,7 @@ from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
 from django.db import models
-from django.db.models import Count, Q
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 from django.utils import timezone
 
 
@@ -109,6 +109,22 @@ class PublishedQuerySet(models.QuerySet):
             .for_programme(user.department)
         )
 
+    def pinned_first(self):
+        """Newest first, with urgent posts on top until their deadline passes.
+
+        Meta.ordering pins every urgent post forever, so one whose deadline
+        went by weeks ago still sat above today's news. The pin is worked out
+        per request because "passed" depends on the time of the request.
+        """
+        return self.annotate(
+            pinned=Case(
+                When(Q(is_urgent=True) & (Q(deadline__isnull=True) | Q(deadline__gte=timezone.now())),
+                     then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            ),
+        ).order_by("-pinned", "-published_at")
+
     def for_programme(self, department):
         """Drop items scoped to a programme that is not this reader's.
 
@@ -209,6 +225,11 @@ class Announcement(models.Model):
     @property
     def deadline_passed(self):
         return bool(self.deadline) and self.deadline < timezone.now()
+
+    @property
+    def is_pinned(self):
+        """Urgent and still current: the board shows URGENT only while this holds."""
+        return self.is_urgent and not self.deadline_passed
 
 
 class Faq(models.Model):
