@@ -85,9 +85,14 @@ def _window(start, end):
         window["deadline__lte"] = end
     return window
 
-
+# Update checking archive boolean before fetching the events for the calendar.
 def _visible_posts(user):
-    return CoursePost.objects.filter(course__in=visible_courses(user)).select_related("course")
+    """Returns active posts from active courses accessible by the user."""
+    return CoursePost.objects.filter(
+        archived_at__isnull=True,          # Exclude archived posts
+        course__archived_at__isnull=True,   # Exclude archived courses
+        course__in=visible_courses(user)
+    ).select_related("course")
 
 
 def _visible_announcements(user):

@@ -56,7 +56,7 @@ def reader_has_programme(user):
         kind=Tag.Kind.PROGRAMME, slug__iexact=(user.department or "").strip()
     ).exists()
 
-
+# Update to handle archive 
 def public_board(request):
     """The board. Signed-in users and guests only; anonymous goes to sign in."""
     if not request.user.is_authenticated:
@@ -70,18 +70,24 @@ def public_board(request):
     can_manage = can_manage_announcements(request.user)
     is_guest = is_guest_request(request)
 
-    # One rule for both models and for search below, so no read path can
-    # disagree with another about what this reader may see.
+    # 1. Active announcements MUST exclude archived items for ALL users
     announcements = (
         Announcement.objects.visible_to(request.user, is_guest)
+        .filter(archived_at__isnull=True)
         .prefetch_related("tags")
     )
-    # A lecturer also keeps sight of their own drafts, which visible_to()
-    # filters out for everyone but the department.
     if can_manage and not request.user.is_superuser:
         announcements = (
-            announcements | Announcement.objects.filter(author=request.user)
+            announcements | Announcement.objects.filter(author=request.user, archived_at__isnull=True)
         ).distinct().prefetch_related("tags")
+
+    # 2. Archived announcements queryset (Only for staff / department admins)
+    archived_announcements = Announcement.objects.none()
+    if can_manage:
+        archived_qs = Announcement.objects.filter(archived_at__isnull=False).prefetch_related("tags")
+        if not request.user.is_superuser:
+            archived_qs = archived_qs.filter(author=request.user)
+        archived_announcements = archived_qs.order_by("-archived_at")
 
     faqs = Faq.objects.visible_to(request.user, is_guest).prefetch_related("tags")
 
@@ -89,8 +95,6 @@ def public_board(request):
         announcements = announcements.filter(tags__slug=active_tag)
         faqs = faqs.filter(tags__slug=active_tag)
 
-    # `__date` so a single day includes items posted during it. A malformed
-    # value parses to None and narrows nothing.
     parsed_from = parse_date(date_from) if date_from else None
     parsed_to = parse_date(date_to) if date_to else None
     if parsed_from:
@@ -104,24 +108,15 @@ def public_board(request):
     else:
         announcements = announcements.pinned_first()
 
-    # Chips come from tags that actually appear on announcements this reader
-    # can see, so the row can never offer a filter that returns nothing.
     chips = (
         Tag.objects.filter(announcements__in=Announcement.objects.visible_to(
             request.user, is_guest))
         .distinct()
         .order_by("kind", "label")
     )
-    # SKE and CPE are departments themselves, so the generic #Department
-    # chip is noise once a reader has a programme of their own. The posts
-    # stay on the board - registration and scholarship notices still reach
-    # students - only the filter button goes. A guest keeps it, having no
-    # programme, and so does the Department, which manages the board.
     if not is_guest and reader_has_programme(request.user):
         chips = chips.exclude(kind=Tag.Kind.DEPARTMENT)
 
-    # Rendered into a <datalist>. Fine at this size; needs a lookup if the
-    # board ever holds thousands of items.
     suggestions = (
         [t.label for t in chips]
         + list(announcements.values_list("title", flat=True))
@@ -130,6 +125,7 @@ def public_board(request):
 
     return render(request, "announcements/public_board.html", {
         "announcements": announcements,
+        "archived_announcements": archived_announcements,
         "faqs": faqs,
         "chips": chips,
         "active_tag": active_tag,
@@ -142,13 +138,59 @@ def public_board(request):
         "result_count": len(announcements) + len(faqs),
         "can_manage": can_manage,
         "is_guest": is_guest,
-        # ISO timestamp for the countdown in the bar. A guest should be able
-        # to see how long is left rather than be dropped without warning.
         "guest_expires_at": (
             request.session.get_expiry_date().isoformat() if is_guest else ""
         ),
     })
 
+# Archive features 
+@login_required(login_url="accounts:login")
+@require_POST
+def announcement_archive(request, pk):
+    """Archive an announcement (Phase 1 soft delete)."""
+    if not can_manage_announcements(request.user):
+        return render(request, "accounts/no_access.html", status=403)
+
+    announcement = get_object_or_404(Announcement, pk=pk)
+    if not request.user.is_superuser and announcement.author_id != request.user.pk:
+        return render(request, "accounts/no_access.html", status=403)
+
+    announcement.archived_at = timezone.now()
+    announcement.archived_by = request.user
+    announcement.save(update_fields=["archived_at", "archived_by", "updated_at"])
+    return redirect("announcements:public_board")
+
+
+@login_required(login_url="accounts:login")
+@require_POST
+def announcement_restore(request, pk):
+    """Restore an archived announcement back to active status."""
+    if not can_manage_announcements(request.user):
+        return render(request, "accounts/no_access.html", status=403)
+
+    announcement = get_object_or_404(Announcement, pk=pk)
+    if not request.user.is_superuser and announcement.author_id != request.user.pk:
+        return render(request, "accounts/no_access.html", status=403)
+
+    announcement.archived_at = None
+    announcement.archived_by = None
+    announcement.save(update_fields=["archived_at", "archived_by", "updated_at"])
+    return redirect("announcements:public_board")
+
+
+@login_required(login_url="accounts:login")
+@require_POST
+def announcement_delete(request, pk):
+    """Permanently delete an announcement (Phase 2 hard delete)."""
+    if not can_manage_announcements(request.user):
+        return render(request, "accounts/no_access.html", status=403)
+
+    announcement = get_object_or_404(Announcement, pk=pk)
+    if not request.user.is_superuser and announcement.author_id != request.user.pk:
+        return render(request, "accounts/no_access.html", status=403)
+
+    announcement.delete()
+    return redirect("announcements:public_board")
 
 # --- staff: create and edit announcements -------------------------------
 # The last Iteration 2 task. Without it the boards can only ever show seeded

@@ -14,6 +14,8 @@ def generate_class_code():
     return "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
 
 
+
+# Adding archive fields to the Course model.
 class Course(models.Model):
     name = models.CharField(max_length=120)
     section = models.CharField(max_length=20, blank=True, default="")
@@ -22,6 +24,13 @@ class Course(models.Model):
     class_code = models.CharField(max_length=6, unique=True, default=generate_class_code,
                                   editable=False, validators=[RegexValidator(r"^[A-Z0-9]{6}$")])
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Soft-delete / Archive fields
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-created_at", "-pk"]
@@ -111,21 +120,19 @@ class Topic(models.Model):
 
 class Material(StoredFile):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="materials")
-    # Deleting a topic keeps its materials; they fall back to "No topic".
-    topic = models.ForeignKey(Topic, null=True, blank=True, on_delete=models.SET_NULL,
-                              related_name="materials")
+    topic = models.ForeignKey(Topic, null=True, blank=True, on_delete=models.SET_NULL, related_name="materials")
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True, default="")
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
-                                   related_name="+")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Soft-delete / Archive fields
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
     class Meta:
         ordering = ["-created_at", "-pk"]
-
-    def __str__(self):
-        return self.title
 
 
 class CoursePost(models.Model):
@@ -133,15 +140,16 @@ class CoursePost(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     title = models.CharField(max_length=150)
     body = models.TextField(blank=True, default="")
-    deadline = models.DateTimeField(null=True, blank=True, help_text="Optional deadline for this announcement") # New field
+    deadline = models.DateTimeField(null=True, blank=True, help_text="Optional deadline for this announcement")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
+    # Soft-delete / Archive fields
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
     class Meta:
         ordering = ["-created_at", "-pk"]
-
-    def __str__(self):
-        return self.title
 
 
 class PostAttachment(StoredFile):

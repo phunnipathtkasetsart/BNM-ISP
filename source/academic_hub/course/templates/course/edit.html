@@ -1,4 +1,51 @@
 {% extends "course/form.html" %}
+
 {% block after_form %}
-<section class="course-danger"><div><h3>Delete class</h3><p>This removes the class and its enrollments. Student accounts are kept.</p></div><form method="post" action="{% url 'course:delete' course.pk %}" data-confirm="Delete this class and all enrollments? This cannot be undone.">{% csrf_token %}<button class="course-btn danger" type="submit">Delete class</button></form></section>
+<div >
+  
+  {% if course.archived_at %}
+    <!-- PHASE 2: ARCHIVED CLASS ACTIONS -->
+    
+    <!-- RESTORE CLASS -->
+    <section class="course-danger" style="background-color: #f9fafb; border-color: #d1d5db; margin-bottom: 1.5rem;">
+      <div>
+        <h3 style="color: #374151;">Restore class</h3>
+        <p>This class is currently archived. Restoring it will return it to active views for you and enrolled students.</p>
+      </div>
+      <form method="post" action="{% url 'course:restore_course' course.pk %}">
+        {% csrf_token %}
+        <button class="course-btn secondary" type="submit">Restore class</button>
+      </form>
+    </section>
+
+    <!-- PERMANENT DELETE CLASS (Appears only after archiving) -->
+    <section class="course-danger">
+      <div>
+        <h3>Delete class</h3>
+        <p>This permanently removes the class, its posts, materials, and enrollments. Student accounts are kept.</p>
+      </div>
+      <form method="post" action="{% url 'course:delete' course.pk %}" data-confirm="Permanently delete this class and all associated data? This cannot be undone.">
+        {% csrf_token %}
+        <button class="course-btn danger" type="submit">Delete class</button>
+      </form>
+    </section>
+
+  {% else %}
+    <!-- PHASE 1: ACTIVE CLASS ACTIONS -->
+
+    <!-- ARCHIVE CLASS ONLY -->
+    <section class="course-danger">
+      <div>
+        <h3 style="color: #991b1b;">Archive class</h3>
+        <p>Archiving hides this class from active dashboards. Content and records are preserved, and you can restore or permanently delete it later.</p>
+      </div>
+      <form method="post" action="{% url 'course:archive_course' course.pk %}" data-confirm="Archive this class?">
+        {% csrf_token %}
+        <button class="course-btn secondary" type="submit">Archive class</button>
+      </form>
+    </section>
+
+  {% endif %}
+
+</div>
 {% endblock %}

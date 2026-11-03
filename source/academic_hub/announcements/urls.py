@@ -55,4 +55,11 @@ urlpatterns = [
     path("new/", views.announcement_form, name="announcement_create"),
     path("<int:pk>/edit/", views.announcement_form, name="announcement_edit"),
     path("<int:pk>/delete/", views.announcement_delete, name="announcement_delete"),
+
+    # Announcement Management & Archiving
+    path("new/", views.announcement_form, name="announcement_create"),
+    path("<int:pk>/edit/", views.announcement_form, name="announcement_edit"),
+    path("<int:pk>/archive/", views.announcement_archive, name="announcement_archive"),
+    path("<int:pk>/restore/", views.announcement_restore, name="announcement_restore"),
+    path("<int:pk>/delete/", views.announcement_delete, name="announcement_delete"),
 ]
