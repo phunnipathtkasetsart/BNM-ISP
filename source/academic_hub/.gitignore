@@ -18,4 +18,4 @@ __pycache__/
 .vscode/
 .idea/
 
-source/academic_hub/media/
+media/

@@ -104,6 +104,9 @@ class User(AbstractBaseUser, PermissionsMixin):
         self.is_superuser = value
 
 
+
+
+
 class PasswordResetToken(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="password_reset_tokens")
     token_hash = models.CharField(max_length=64, unique=True)

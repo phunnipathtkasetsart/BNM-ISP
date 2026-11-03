@@ -7,33 +7,13 @@
 
 {% block topbar_left %}
   {% if request.user.is_authenticated %}
-    
     <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
     <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
   {% endif %}
 {% endblock %}
 
 {% block topbar_right %}
-  <div class="topbar__right">
-    {% if request.user.is_authenticated %}
-      <span class="topbar__role">{% if is_guest %}Guest{% elif request.user.is_superuser %}Department{% elif request.user.is_staff %}Lecturer{% else %}Student{% endif %}</span>
-      {% if is_guest %}
-        
-        <span class="guestclock" data-expires="{{ guest_expires_at }}"
-              title="Your guest session ends then">&mdash;</span>
-      {% endif %}
-      {% if request.user.is_superuser %}
-        <a class="topbar__link" href="{% url 'accounts:roles' %}">Manage roles</a>
-      {% endif %}
-      <form method="post" action="{% url 'accounts:logout' %}" class="topbar__logout-form">
-        {% csrf_token %}
-        <button type="submit" class="topbar__logout">Log out</button>
-      </form>
-    {% else %}
-      <span class="topbar__role">Guest</span>
-      <a class="topbar__link" href="{% url 'accounts:login' %}">Sign in</a>
-    {% endif %}
-  </div>
+  {% include "accounts/_account_menu.html" %}
 {% endblock %}
 
 {% block content %}
@@ -41,10 +21,10 @@
 <nav class="subnav" aria-label="Sections">
   <a class="subnav__tab subnav__tab--on" href="{% url 'announcements:public_board' %}">Home</a>
   {% if not is_guest %}<a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see your courses">Course</span>{% endif %}
+  {% if not is_guest %}<a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see the calendar">Calendar</span>{% endif %}
 
-  {# Role re-checked in the view; a hidden control is not a permission. #}
   {% if can_manage %}
-    <a class="subnav__action" href="{% url 'announcements:announcement_create' %}">Create Announcement</a>
+    <a class="subnav__action" href="{% url 'announcements:announcement_create' %}"><span class="subnav__action-full">Create Announcement</span><span class="subnav__action-short" aria-hidden="true">+<span class="subnav__action-word"> Create</span></span></a>
   {% endif %}
 </nav>
 
@@ -58,8 +38,7 @@
     <form class="searchbar" method="get" role="search">
       <svg class="searchbar__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
         <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
-        <line x1="13.5" y1="13.5" x2="18" y2="18" stroke="currentColor"
-              stroke-width="2" stroke-linecap="round"/>
+        <line x1="13.5" y1="13.5" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
       </svg>
       <label class="sr-only" for="q">Search announcements and FAQs</label>
       <input id="q" name="q" type="search" list="suggest" value="{{ query }}"
@@ -75,7 +54,6 @@
       {% endif %}
     </form>
 
-    
     <datalist id="suggest">
       {% for s in suggestions %}<option value="{{ s }}"></option>{% endfor %}
     </datalist>
@@ -95,13 +73,10 @@
 
       <span class="daterow__label">
         <svg class="daterow__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-          <rect x="2.5" y="4" width="15" height="13.5" rx="2.5" fill="none"
-                stroke="currentColor" stroke-width="1.6"/>
+          <rect x="2.5" y="4" width="15" height="13.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/>
           <line x1="2.5" y1="8" x2="17.5" y2="8" stroke="currentColor" stroke-width="1.6"/>
-          <line x1="6.5" y1="2" x2="6.5" y2="5.5" stroke="currentColor"
-                stroke-width="1.6" stroke-linecap="round"/>
-          <line x1="13.5" y1="2" x2="13.5" y2="5.5" stroke="currentColor"
-                stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="6.5" y1="2" x2="6.5" y2="5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="13.5" y1="2" x2="13.5" y2="5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
         </svg>
         Posted
       </span>
@@ -118,8 +93,7 @@
 
       <button type="submit" class="daterow__go">Apply</button>
       {% if date_filtered %}
-        <a class="daterow__clear"
-           href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}{% if active_tag %}tag={{ active_tag }}{% endif %}">Clear</a>
+        <a class="daterow__clear" href="?{% if query %}q={{ query|urlencode }}&amp;{% endif %}{% if active_tag %}tag={{ active_tag }}{% endif %}">Clear</a>
       {% endif %}
     </form>
 
@@ -130,12 +104,50 @@
       </p>
     {% endif %}
 
+    <!-- ARCHIVED ANNOUNCEMENTS SECTION (Restricted to Lecturers / Admins) -->
+    {% if archived_announcements and can_manage %}
+      <details class="archived-card">
+        <summary class="archived-card-header">
+          <div class="archived-card-title-group">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 8v13H3V8"/>
+              <path d="M1 3h22v5H1z"/>
+              <path d="M10 12h4"/>
+            </svg>
+            <span>Archived Announcements</span>
+            <span class="archived-card-count">{{ archived_announcements|length }}</span>
+          </div>
+          <svg class="archived-card-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </summary>
+        <div class="archived-card-body">
+          {% for a in archived_announcements %}
+            <article class="post post--archived" style="opacity: 0.85;">
+              <div class="post__top">
+                <h2 class="post__title">{{ a.title }}</h2>
+                <span class="badge badge--closed">Archived</span>
+              </div>
+              <p class="post__meta">
+                {{ a.author_label }} &middot; {{ a.published_at|date:"M j, Y" }}
+                {% if request.user.is_superuser or a.author_id == request.user.pk %}
+                  &middot; <a class="post__edit" href="{% url 'announcements:announcement_edit' a.pk %}">Edit / Restore</a>
+                {% endif %}
+              </p>
+              <p class="post__body">{{ a.body }}</p>
+            </article>
+          {% endfor %}
+        </div>
+      </details>
+    {% endif %}
+
+    <!-- ACTIVE ANNOUNCEMENTS FEED -->
     <div class="feed">
       {% for a in announcements %}
-        <article class="post{% if a.is_urgent %} post--urgent{% endif %}">
+        <article class="post{% if a.is_pinned %} post--urgent{% endif %}">
           <div class="post__top">
             <h2 class="post__title">{{ a.title }}</h2>
-            {% if a.is_urgent %}
+            {% if a.is_pinned %}
               <span class="badge badge--urgent">URGENT</span>
             {% endif %}
             {% if a.deadline %}
@@ -154,7 +166,6 @@
               {% endif %}
             {% endif %}
             {% if a.audience != "public" %}
-              
               <span class="post__scope">{{ a.get_audience_display }}</span>
             {% endif %}
           </p>
@@ -186,7 +197,6 @@
   </section>
 
   <aside class="board__side">
-    {# Guests get the FAQ panel only; the other two need an account. #}
     {% if not is_guest %}
       <section class="panel sidepanel">
         <div class="sidepanel__head"><h2>Upcoming Deadline</h2></div>
@@ -211,7 +221,6 @@
         </div>
         <div class="faq__list">
           {% for f in faqs %}
-            
             <details class="qa">
               <summary class="qa__q">{{ f.question }}</summary>
               <div class="qa__a">{{ f.answer|linebreaks }}</div>
@@ -220,12 +229,12 @@
             <p class="feed__empty">{% if query %}No FAQs match <strong>{{ query }}</strong>.{% else %}No questions published yet.{% endif %}</p>
           {% endfor %}
         </div>
+        <a class="faq__forum-link" href="{% url 'announcements:faq_board' %}">Open the FAQ forum</a>
       </div>
     </section>
   </aside>
 
 </div>
 
-<a class="switcher" href="{% url 'announcements:faq_board' %}"
-   aria-label="Go to FAQ"><span>FAQ</span></a>
+<a class="switcher" href="{% url 'announcements:faq_board' %}" aria-label="Go to FAQ"><span>FAQ</span></a>
 {% endblock %}
