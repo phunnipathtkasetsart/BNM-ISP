@@ -268,7 +268,7 @@ def detail_context(request, post_form=None, material_form=None):
     # Active posts for main board
     posts = course.posts.filter(archived_at__isnull=True).select_related("author").prefetch_related("attachments")
 
-    # Manager view: Include archived items
+    # Manager view: Include archived items (Lecturer / TA / Admin only)
     archived_posts = course.posts.filter(archived_at__isnull=False).select_related("author").prefetch_related("attachments") if manage else []
     archived_materials = course.materials.filter(archived_at__isnull=False) if manage else []
 
@@ -289,7 +289,7 @@ def detail_context(request, post_form=None, material_form=None):
     return {
         "course": course,
         "group_works": course.group_works.all(),
-        "posts": course.posts.select_related("author").prefetch_related("attachments"),
+        "posts": posts,  # FIX: Use the filtered 'posts' variable instead of course.posts.all()
         "archived_posts": archived_posts,
         "archived_materials": archived_materials,
         "upcoming_deadlines": upcoming_deadlines,
@@ -313,6 +313,8 @@ def detail_context(request, post_form=None, material_form=None):
         "ta_ids": ta_user_ids,
         "available_students": available_students,
     }
+
+
 
 @course_access()
 @require_http_methods(["GET"])
@@ -584,6 +586,9 @@ def file_download(attachment):
 @require_http_methods(["GET"])
 def download_attachment(request, pk, attachment_id):
     attachment = get_object_or_404(PostAttachment, pk=attachment_id, post__course=request.course)
+    # Restrict archived attachment downloads to course managers only
+    if attachment.post.archived_at is not None and not request.can_manage_content:
+        raise Http404("Attachment is no longer available.")
     return file_download(attachment)
 
 
@@ -671,6 +676,9 @@ def delete_material(request, pk, material_id):
 @require_http_methods(["GET"])
 def download_material(request, pk, material_id):
     material = get_object_or_404(Material, pk=material_id, course=request.course)
+    # Restrict archived material downloads to course managers only
+    if material.archived_at is not None and not request.can_manage_content:
+        raise Http404("Material is no longer available.")
     return file_download(material)
 
 

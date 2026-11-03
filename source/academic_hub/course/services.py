@@ -219,17 +219,36 @@ def create_course_answer(*, question, author, body):
 # --- Soft-delete / Archive Helpers ---
 
 def archive_post(post, user):
-    """Mark an announcement as archived."""
-    post.archived_at = timezone.now()
+    """Archive a course announcement and any materials created from its attachments."""
+    now = timezone.now()
+    post.archived_at = now
     post.archived_by = user
     post.save(update_fields=["archived_at", "archived_by", "updated_at"])
 
+    # Find and archive materials sharing the same uploaded file path
+    attachment_files = list(post.attachments.values_list("file", flat=True))
+    if attachment_files:
+        Material.objects.filter(
+            course=post.course,
+            file__in=attachment_files,
+            archived_at__isnull=True,
+        ).update(archived_at=now, archived_by=user)
+
 
 def restore_post(post):
-    """Restore an archived announcement to active state."""
+    """Restore an archived announcement and its corresponding materials."""
     post.archived_at = None
     post.archived_by = None
     post.save(update_fields=["archived_at", "archived_by", "updated_at"])
+
+    # Restore materials sharing the same uploaded file path
+    attachment_files = list(post.attachments.values_list("file", flat=True))
+    if attachment_files:
+        Material.objects.filter(
+            course=post.course,
+            file__in=attachment_files,
+            archived_at__isnull=False,
+        ).update(archived_at=None, archived_by=None)
 
 
 def archive_material(material, user):
