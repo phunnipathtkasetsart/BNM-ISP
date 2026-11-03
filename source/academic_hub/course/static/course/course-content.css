@@ -302,12 +302,11 @@
   box-shadow: 0 0 0 3px rgba(23, 108, 93, 0.2);
 }
 .course-detail-content .cc-names {
-  min-width: 0;
+  flex: 1 1 0;
+  min-width: 0;          /* key line, lets ellipsis work */
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 14px;
-  color: #60776c;
 }
 
 /* ---- placeholders (materials arrive in a later task) ---- */
@@ -733,3 +732,44 @@
   color: #ffffff;
   transform: scale(1.08);
 }
+
+
+/* ---- Interactive File Upload Preview List ---- */
+.course-detail-content .cc-file-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+.course-detail-content .cc-file-preview-list > li {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+}
+
+/* Additional File Extension Badge Colors */
+.course-detail-content .cc-ext--img,
+.course-detail-content .cc-ext--png,
+.course-detail-content .cc-ext--jpg,
+.course-detail-content .cc-ext--jpeg,
+.course-detail-content .cc-ext--gif,
+.course-detail-content .cc-ext--webp { color: #7a4a9e; border-color: #7a4a9e; }
+
+.course-detail-content .cc-ext--doc,
+.course-detail-content .cc-ext--docx { color: #2f5f9e; border-color: #2f5f9e; }
+
+.course-detail-content .cc-ext--xls,
+.course-detail-content .cc-ext--xlsx,
+.course-detail-content .cc-ext--csv { color: #1e7e43; border-color: #1e7e43; }
+
+.course-detail-content .cc-ext--ppt,
+.course-detail-content .cc-ext--pptx { color: #d24726; border-color: #d24726; }
+
+.course-detail-content .cc-ext--mp4,
+.course-detail-content .cc-ext--mp3 { color: #0078d4; border-color: #0078d4; }
+

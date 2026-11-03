@@ -102,9 +102,9 @@
           {% for att in files %}
             <li>
               <a class="cc-chip" href="{% url 'course:download_attachment' course.pk att.pk %}">
-                <span class="cc-ext cc-ext--{{ att.original_name|file_kind }}" aria-hidden="true">{{ att.original_name|file_ext }}</span>
-                <span class="cc-chip__name">{{ att.original_name|default:"Attachment" }}</span>
-                <span class="cc-chip__size">{{ att.size|filesizeformat }}</span>
+                <span class="cc-ext cc-ext--{{ att.display_name|file_kind }}" aria-hidden="true">{{ att.display_name|file_ext }}</span>
+                <span class="cc-chip__name">{{ att.display_name }}</span>
+                <span class="cc-chip__size">{{ att.actual_size|filesizeformat }}</span>
                 <span class="cc-chip__dl">Download</span>
               </a>
             </li>
@@ -150,10 +150,10 @@
                   <div class="cc-attachment-edit-wrapper" data-attachment-container style="margin-bottom: 10px;">
                     <input type="hidden" name="remove_attachment" value="false" data-remove-attachment-input>
                     <div class="cc-chip cc-chip--edit">
-                      <span class="cc-ext cc-ext--{{ att.original_name|file_kind }}" aria-hidden="true">{{ att.original_name|file_ext }}</span>
+                      <span class="cc-ext cc-ext--{{ att.display_name|file_kind }}" aria-hidden="true">{{ att.display_name|file_ext }}</span>
                       <div class="cc-chip__main">
-                        <span class="cc-chip__name">{{ att.original_name|default:"Attachment" }}</span>
-                        <span class="cc-chip__size">{{ att.size|filesizeformat }}</span>
+                        <span class="cc-chip__name">{{ att.display_name }}</span>
+                        <span class="cc-chip__size">{{ att.actual_size|filesizeformat }}</span>
                       </div>
                       <button type="button" class="cc-chip__remove" data-remove-attachment-btn aria-label="Remove attachment" title="Remove attachment">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

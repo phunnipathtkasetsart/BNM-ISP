@@ -5,7 +5,8 @@ import re
 from django import forms
 from django.contrib.auth import get_user_model
 from .models import CoursePost
-from .validators import validate_upload_size
+from .validators import validate_upload_size, validate_file_security
+ALLOWED_ACCEPT_ATTR = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mp3,.zip,.rar"
 
 class CourseForm(forms.Form):
     section = forms.RegexField(
@@ -110,13 +111,35 @@ class CsvRosterForm(forms.Form):
         return upload
 
 
+
+
+class MultipleFileInput(forms.ClearableFileInput):
+    allow_multiple_selected = True
+
+
+class MultipleFileField(forms.FileField):
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("widget", MultipleFileInput())
+        super().__init__(*args, **kwargs)
+
+    def clean(self, data, initial=None):
+        clean_one = super().clean
+        if isinstance(data, (list, tuple)):
+            return [clean_one(item, initial) for item in data]
+        return [clean_one(data, initial)] if data else []
+
+
+def topic_choices(course):
+    return [(str(t.pk), t.title) for t in course.topics.order_by("-pk")]
+
+
 class CoursePostForm(forms.ModelForm):
-    attachment = forms.FileField(
+    attachment = MultipleFileField(
         required=False,
-        label="File attachment",
-        help_text="Optional file (up to 50 MB)",
-        validators=[validate_upload_size],
-        widget=forms.FileInput(attrs={"class": "form-control"}),
+        label="File attachments",
+        help_text="Optional files (up to 25 MB total)",
+        validators=[validate_file_security],
+        widget=MultipleFileInput(attrs={"class": "form-control", "accept": ALLOWED_ACCEPT_ATTR, "multiple": True}),
     )
     remove_attachment = forms.BooleanField(
         required=False,
@@ -155,6 +178,19 @@ class CoursePostForm(forms.ModelForm):
             elif choice == MaterialUploadForm.NEW_TOPIC and not (data.get("new_topic") or "").strip():
                 self.add_error("new_topic", "Enter a name for the new topic.")
         return data
+    
+    def clean_attachment(self):
+        files = self.cleaned_data.get("attachment") or []
+        if len(files) > 10:
+            raise forms.ValidationError("You can attach at most 10 files at a time.")
+            
+        total_size = sum(f.size for f in files)
+        limit = 25 * 1024 * 1024  # 25 MB Total
+        if total_size > limit:
+            raise forms.ValidationError(
+                f"Total size of attached files ({total_size / (1024 * 1024):.1f} MB) exceeds the 25 MB limit."
+            )
+        return files
 
     class Meta:
         model = CoursePost
@@ -164,26 +200,6 @@ class CoursePostForm(forms.ModelForm):
             "body": forms.Textarea(attrs={"placeholder": "Write your announcement content here...", "rows": 4, "class": "form-control"}),
            "deadline": forms.DateTimeInput(format="%Y-%m-%dT%H:%M", attrs={"type": "datetime-local", "class": "form-control"}),
         }
-
-class MultipleFileInput(forms.ClearableFileInput):
-    allow_multiple_selected = True
-
-
-class MultipleFileField(forms.FileField):
-    def __init__(self, *args, **kwargs):
-        kwargs.setdefault("widget", MultipleFileInput())
-        super().__init__(*args, **kwargs)
-
-    def clean(self, data, initial=None):
-        clean_one = super().clean
-        if isinstance(data, (list, tuple)):
-            return [clean_one(item, initial) for item in data]
-        return [clean_one(data, initial)] if data else []
-
-
-def topic_choices(course):
-    return [(str(t.pk), t.title) for t in course.topics.order_by("-pk")]
-
 
 class MaterialUploadForm(forms.Form):
     NEW_TOPIC = "__new"
@@ -197,8 +213,11 @@ class MaterialUploadForm(forms.Form):
         label="New topic name", max_length=120, required=False,
         widget=forms.TextInput(attrs={"placeholder": "e.g. Lectures"}),
     )
-    files = MultipleFileField(label="Files", validators=[validate_upload_size])
-
+    files = MultipleFileField(
+        label="Files", 
+        validators=[validate_file_security],
+        widget=MultipleFileInput(attrs={"accept": ALLOWED_ACCEPT_ATTR, "multiple": True})
+    )
     def __init__(self, *args, course, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["topic"].choices = (
@@ -207,9 +226,18 @@ class MaterialUploadForm(forms.Form):
         )
 
     def clean_files(self):
-        files = self.cleaned_data["files"]
+        files = self.cleaned_data.get("files") or []
         if not files:
             raise forms.ValidationError("Choose at least one file.")
+        if len(files) > 10:
+            raise forms.ValidationError("You can upload at most 10 files at a time.")
+            
+        total_size = sum(f.size for f in files)
+        limit = 25 * 1024 * 1024  # 25 MB Total
+        if total_size > limit:
+            raise forms.ValidationError(
+                f"Total size of uploaded files ({total_size / (1024 * 1024):.1f} MB) exceeds the 25 MB limit."
+            )
         return files
 
     def clean(self):
