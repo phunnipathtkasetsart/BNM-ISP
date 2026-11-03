@@ -1,0 +1,416 @@
+.group-page-head,
+.group-work-card,
+.group-card__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.course-shell:has(.group-work-live) {
+  min-height: 0;
+  /* padding-bottom: 20px; */
+}
+
+.group-page-head {
+  margin-bottom: 24px;
+}
+
+.group-live-status {
+  margin: 0;
+  color: #a63d38;
+  font-size: 12px;
+}
+
+.group-live-status:empty {
+  display: none;
+}
+
+.group-page-head h1,
+.group-work-card h2,
+.group-card h2 {
+  margin: 0;
+  color: #173d35;
+}
+
+.group-page-head h1 {
+  font-size: clamp(24px, 3vw, 34px);
+}
+
+.group-eyebrow {
+  margin: 0 0 6px;
+  color: #57766a;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.group-eyebrow a {
+  color: inherit;
+}
+
+.group-muted {
+  margin: 6px 0 0;
+  color: #6a7d74;
+  font-size: 13px;
+}
+
+.group-id {
+  color: #74867e;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.group-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 9px 15px;
+  border: 1px solid #176c5d;
+  border-radius: 9px;
+  background: #176c5d;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background .15s ease, transform .15s ease;
+}
+
+.group-button:hover {
+  background: #105649;
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.group-button--quiet {
+  border-color: #d3e2da;
+  background: #f3f8f5;
+  color: #205849;
+}
+
+.group-button--quiet:hover {
+  background: #e8f2ed;
+  color: #174a3e;
+}
+
+.group-create-work {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #dce8e1;
+  border-radius: 14px;
+  background: rgba(255,255,255,.92);
+}
+
+.group-create-work label,
+.group-invite-form label,
+.group-contact-form label {
+  display: grid;
+  gap: 6px;
+  color: #385d50;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.group-create-work input,
+.group-inline-form input,
+.group-invite-form input,
+.group-contact-form input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 40px;
+  padding: 9px 11px;
+  border: 1px solid #ceded5;
+  border-radius: 8px;
+  background: #fff;
+  color: #183e35;
+  font: inherit;
+  font-size: 13px;
+}
+
+.group-create-work input:focus,
+.group-inline-form input:focus,
+.group-invite-form input:focus,
+.group-contact-form input:focus {
+  border-color: #176c5d;
+  outline: 2px solid rgba(23,108,93,.15);
+}
+
+.group-contact-form {
+  display: flex;
+  align-items: center;
+  width: min(100%, 475px);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.group-contact-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-contact-form .group-button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.group-third-party-contact {
+  /* white-space: pre-wrap; */
+  overflow-wrap: anywhere;
+}
+
+.group-third-party-contact strong {
+  display: inline;
+  margin-right: 6px;
+  color: #385d50;
+  font-size: 12px;
+}
+
+.group-work-list,
+.group-groups {
+  display: grid;
+  gap: 14px;
+}
+
+.group-work-card,
+.group-card,
+.group-panel {
+  padding: 20px;
+  border: 1px solid #dce8e1;
+  border-radius: 16px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 8px 24px rgba(24,62,53,.05);
+}
+
+.group-work-card {
+  align-items: center;
+}
+
+.group-work-card h2 {
+  font-size: 18px;
+}
+
+.group-work-card h2 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.group-work-card h2 a:hover {
+  color: #176c5d;
+  text-decoration: underline;
+}
+
+.group-status {
+  margin: 7px 0 0;
+  color: #176c5d;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.group-empty {
+  padding: 28px;
+  border: 1px dashed #cbdcd2;
+  border-radius: 14px;
+  color: #6a7d74;
+  text-align: center;
+}
+
+.group-panel {
+  margin-bottom: 16px;
+}
+
+.group-panel h2 {
+  margin: 0;
+  color: #173d35;
+  font-size: 18px;
+}
+
+.group-start-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.group-inline-form,
+.group-inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.group-invite-list,
+.group-member-list {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.group-invite-list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid #edf2ef;
+  color: #35584c;
+  font-size: 13px;
+}
+
+.group-card {
+  overflow: hidden;
+}
+
+.group-card__head {
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #edf2ef;
+}
+
+.group-card__head > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.group-card h2 {
+  font-size: 20px;
+}
+
+.group-member-list li {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 55px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f3f1;
+}
+
+.group-avatar {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e5f1eb;
+  color: #176c5d;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.group-member-name {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  color: #244b3e;
+  font-size: 13px;
+}
+
+.group-member-name span {
+  color: #74867e;
+  font-size: 11px;
+}
+
+.group-badge {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #edf5ef;
+  color: #25634d;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.group-text-button {
+  border: 0;
+  background: transparent;
+  color: #176c5d;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.group-text-button:hover {
+  text-decoration: underline;
+}
+
+.group-text-button--danger {
+  color: #a63d38;
+}
+
+.group-invite-form {
+  display: grid;
+  gap: 8px;
+  max-width: 430px;
+  margin-top: 17px;
+}
+
+.group-invite-form > div {
+  display: flex;
+  gap: 8px;
+}
+
+.group-invite-form input {
+  flex: 1;
+}
+
+.group-danger-action {
+  margin-top: 10px;
+  text-align: right;
+}
+
+.group-capacity-note {
+  margin-top: 16px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@media (max-width: 720px) {
+  .group-page-head,
+  .group-work-card,
+  .group-start-panel,
+  .group-card__head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .group-create-work {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .group-inline-form {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .group-inline-actions {
+    flex-wrap: wrap;
+  }
+
+  .group-invite-list > li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .group-member-list li {
+    flex-wrap: wrap;
+  }
+
+}

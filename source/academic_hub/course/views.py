@@ -10,12 +10,14 @@ from django.db.models import Count, Exists, OuterRef, Q
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.http import FileResponse, Http404, JsonResponse
+from django.http import FileResponse, Http404, JsonResponse, request
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods, require_POST
 from django.utils import timezone
 
 from django.contrib.auth import get_user_model
+
+
 
 from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
                     MaterialEditForm, MaterialUploadForm, RosterForm)
@@ -30,10 +32,24 @@ from .models import (
     PostAttachment,
 )
 from .permissions import can_teach, course_access, visible_courses
-from .services import (add_materials, add_students, assign_ta, create_course,
-                       create_course_answer, create_course_question,
-                       get_or_create_topic, remove_ta, update_course)
-
+from .services import (
+    add_materials,
+    add_students,
+    assign_ta,
+    create_course,
+    create_course_answer,
+    create_course_question,
+    get_or_create_topic,
+    remove_ta,
+    update_course,
+    archive_post,
+    restore_post,
+    archive_material,
+    restore_material,
+    archive_course,
+    restore_course,
+)
+from notifications.services import notify_course_material, notify_course_post, notify_deadline
 
 # api_request คืน boolean ว่า path เริ่ม /course/api/ หรือไม่ ฟังก์ชันนี้ใช้เลือกรูปแบบ response
 # ไม่ใช่ตัวตรวจสิทธิ์
@@ -93,20 +109,24 @@ def form_error(request, form, title, *, course=None, template="course/form.html"
 
 # dashboard ใช้ course_access() ตรวจ login/active/guest และรับเฉพาะ GET เมื่อมีคำขอเข้ามา wrapper
 # ด้านนอกตรวจสิทธิ์ก่อนตัวจำกัด method
+# Iteration 5 , adding archive feature to dashboard view, filtering courses based on archived status and user permissions.
 @course_access()
 @require_http_methods(["GET"])
 def dashboard(request):
     query = request.GET.get("q", "").strip()
-    courses = visible_courses(request.user).select_related("owner")
+    all_courses = visible_courses(request.user).select_related("owner")
 
-    # Admin-only search filter
     if request.user.is_superuser and query:
-        courses = courses.filter(
+        all_courses = all_courses.filter(
             Q(name__icontains=query) |
             Q(section__icontains=query) |
             Q(owner__first_name__icontains=query) |
             Q(owner__last_name__icontains=query)
         ).distinct()
+
+    # Separate active vs. archived courses
+    courses = all_courses.filter(archived_at__isnull=True)
+    archived_courses = all_courses.filter(archived_at__isnull=False) if can_teach(request.user) else []
 
     ta_course_ids = set(
         CourseTA.objects.filter(user=request.user).values_list("course_id", flat=True)
@@ -116,6 +136,7 @@ def dashboard(request):
     upcoming_deadlines = (
         CoursePost.objects.filter(
             course__in=courses,
+            archived_at__isnull=True,
             deadline__isnull=False,
             deadline__gte=now,
             deadline__lte=now + timedelta(days=7)
@@ -125,14 +146,18 @@ def dashboard(request):
     )
 
     if api_request(request):
-        return JsonResponse({"courses": [course_data(c, request.user) for c in courses]})
+        return JsonResponse({
+            "courses": [course_data(c, request.user) for c in courses],
+            "archived_courses": [course_data(c, request.user) for c in archived_courses],
+        })
 
     return render(
         request,
         "course/dashboard.html",
         {
             "courses": courses,
-            "query": query,  # Passed to retain search value in input
+            "archived_courses": archived_courses,
+            "query": query,
             "can_create": can_teach(request.user),
             "can_join": not request.user.is_staff and not request.user.is_superuser,
             "ta_course_ids": ta_course_ids,
@@ -142,6 +167,25 @@ def dashboard(request):
         },
     )
 
+# --- Course Archive & Restore Views ---
+
+@course_access(owner=True)
+@require_POST
+def archive_course_view(request, pk):
+    archive_course(request.course, request.user)
+    if api_request(request):
+        return JsonResponse({"archived": True})
+    messages.success(request, "Class archived successfully.")
+    return redirect("course:dashboard")
+
+@course_access(owner=True)
+@require_POST
+def restore_course_view(request, pk):
+    restore_course(request.course)
+    if api_request(request):
+        return JsonResponse({"restored": True})
+    messages.success(request, "Class restored successfully.")
+    return redirect("course:detail", pk=pk)
 
 # create อนุญาตผู้สอน รับ GET สำหรับแสดงฟอร์ม และ POST สำหรับส่งข้อมูล
 @course_access(lecturer=True)
@@ -203,7 +247,7 @@ def join(request):
 def topic_groups(course):
     """Materials grouped by topic, newest topic first. Files with no topic last."""
     by_topic = {}
-    for material in course.materials.order_by("-created_at", "-pk"):
+    for material in course.materials.filter(archived_at__isnull=True).order_by("-created_at", "-pk"):
         by_topic.setdefault(material.topic_id, []).append(material)
     groups = [{"title": t.title, "materials": by_topic[t.pk]}
               for t in course.topics.order_by("-pk") if t.pk in by_topic]
@@ -212,18 +256,27 @@ def topic_groups(course):
     return groups
 
 
-
 def detail_context(request, post_form=None, material_form=None):
     course = request.course
     manage = request.can_manage_content
+    
     if manage and post_form is None:
         post_form = CoursePostForm(course=course)
     if manage and material_form is None:
         material_form = MaterialUploadForm(course=course, auto_id="material_%s")
-    groups = topic_groups(course)
-    
+        
+    groups = topic_groups(course)  # Active materials only
     now = timezone.now()
+
+    # Active posts for main board
+    posts = course.posts.filter(archived_at__isnull=True).select_related("author").prefetch_related("attachments")
+
+    # Manager view: Include archived items (Lecturer / TA / Admin only)
+    archived_posts = course.posts.filter(archived_at__isnull=False).select_related("author").prefetch_related("attachments") if manage else []
+    archived_materials = course.materials.filter(archived_at__isnull=False) if manage else []
+
     upcoming_deadlines = course.posts.filter(
+        archived_at__isnull=True,
         deadline__isnull=False, 
         deadline__gte=now,
         deadline__lte=now + timedelta(days=7)
@@ -238,7 +291,10 @@ def detail_context(request, post_form=None, material_form=None):
 
     return {
         "course": course,
-        "posts": course.posts.select_related("author").prefetch_related("attachments"),
+        "group_works": course.group_works.all(),
+        "posts": posts,  # FIX: Use the filtered 'posts' variable instead of course.posts.all()
+        "archived_posts": archived_posts,
+        "archived_materials": archived_materials,
         "upcoming_deadlines": upcoming_deadlines,
         "post_form": post_form,
         "material_form": material_form,
@@ -256,11 +312,11 @@ def detail_context(request, post_form=None, material_form=None):
             and not course.ta_links.filter(user=request.user).exists()
         ),
         "is_department": request.is_dept_override,
-
         "enrollments": course.enrollments.select_related("student") if request.can_manage_roster else [],
         "ta_ids": ta_user_ids,
-        "available_students": available_students,  # Passed to detail.html for the select dropdown
+        "available_students": available_students,
     }
+
 
 
 @course_access()
@@ -416,6 +472,7 @@ def finish_import(request, form, *, csv):
 
 # --- Task 4.3: announcements and attachments ---------------------------------
 
+
 @course_access(manage_content=True)
 @require_POST
 def create_post(request, pk):
@@ -440,6 +497,7 @@ def create_post(request, pk):
         post.author = request.user
         post.save()
 
+        created_materials = []
         if uploads:
             topic = None
             if form.cleaned_data.get("add_to_materials"):
@@ -448,16 +506,60 @@ def create_post(request, pk):
             for upload in uploads:
                 attachment = PostAttachment.objects.create(post=post, file=upload)
                 if topic:
-                    Material.objects.create(
-                        course=request.course, topic=topic, created_by=request.user,
-                        title=attachment.original_name[:150], file=attachment.file.name,
-                        original_name=attachment.original_name, size=attachment.size
+                    mat = Material.objects.create(
+                        course=request.course,
+                        topic=topic,
+                        created_by=request.user,
+                        title=attachment.original_name[:150],
+                        file=attachment.file.name,
+                        original_name=attachment.original_name,
+                        size=attachment.size,
                     )
+                    created_materials.append(mat)
+
+    notify_course_post(post)
+    if post.deadline:
+        notify_deadline(post)
+    for mat in created_materials:
+        notify_course_material(mat)
 
     if api_request(request):
         return JsonResponse({"id": post.pk, "title": post.title}, status=201)
     messages.success(request, "Announcement posted.")
     return redirect("course:detail", pk=pk)
+
+# --- Announcement Archive & Restore Views ---
+
+@course_access(manage_content=True)
+@require_POST
+def archive_post_view(request, pk, post_id):
+    post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
+    if not (request.is_owner or request.is_dept_override) and post.author_id != request.user.pk:
+        if api_request(request):
+            return JsonResponse({"error": "You can only archive your own announcements."}, status=403)
+        messages.error(request, "You can only archive your own announcements.")
+        return redirect("course:detail", pk=pk)
+    archive_post(post, request.user)
+    if api_request(request):
+        return JsonResponse({"archived": True})
+    messages.success(request, "Announcement archived.")
+    return redirect("course:detail", pk=pk)
+
+@course_access(manage_content=True)
+@require_POST
+def restore_post_view(request, pk, post_id):
+    post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
+    if not (request.is_owner or request.is_dept_override) and post.author_id != request.user.pk:
+        if api_request(request):
+            return JsonResponse({"error": "You can only restore your own announcements."}, status=403)
+        messages.error(request, "You can only restore your own announcements.")
+        return redirect("course:detail", pk=pk)
+    restore_post(post)
+    if api_request(request):
+        return JsonResponse({"restored": True})
+    messages.success(request, "Announcement restored.")
+    return redirect("course:detail", pk=pk)
+
 
 @course_access(manage_content=True)
 @require_POST
@@ -500,6 +602,9 @@ def file_download(attachment):
 @require_http_methods(["GET"])
 def download_attachment(request, pk, attachment_id):
     attachment = get_object_or_404(PostAttachment, pk=attachment_id, post__course=request.course)
+    # Restrict archived attachment downloads to course managers only
+    if attachment.post.archived_at is not None and not request.can_manage_content:
+        raise Http404("Attachment is no longer available.")
     return file_download(attachment)
 
 
@@ -526,6 +631,29 @@ def upload_materials(request, pk):
     if api_request(request):
         return JsonResponse({"added": len(created), "topic": topic.title}, status=201)
     messages.success(request, f"{len(created)} file(s) added to {topic.title}.")
+    return redirect("course:detail", pk=pk)
+
+
+# --- Material Features ---
+
+@course_access(manage_content=True)
+@require_POST
+def archive_material_view(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    archive_material(material, request.user)
+    if api_request(request):
+        return JsonResponse({"archived": True})
+    messages.success(request, "Material archived.")
+    return redirect("course:detail", pk=pk)
+
+@course_access(manage_content=True)
+@require_POST
+def restore_material_view(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    restore_material(material)
+    if api_request(request):
+        return JsonResponse({"restored": True})
+    messages.success(request, "Material restored.")
     return redirect("course:detail", pk=pk)
 
 
@@ -564,6 +692,9 @@ def delete_material(request, pk, material_id):
 @require_http_methods(["GET"])
 def download_material(request, pk, material_id):
     material = get_object_or_404(Material, pk=material_id, course=request.course)
+    # Restrict archived material downloads to course managers only
+    if material.archived_at is not None and not request.can_manage_content:
+        raise Http404("Material is no longer available.")
     return file_download(material)
 
 
@@ -582,6 +713,8 @@ def edit_post(request, pk, post_id):
     if request.method == "POST":
         form = CoursePostForm(request.POST, request.FILES, instance=post, course=request.course)
         if form.is_valid():
+            previous_deadline = post.deadline
+            created_material = None
             with transaction.atomic():
                 post = form.save()
 
@@ -606,11 +739,16 @@ def edit_post(request, pk, post_id):
                     for upload in new_uploads:
                         attachment = PostAttachment.objects.create(post=post, file=upload)
                         if topic:
-                            Material.objects.create(
+                            created_material = Material.objects.create(
                                 course=request.course, topic=topic, created_by=request.user,
                                 title=attachment.original_name[:150], file=attachment.file.name,
                                 original_name=attachment.original_name, size=attachment.size
                             )
+
+            if post.deadline != previous_deadline and post.deadline:
+                notify_deadline(post)
+            if created_material:
+                notify_course_material(created_material)
 
             if api_request(request):
                 return JsonResponse({"id": post.pk, "title": post.title})
@@ -668,6 +806,13 @@ def ta_remove(request, pk, student_id):
         return JsonResponse({"removed": removed})
     messages.success(request, "TA role removed." if removed else "That student was not a TA.")
     return redirect("course:detail", pk=pk)
+
+
+
+
+
+
+
 
 
 # --- Iteration 5.2: course Q&A JSON API --------------------------------------

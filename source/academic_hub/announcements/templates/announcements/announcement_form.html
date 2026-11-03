@@ -3,8 +3,6 @@
 {% block title %}{% if is_edit %}Edit announcement{% else %}New announcement{% endif %} — KU Student Portal{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/annform.css' %}">{% endblock %}
 
-{# Staff-only. The view checks the role independently; this template is never the thing keeping anyone out. #}
-
 {% block topbar_mod %}topbar--signed-in{% endblock %}
 
 {% block topbar_left %}
@@ -18,7 +16,7 @@
 
 {% block content %}
 <div class="board board--single">
-  <section class="panel">
+  <section class="panel" style="max-width: 680px; margin: 0 auto;">
     <div class="panel__head">
       <h1>{% if is_edit %}Edit announcement{% else %}New announcement{% endif %}</h1>
       <p class="panel__sub">
@@ -50,22 +48,63 @@
         </div>
       {% endfor %}
 
-      <div class="annform__actions">
-        <button type="submit" class="btn btn--primary">
+      <div class="annform__actions" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; align-items: center;">
+        <button type="submit" class="btn btn--primary" style="background: #2c5449; color: #fff; padding: 0.6rem 1.4rem; border-radius: 8px; font-weight: 700; border: none; cursor: pointer;">
           {% if is_edit %}Save changes{% else %}Publish{% endif %}
         </button>
-        <a class="btn btn--guest" href="{% url 'announcements:public_board' %}">Cancel</a>
+        <a class="btn" href="{% url 'announcements:public_board' %}" style="background: #e5e7eb; color: #374151; padding: 0.6rem 1.2rem; border-radius: 8px; text-decoration: none; font-weight: 600;">Cancel</a>
       </div>
     </form>
 
     {% if is_edit %}
-      {# Its own form, so a stray Enter in the edit fields can never submit a delete. #}
-      <form method="post" action="{% url 'announcements:announcement_delete' instance.pk %}"
-            class="annform__danger"
-            onsubmit="return confirm('Withdraw this announcement? This cannot be undone.');">
-        {% csrf_token %}
-        <button type="submit" class="linkbtn linkbtn--danger">Withdraw this announcement</button>
-      </form>
+      <div style="margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 1.5rem;">
+        
+        {% if instance.archived_at %}
+          <!-- PHASE 2: ARCHIVED POST ACTIONS -->
+          <div style="background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+            <div>
+              <span style="background: #e5e7eb; color: #4b5563; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;">Status: Archived</span>
+              <p style="margin: 0.5rem 0 0; font-size: 0.875rem; color: #4b5563;">This announcement is archived and hidden from public view. You can restore it to the board or permanently remove it.</p>
+            </div>
+            
+            <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+              <!-- RESTORE ANNOUNCEMENT -->
+              <form method="post" action="{% url 'announcements:announcement_restore' instance.pk %}">
+                {% csrf_token %}
+                <button type="submit" style="background: #2c5449; color: #fafafa; border: 1px solid #2c5449; padding: 0.55rem 1.1rem; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                  Restore to Board
+                </button>
+              </form>
+
+              <!-- PERMANENT DELETE ANNOUNCEMENT -->
+              <form method="post" action="{% url 'announcements:announcement_delete' instance.pk %}"
+                    onsubmit="return confirm('Permanently delete this announcement? This cannot be undone.');">
+                {% csrf_token %}
+                <button type="submit" style="background: transparent; color: #dc2626; border: 1px solid #fca5a5; padding: 0.55rem 1.1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                  Withdraw permanently
+                </button>
+              </form>
+            </div>
+          </div>
+
+        {% else %}
+          <!-- PHASE 1: ACTIVE POST ACTIONS -->
+          <div style="background-color: #fff8f6; border: 1px solid #fecaca; border-radius: 10px; padding: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+            <div>
+              <h4 style="margin: 0; color: #991b1b; font-size: 0.95rem;">Archive announcement</h4>
+              <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: #7f1d1d;">Hides this post from the main board without permanently deleting it.</p>
+            </div>
+            <form method="post" action="{% url 'announcements:announcement_archive' instance.pk %}"
+                  onsubmit="return confirm('Archive this announcement?');">
+              {% csrf_token %}
+              <button type="submit" style="background: #ffffff; color: #991b1b; border: 1px solid #fca5a5; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+                Archive post
+              </button>
+            </form>
+          </div>
+        {% endif %}
+
+      </div>
     {% endif %}
   </section>
 </div>

@@ -33,6 +33,7 @@
   font-family:var(--font-ui);font-weight:600;font-size:calc(14 * var(--u));
 }
 .cal__btn:hover{background:var(--ku-mint)}
+@media (pointer:coarse){.cal__btn{min-width:40px;min-height:40px}}
 .cal__btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
 .cal__btn.is-disabled{opacity:.45;pointer-events:none}
 /* "Next deadline": the one filled button in the bar, since it is the

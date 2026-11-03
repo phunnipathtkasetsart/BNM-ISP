@@ -11,6 +11,7 @@ outside it.
       <span class="guestclock" data-expires="{{ guest_expires_at }}"
             title="Your guest session ends then">&mdash;</span>
     {% endif %}
+    {% include "notifications/_bell.html" %}
     <details class="acctmenu">
       <summary class="acctmenu__btn">
         <span class="sr-only">Account menu:</span>
