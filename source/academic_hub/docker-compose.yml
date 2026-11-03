@@ -18,7 +18,7 @@ services:
 
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
       - media_data:/app/media  # Adjust destination path to match your Django MEDIA_ROOT

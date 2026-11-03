@@ -1,4 +1,3 @@
-{# Static placeholders only: no assignment, messaging, forum or group integration. #}
 <aside class="course-sidebar" aria-label="Course tools preview">
   <details class="course-sidebar__fold" open data-fold-mobile>
   <summary class="course-sidebar__label"><span>COURSE TOOLS</span></summary>
@@ -31,10 +30,32 @@
     <div class="course-tool__body">{% include "course/_qa_forum.html" %}</div>
   </section>
   <section class="course-tool" aria-labelledby="tool-groups">
-    <header class="course-tool__header"><span class="course-tool__icon" aria-hidden="true">♧</span><h2 id="tool-groups">Group gathering</h2><button class="course-tool__button" type="button" disabled>Join group</button></header>
-    <div class="course-tool__body"><p class="course-tool__empty">Find classmates and project groups here.</p><div class="course-tool__skeleton" aria-hidden="true"><span></span><span></span></div></div>
+    <header class="course-tool__header">
+      <span class="course-tool__icon" aria-hidden="true">♧</span>
+      <h2 id="tool-groups">Group gathering</h2>
+      <a class="course-tool__button" href="{% url 'course:group_work_index' course.pk %}">Open</a>
+    </header>
+    <div class="course-tool__body">
+      {% if group_works %}
+        <ul class="course-tool__group-works">
+          {% for work in group_works %}
+            <li>
+              <a href="{% url 'course:group_work' course.pk work.pk %}">{{ work.title }}</a>
+              <span class="course-tool__muted">Maximum {{ work.max_members }} members</span>
+            </li>
+          {% endfor %}
+        </ul>
+        <a class="course-tool__link" href="{% url 'course:group_work_index' course.pk %}">View all group works</a>
+      {% else %}
+        <p class="course-tool__empty">
+          {% if can_manage_content %}Create and manage group works here.{% else %}No group works have been created yet.{% endif %}
+        </p>
+        {% if can_manage_content %}
+          <a class="course-tool__link" href="{% url 'course:group_work_index' course.pk %}">Create a group work</a>
+        {% endif %}
+      {% endif %}
+    </div>
   </section>
-  <p class="course-sidebar__note">Group gathering · Coming soon.</p>
   </div>
   </details>
 </aside>
