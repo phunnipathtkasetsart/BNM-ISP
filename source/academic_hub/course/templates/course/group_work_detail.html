@@ -1,0 +1,151 @@
+{% extends "course/base.html" %}
+{% load static course_extras %}
+{% block title %}{{ work.title }} — {{ course.name }}{% endblock %}
+{% block course_content %}
+<div class="group-work-live" data-group-work-live
+  data-api-url="{% url 'course:api_group_work' course.pk work.pk %}">
+<p class="group-live-status" data-group-live-error role="status"></p>
+<header class="group-page-head">
+  <div>
+    <p class="group-eyebrow">
+      <a href="{% url 'course:detail' course.pk %}">{{ course.name }}</a>
+      <span aria-hidden="true">/</span>
+      <a href="{% url 'course:group_work_index' course.pk %}">Group work</a>
+    </p>
+    <h1>{{ work.title }}</h1>
+    <p class="group-muted">Maximum {{ work.max_members }} members per group</p>
+  </div>
+</header>
+
+{% if pending_invites %}
+  <section class="group-panel" aria-labelledby="invite-heading">
+    <h2 id="invite-heading">Invitations</h2>
+    <ul class="group-invite-list">
+      {% for invitation in pending_invites %}
+        <li>
+          <span><strong>{{ invitation.group.name }}</strong> · invited by {{ invitation.group.head.get_full_name }}</span>
+          <div class="group-inline-actions">
+            <form method="post" action="{% url 'course:group_invitation_action' course.pk work.pk invitation.pk 'accept' %}">
+              {% csrf_token %}<button class="group-button" type="submit">Accept</button>
+            </form>
+            <form method="post" action="{% url 'course:group_invitation_action' course.pk work.pk invitation.pk 'decline' %}">
+              {% csrf_token %}<button class="group-button group-button--quiet" type="submit">Decline</button>
+            </form>
+          </div>
+        </li>
+      {% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+{% if can_join %}
+  <section class="group-panel group-start-panel">
+    <div>
+      <p class="group-eyebrow">Start your team</p>
+      <h2>Create a group</h2>
+      <p class="group-muted">You will be the group head. Invite classmates by their student ID.</p>
+    </div>
+    <form method="post" action="{% url 'course:group_create' course.pk work.pk %}" class="group-inline-form">
+      {% csrf_token %}
+      <label class="sr-only" for="new-group-name">Group name</label>
+      <input id="new-group-name" type="text" name="name" maxlength="120" placeholder="Group name" required>
+      <button class="group-button" type="submit">Create group</button>
+    </form>
+  </section>
+{% endif %}
+
+<section class="group-groups" aria-label="Groups">
+  {% for group in groups %}
+    {% with member_count=group.member_count %}
+      <article class="group-card">
+        <header class="group-card__head">
+          <div>
+            <p class="group-eyebrow">Group · <span data-group-capacity="{{ group.pk }}">{{ member_count }}/{{ work.max_members }}</span></p>
+            <h2>{{ group.name }}</h2>
+            <p class="group-muted">Head: {{ group.head.get_full_name }} <span class="group-id">({{ group.head.nisit_id }})</span></p>
+            <p class="group-muted" data-group-slots="{{ group.pk }}">Available invite slots: {{ group.remaining_slots }}</p>
+            {% if group.third_party_contact and current_group.pk == group.pk %}
+              <p class="group-muted group-third-party-contact">
+                <strong>Third-party contact:</strong>
+                <span>{{ group.third_party_contact|urlize_new_tab|linebreaksbr }}</span>
+              </p>
+            {% endif %}
+            {% if current_group.pk == group.pk and group.head_id == request.user.pk %}
+              <form method="post" action="{% url 'course:group_contact_update' course.pk work.pk group.pk %}" class="group-contact-form">
+                {% csrf_token %}
+                <label class="sr-only" for="third-party-contact-{{ group.pk }}">Add third-party contact</label>
+                <input id="third-party-contact-{{ group.pk }}" name="third_party_contact" maxlength="500" placeholder="Enter contact details visible to your group" value="{{ group.third_party_contact }}">
+                <button class="group-button group-button--quiet" type="submit">
+                  {% if group.third_party_contact %}Update contact{% else %}Save contact{% endif %}
+                </button>
+              </form>
+            {% endif %}
+            {% if group.pending_invite_count %}
+              <p class="group-muted">{{ group.pending_invite_count }} slot(s) reserved by pending invitations.</p>
+            {% endif %}
+          </div>
+        </header>
+
+        <ul class="group-member-list" id="members-{{ group.pk }}">
+          {% for membership in group.memberships.all %}
+            <li>
+              <span class="group-avatar" aria-hidden="true">{{ membership.student.first_name|slice:":1"|upper }}</span>
+              <span class="group-member-name">
+                <strong>{{ membership.student.get_full_name }}</strong>
+                <span>{{ membership.student.nisit_id }}</span>
+              </span>
+              {% if membership.student_id == group.head_id %}
+                <span class="group-badge">Head</span>
+              {% endif %}
+              {% if current_group.pk == group.pk and group.head_id == request.user.pk and membership.student_id != group.head_id %}
+                <form method="post" action="{% url 'course:group_member_action' course.pk work.pk group.pk 'kick' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="student_id" value="{{ membership.student_id }}">
+                  <button class="group-text-button group-text-button--danger" type="submit">Remove</button>
+                </form>
+                <form method="post" action="{% url 'course:group_member_action' course.pk work.pk group.pk 'transfer' %}">
+                  {% csrf_token %}
+                  <input type="hidden" name="student_id" value="{{ membership.student_id }}">
+                  <button class="group-text-button" type="submit">Make head</button>
+                </form>
+              {% endif %}
+            </li>
+          {% empty %}
+            <li class="group-muted">No members.</li>
+          {% endfor %}
+        </ul>
+
+        {% if current_group.pk == group.pk and group.head_id == request.user.pk %}
+          {% if group.remaining_slots > 0 %}
+            <form method="post" action="{% url 'course:group_invite' course.pk work.pk group.pk %}" class="group-invite-form">
+              {% csrf_token %}
+              <label for="invite-{{ group.pk }}">Invite a classmate</label>
+              <div>
+                <input id="invite-{{ group.pk }}" type="text" name="nisit_id" inputmode="numeric" maxlength="10" placeholder="Student ID" required>
+                <button class="group-button" type="submit">Invite</button>
+              </div>
+            </form>
+          {% else %}
+            <p class="group-muted group-capacity-note">All group slots are filled or reserved.</p>
+          {% endif %}
+          <form method="post" action="{% url 'course:group_member_action' course.pk work.pk group.pk 'disband' %}" class="group-danger-action">
+            {% csrf_token %}
+            <button class="group-text-button group-text-button--danger" type="submit">Disband group</button>
+          </form>
+        {% elif current_group.pk == group.pk %}
+          <form method="post" action="{% url 'course:group_member_action' course.pk work.pk group.pk 'leave' %}" class="group-danger-action">
+            {% csrf_token %}
+            <button class="group-text-button group-text-button--danger" type="submit">Leave group</button>
+          </form>
+        {% endif %}
+      </article>
+    {% endwith %}
+  {% empty %}
+    {% if can_manage or is_department %}
+      <p class="group-empty">No student groups have been formed for this work yet.</p>
+    {% endif %}
+  {% endfor %}
+</section>
+</div>
+<script src="{% static 'course/group-work.js' %}" defer></script>
+{% endblock %}

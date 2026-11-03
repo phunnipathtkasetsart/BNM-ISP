@@ -3,7 +3,7 @@ import secrets
 import uuid
 
 from django.conf import settings
-from django.core.validators import RegexValidator
+from django.core.validators import MinValueValidator, RegexValidator
 from django.db import models
 from django.db.models.functions import Lower, Trim
 
@@ -14,6 +14,8 @@ def generate_class_code():
     return "".join(secrets.choice("ABCDEFGHJKLMNPQRSTUVWXYZ23456789") for _ in range(6))
 
 
+
+# Adding archive fields to the Course model.
 class Course(models.Model):
     name = models.CharField(max_length=120)
     section = models.CharField(max_length=20, blank=True, default="")
@@ -22,6 +24,13 @@ class Course(models.Model):
     class_code = models.CharField(max_length=6, unique=True, default=generate_class_code,
                                   editable=False, validators=[RegexValidator(r"^[A-Z0-9]{6}$")])
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Soft-delete / Archive fields
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+"
+    )
 
     class Meta:
         ordering = ["-created_at", "-pk"]
@@ -111,21 +120,19 @@ class Topic(models.Model):
 
 class Material(StoredFile):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="materials")
-    # Deleting a topic keeps its materials; they fall back to "No topic".
-    topic = models.ForeignKey(Topic, null=True, blank=True, on_delete=models.SET_NULL,
-                              related_name="materials")
+    topic = models.ForeignKey(Topic, null=True, blank=True, on_delete=models.SET_NULL, related_name="materials")
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True, default="")
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL,
-                                   related_name="+")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    # Soft-delete / Archive fields
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
     class Meta:
         ordering = ["-created_at", "-pk"]
-
-    def __str__(self):
-        return self.title
 
 
 class CoursePost(models.Model):
@@ -133,15 +140,16 @@ class CoursePost(models.Model):
     author = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     title = models.CharField(max_length=150)
     body = models.TextField(blank=True, default="")
-    deadline = models.DateTimeField(null=True, blank=True, help_text="Optional deadline for this announcement") # New field
+    deadline = models.DateTimeField(null=True, blank=True, help_text="Optional deadline for this announcement")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
+    # Soft-delete / Archive fields
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
     class Meta:
         ordering = ["-created_at", "-pk"]
-
-    def __str__(self):
-        return self.title
 
 
 class PostAttachment(StoredFile):
@@ -158,3 +166,210 @@ class PostAttachment(StoredFile):
     @property
     def course(self):
         return self.post.course
+
+
+class CourseQuestion(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="questions")
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="course_questions",
+    )
+    author_label = models.CharField(max_length=301)
+    author_role_label = models.CharField(max_length=30)
+    title = models.CharField(max_length=200)
+    body = models.TextField(max_length=5000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    is_pinned = models.BooleanField(default=False)
+    pinned_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-is_pinned", "-created_at", "-pk"]
+        indexes = [
+            models.Index(
+                fields=["course", "archived_at", "is_pinned", "-created_at"],
+                name="course_q_list_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class CourseAnswer(models.Model):
+    question = models.ForeignKey(
+        CourseQuestion,
+        on_delete=models.CASCADE,
+        related_name="answers",
+    )
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="course_answers",
+    )
+    author_label = models.CharField(max_length=301)
+    author_role_label = models.CharField(max_length=30)
+    body = models.TextField(max_length=5000)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    edited_at = models.DateTimeField(null=True, blank=True)
+    archived_at = models.DateTimeField(null=True, blank=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    is_verified = models.BooleanField(default=False)
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    verified_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-is_verified", "created_at", "pk"]
+        indexes = [
+            models.Index(
+                fields=["question", "archived_at", "is_verified", "created_at"],
+                name="course_a_thread_idx",
+            ),
+        ]
+
+    def __str__(self):
+        return f"Answer to {self.question_id}"
+
+
+class GroupWork(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="group_works")
+    title = models.CharField(max_length=150)
+    max_members = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                models.F("course"),
+                Lower(Trim("title")),
+                name="unique_course_group_work_title",
+            ),
+        ]
+
+    def __str__(self):
+        return self.title
+
+
+class StudentGroup(models.Model):
+    group_work = models.ForeignKey(GroupWork, on_delete=models.CASCADE, related_name="groups")
+    name = models.CharField(max_length=120)
+    head = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="headed_course_groups",
+    )
+    third_party_contact = models.TextField(blank=True, default="", max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["name", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                models.F("group_work"),
+                Lower(Trim("name")),
+                name="unique_group_work_group_name",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class GroupMembership(models.Model):
+    group_work = models.ForeignKey(GroupWork, on_delete=models.CASCADE, related_name="memberships")
+    group = models.ForeignKey(StudentGroup, on_delete=models.CASCADE, related_name="memberships")
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="course_group_memberships",
+    )
+    joined_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["joined_at", "pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group_work", "student"],
+                name="unique_group_work_student",
+            ),
+        ]
+
+
+class GroupInvitation(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACCEPTED = "accepted", "Accepted"
+        DECLINED = "declined", "Declined"
+        CANCELLED = "cancelled", "Cancelled"
+
+    group_work = models.ForeignKey(
+        GroupWork, on_delete=models.CASCADE, related_name="invitations"
+    )
+    group = models.ForeignKey(
+        StudentGroup, on_delete=models.CASCADE, related_name="invitations"
+    )
+    invitee = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="course_group_invitations",
+    )
+    invited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="+",
+    )
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.PENDING
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["group_work", "invitee"],
+                condition=models.Q(status="pending"),
+                name="unique_pending_group_work_invite",
+            ),
+        ]

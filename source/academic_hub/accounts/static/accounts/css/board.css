@@ -89,10 +89,17 @@
 /* Urgent gets a left stripe rather than a louder fill: it has to stand out
    in a scan without making the ordinary notices look inert. */
 .post--urgent{border-left:calc(4 * var(--u)) solid var(--danger)}
-.post__top{display:flex;align-items:flex-start;gap:calc(12 * var(--u))}
+/* Wraps so the badges drop under the title on a narrow card, instead of
+   squeezing the title into a one-word column and pushing a long badge
+   such as CLOSED 7 Oct, 15:27 out past the card edge. */
+.post__top{display:flex;flex-wrap:wrap;align-items:flex-start;
+  gap:calc(8 * var(--u)) calc(12 * var(--u))}
 .post__title{
   font-family:var(--font-display);font-weight:800;
-  font-size:calc(16.5 * var(--u));color:var(--ink);margin:0;flex:1;
+  font-size:calc(16.5 * var(--u));color:var(--ink);margin:0;
+  /* A basis rather than flex:1, which let the title shrink to nothing
+     before anything wrapped. */
+  flex:1 1 calc(180 * var(--u));min-width:0;
 }
 .post__meta{margin:calc(3 * var(--u)) 0 calc(9 * var(--u));font-size:calc(12.5 * var(--u));color:var(--ink-muted)}
 .post__body{margin:0;font-size:calc(13.5 * var(--u));line-height:1.62;color:var(--ink-soft)}
@@ -181,6 +188,36 @@
 }
 .subnav__action:hover{background:#24463C}
 .subnav__action:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.subnav__action-short{display:none}
+/* Small phones: Home, Course, Calendar and the full label do not fit on
+   one row, so the button reads "+ Create", and on the smallest phones just
+   "+". Screen readers still hear the whole label. */
+@media (max-width:560px){
+  .subnav__tab{padding:10px 20px 10px 12px;font-size:13.5px}
+  .subnav__action{font-size:12.5px;padding:6px 12px}
+  .subnav__action-short{display:inline}
+  .subnav__action-full{
+    position:absolute;width:1px;height:1px;overflow:hidden;
+    clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;
+  }
+}
+/* Only the board's button in the tab row shrinks to a round "+". The FAQ
+   forum reuses .subnav__action for "Create question", which has no short
+   label, so shrinking it there spilled the text out of the circle. */
+@media (max-width:400px){
+  .subnav .subnav__action{font-size:17px;line-height:1;width:32px;height:32px;padding:0;display:grid;place-items:center}
+  .subnav .subnav__action-word{display:none}
+}
+@media (pointer:coarse){
+  .subnav__tab{min-height:44px}
+  .subnav__action{min-height:40px;display:inline-flex;align-items:center}
+  .subnav .subnav__action{min-width:40px;justify-content:center}
+  .chips .chip{min-height:34px;display:inline-flex;align-items:center}
+  .daterow__go{min-height:40px}
+  .datefield input{min-height:36px}
+  .forum-back-link{display:inline-flex;align-items:center;min-height:40px}
+  .forum-action-button{min-height:36px}
+}
 .post__edit{color:var(--ku-green-800);font-weight:600;text-decoration:none}
 .post__edit:hover{text-decoration:underline}
 /* Marks an item guests cannot see, so a publisher is never puzzled by its
@@ -445,4 +482,74 @@
 @media (max-width:520px){
   .forum-form--reply{grid-template-columns:minmax(0,1fr)}
   .forum-form--reply .daterow__go{justify-self:end}
+}
+
+
+/* --- Archived Announcements Collapsible Component --- */
+details.archived-card {
+  background-color: #eff6f3;
+  border: 1px solid #dcebe4;
+  border-radius: calc(10 * var(--u));
+  margin: 0 calc(28 * var(--u)) calc(16 * var(--u));
+  overflow: hidden;
+}
+
+details.archived-card summary.archived-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: calc(12 * var(--u)) calc(18 * var(--u));
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  color: var(--ink);
+  font-weight: 700;
+  font-size: calc(14 * var(--u));
+}
+
+details.archived-card summary.archived-card-header::-webkit-details-marker,
+details.archived-card summary.archived-card-header::marker {
+  display: none !important;
+}
+
+.archived-card-title-group {
+  display: flex;
+  align-items: center;
+  gap: calc(8 * var(--u));
+}
+
+.archived-card-count {
+  background-color: #dbe7e2;
+  color: var(--ink);
+  padding: 2px 9px;
+  border-radius: 9999px;
+  font-size: calc(11.5 * var(--u));
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.archived-card-chevron {
+  transition: transform 0.2s ease;
+  color: var(--ink-muted);
+  flex-shrink: 0;
+}
+
+details.archived-card[open] .archived-card-chevron {
+  transform: rotate(180deg);
+}
+
+details.archived-card .archived-card-body {
+  padding: calc(16 * var(--u)) calc(18 * var(--u));
+  border-top: 1px solid #dcebe4;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: calc(12 * var(--u));
+}
+
+@media (max-width: 900px) {
+  details.archived-card {
+    margin-left: 18px;
+    margin-right: 18px;
+  }
 }

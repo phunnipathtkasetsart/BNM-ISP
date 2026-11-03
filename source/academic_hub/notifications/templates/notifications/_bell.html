@@ -1,0 +1,33 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'notifications/notifications.css' %}">
+{% if request.user.is_authenticated and request.user.is_active %}
+  {% if not request.session.is_guest %}
+    <details class="notification-bell"
+      data-notification-bell
+      data-list-url="{% url 'notifications:list' %}"
+      data-read-url-template="{% url 'notifications:read' 0 %}"
+      data-read-all-url="{% url 'notifications:read_all' %}">
+      <summary class="notification-bell__button" aria-label="Notifications" aria-haspopup="true">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"></path>
+        </svg>
+        <span class="notification-bell__count" data-notification-count hidden></span>
+      </summary>
+      <section class="notification-bell__panel" aria-label="Recent notifications">
+        <header class="notification-bell__header">
+          <div>
+            <strong>Notifications</strong>
+            <span data-notification-summary>Loading…</span>
+          </div>
+          <button type="button" data-notification-read-all>Mark all read</button>
+        </header>
+        <div class="notification-bell__list" data-notification-list aria-live="polite">
+          <p class="notification-bell__empty">Loading notifications…</p>
+        </div>
+        <p class="notification-bell__error" data-notification-error role="status"></p>
+      </section>
+      {% csrf_token %}
+      <script src="{% static 'notifications/notifications.js' %}" defer></script>
+    </details>
+  {% endif %}
+{% endif %}

@@ -1,8 +1,9 @@
 # json ใช้แปลง request body ที่เป็น JSON ให้เป็นข้อมูล Python
 import json
 from datetime import timedelta
+from functools import wraps
 
-from django.db.models import Q
+from django.db.models import Count, Exists, OuterRef, Q
 from django.contrib import messages
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -13,13 +14,39 @@ from django.utils import timezone
 
 from django.contrib.auth import get_user_model
 
+
+
 from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
                     MaterialEditForm, MaterialUploadForm, RosterForm)
-from .models import Course, CoursePost, CourseTA, Enrollment, Material, PostAttachment
+from .models import (
+    Course,
+    CourseAnswer,
+    CoursePost,
+    CourseQuestion,
+    CourseTA,
+    Enrollment,
+    Material,
+    PostAttachment,
+)
 from .permissions import can_teach, course_access, visible_courses
-from .services import (add_materials, add_students, assign_ta, create_course,
-                       get_or_create_topic, remove_ta, update_course)
-
+from .services import (
+    add_materials,
+    add_students,
+    assign_ta,
+    create_course,
+    create_course_answer,
+    create_course_question,
+    get_or_create_topic,
+    remove_ta,
+    update_course,
+    archive_post,
+    restore_post,
+    archive_material,
+    restore_material,
+    archive_course,
+    restore_course,
+)
+from notifications.services import notify_course_material, notify_course_post, notify_deadline
 
 # api_request คืน boolean ว่า path เริ่ม /course/api/ หรือไม่ ฟังก์ชันนี้ใช้เลือกรูปแบบ response
 # ไม่ใช่ตัวตรวจสิทธิ์
@@ -79,20 +106,24 @@ def form_error(request, form, title, *, course=None, template="course/form.html"
 
 # dashboard ใช้ course_access() ตรวจ login/active/guest และรับเฉพาะ GET เมื่อมีคำขอเข้ามา wrapper
 # ด้านนอกตรวจสิทธิ์ก่อนตัวจำกัด method
+# Iteration 5 , adding archive feature to dashboard view, filtering courses based on archived status and user permissions.
 @course_access()
 @require_http_methods(["GET"])
 def dashboard(request):
     query = request.GET.get("q", "").strip()
-    courses = visible_courses(request.user).select_related("owner")
+    all_courses = visible_courses(request.user).select_related("owner")
 
-    # Admin-only search filter
     if request.user.is_superuser and query:
-        courses = courses.filter(
+        all_courses = all_courses.filter(
             Q(name__icontains=query) |
             Q(section__icontains=query) |
             Q(owner__first_name__icontains=query) |
             Q(owner__last_name__icontains=query)
         ).distinct()
+
+    # Separate active vs. archived courses
+    courses = all_courses.filter(archived_at__isnull=True)
+    archived_courses = all_courses.filter(archived_at__isnull=False) if can_teach(request.user) else []
 
     ta_course_ids = set(
         CourseTA.objects.filter(user=request.user).values_list("course_id", flat=True)
@@ -102,6 +133,7 @@ def dashboard(request):
     upcoming_deadlines = (
         CoursePost.objects.filter(
             course__in=courses,
+            archived_at__isnull=True,
             deadline__isnull=False,
             deadline__gte=now,
             deadline__lte=now + timedelta(days=7)
@@ -111,14 +143,18 @@ def dashboard(request):
     )
 
     if api_request(request):
-        return JsonResponse({"courses": [course_data(c, request.user) for c in courses]})
+        return JsonResponse({
+            "courses": [course_data(c, request.user) for c in courses],
+            "archived_courses": [course_data(c, request.user) for c in archived_courses],
+        })
 
     return render(
         request,
         "course/dashboard.html",
         {
             "courses": courses,
-            "query": query,  # Passed to retain search value in input
+            "archived_courses": archived_courses,
+            "query": query,
             "can_create": can_teach(request.user),
             "can_join": not request.user.is_staff and not request.user.is_superuser,
             "ta_course_ids": ta_course_ids,
@@ -128,6 +164,25 @@ def dashboard(request):
         },
     )
 
+# --- Course Archive & Restore Views ---
+
+@course_access(owner=True)
+@require_POST
+def archive_course_view(request, pk):
+    archive_course(request.course, request.user)
+    if api_request(request):
+        return JsonResponse({"archived": True})
+    messages.success(request, "Class archived successfully.")
+    return redirect("course:dashboard")
+
+@course_access(owner=True)
+@require_POST
+def restore_course_view(request, pk):
+    restore_course(request.course)
+    if api_request(request):
+        return JsonResponse({"restored": True})
+    messages.success(request, "Class restored successfully.")
+    return redirect("course:detail", pk=pk)
 
 # create อนุญาตผู้สอน รับ GET สำหรับแสดงฟอร์ม และ POST สำหรับส่งข้อมูล
 @course_access(lecturer=True)
@@ -189,7 +244,7 @@ def join(request):
 def topic_groups(course):
     """Materials grouped by topic, newest topic first. Files with no topic last."""
     by_topic = {}
-    for material in course.materials.order_by("-created_at", "-pk"):
+    for material in course.materials.filter(archived_at__isnull=True).order_by("-created_at", "-pk"):
         by_topic.setdefault(material.topic_id, []).append(material)
     groups = [{"title": t.title, "materials": by_topic[t.pk]}
               for t in course.topics.order_by("-pk") if t.pk in by_topic]
@@ -198,18 +253,27 @@ def topic_groups(course):
     return groups
 
 
-
 def detail_context(request, post_form=None, material_form=None):
     course = request.course
     manage = request.can_manage_content
+    
     if manage and post_form is None:
         post_form = CoursePostForm(course=course)
     if manage and material_form is None:
         material_form = MaterialUploadForm(course=course, auto_id="material_%s")
-    groups = topic_groups(course)
-    
+        
+    groups = topic_groups(course)  # Active materials only
     now = timezone.now()
+
+    # Active posts for main board
+    posts = course.posts.filter(archived_at__isnull=True).select_related("author").prefetch_related("attachments")
+
+    # Manager view: Include archived items (Lecturer / TA / Admin only)
+    archived_posts = course.posts.filter(archived_at__isnull=False).select_related("author").prefetch_related("attachments") if manage else []
+    archived_materials = course.materials.filter(archived_at__isnull=False) if manage else []
+
     upcoming_deadlines = course.posts.filter(
+        archived_at__isnull=True,
         deadline__isnull=False, 
         deadline__gte=now,
         deadline__lte=now + timedelta(days=7)
@@ -224,7 +288,10 @@ def detail_context(request, post_form=None, material_form=None):
 
     return {
         "course": course,
-        "posts": course.posts.select_related("author").prefetch_related("attachments"),
+        "group_works": course.group_works.all(),
+        "posts": posts,  # FIX: Use the filtered 'posts' variable instead of course.posts.all()
+        "archived_posts": archived_posts,
+        "archived_materials": archived_materials,
         "upcoming_deadlines": upcoming_deadlines,
         "post_form": post_form,
         "material_form": material_form,
@@ -234,11 +301,19 @@ def detail_context(request, post_form=None, material_form=None):
         "can_manage": request.can_manage_roster,
         "can_manage_content": manage,
         "can_delete_any": request.is_owner or request.is_dept_override,
-
+        "can_filter_questions": request.can_manage_content,
+        "can_ask_question": (
+            not request.user.is_staff
+            and not request.user.is_superuser
+            and course.enrollments.filter(student=request.user).exists()
+            and not course.ta_links.filter(user=request.user).exists()
+        ),
+        "is_department": request.is_dept_override,
         "enrollments": course.enrollments.select_related("student") if request.can_manage_roster else [],
         "ta_ids": ta_user_ids,
-        "available_students": available_students,  # Passed to detail.html for the select dropdown
+        "available_students": available_students,
     }
+
 
 
 @course_access()
@@ -394,6 +469,7 @@ def finish_import(request, form, *, csv):
 
 # --- Task 4.3: announcements and attachments ---------------------------------
 
+
 @course_access(manage_content=True)
 @require_POST
 def create_post(request, pk):
@@ -417,20 +493,60 @@ def create_post(request, pk):
         post.save()
 
         upload = form.cleaned_data.get("attachment")
+        created_material = None
         if upload:
             attachment = PostAttachment.objects.create(post=post, file=upload)
             if form.cleaned_data.get("add_to_materials"):
                 topic = existing_topic or get_or_create_topic(request.course, form.cleaned_data["new_topic"])
-                Material.objects.create(
+                created_material = Material.objects.create(
                     course=request.course, topic=topic, created_by=request.user,
                     title=attachment.original_name[:150], file=attachment.file.name,
                     original_name=attachment.original_name, size=attachment.size
                 )
 
+    notify_course_post(post)
+    if post.deadline:
+        notify_deadline(post)
+    if created_material:
+        notify_course_material(created_material)
+
     if api_request(request):
         return JsonResponse({"id": post.pk, "title": post.title}, status=201)
     messages.success(request, "Announcement posted.")
     return redirect("course:detail", pk=pk)
+
+# --- Announcement Archive & Restore Views ---
+
+@course_access(manage_content=True)
+@require_POST
+def archive_post_view(request, pk, post_id):
+    post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
+    if not (request.is_owner or request.is_dept_override) and post.author_id != request.user.pk:
+        if api_request(request):
+            return JsonResponse({"error": "You can only archive your own announcements."}, status=403)
+        messages.error(request, "You can only archive your own announcements.")
+        return redirect("course:detail", pk=pk)
+    archive_post(post, request.user)
+    if api_request(request):
+        return JsonResponse({"archived": True})
+    messages.success(request, "Announcement archived.")
+    return redirect("course:detail", pk=pk)
+
+@course_access(manage_content=True)
+@require_POST
+def restore_post_view(request, pk, post_id):
+    post = get_object_or_404(CoursePost, pk=post_id, course=request.course)
+    if not (request.is_owner or request.is_dept_override) and post.author_id != request.user.pk:
+        if api_request(request):
+            return JsonResponse({"error": "You can only restore your own announcements."}, status=403)
+        messages.error(request, "You can only restore your own announcements.")
+        return redirect("course:detail", pk=pk)
+    restore_post(post)
+    if api_request(request):
+        return JsonResponse({"restored": True})
+    messages.success(request, "Announcement restored.")
+    return redirect("course:detail", pk=pk)
+
 
 @course_access(manage_content=True)
 @require_POST
@@ -470,6 +586,9 @@ def file_download(attachment):
 @require_http_methods(["GET"])
 def download_attachment(request, pk, attachment_id):
     attachment = get_object_or_404(PostAttachment, pk=attachment_id, post__course=request.course)
+    # Restrict archived attachment downloads to course managers only
+    if attachment.post.archived_at is not None and not request.can_manage_content:
+        raise Http404("Attachment is no longer available.")
     return file_download(attachment)
 
 
@@ -496,6 +615,29 @@ def upload_materials(request, pk):
     if api_request(request):
         return JsonResponse({"added": len(created), "topic": topic.title}, status=201)
     messages.success(request, f"{len(created)} file(s) added to {topic.title}.")
+    return redirect("course:detail", pk=pk)
+
+
+# --- Material Features ---
+
+@course_access(manage_content=True)
+@require_POST
+def archive_material_view(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    archive_material(material, request.user)
+    if api_request(request):
+        return JsonResponse({"archived": True})
+    messages.success(request, "Material archived.")
+    return redirect("course:detail", pk=pk)
+
+@course_access(manage_content=True)
+@require_POST
+def restore_material_view(request, pk, material_id):
+    material = get_object_or_404(Material, pk=material_id, course=request.course)
+    restore_material(material)
+    if api_request(request):
+        return JsonResponse({"restored": True})
+    messages.success(request, "Material restored.")
     return redirect("course:detail", pk=pk)
 
 
@@ -534,6 +676,9 @@ def delete_material(request, pk, material_id):
 @require_http_methods(["GET"])
 def download_material(request, pk, material_id):
     material = get_object_or_404(Material, pk=material_id, course=request.course)
+    # Restrict archived material downloads to course managers only
+    if material.archived_at is not None and not request.can_manage_content:
+        raise Http404("Material is no longer available.")
     return file_download(material)
 
 
@@ -550,9 +695,45 @@ def edit_post(request, pk, post_id):
         return redirect("course:detail", pk=pk)
 
     if request.method == "POST":
-        form = CoursePostForm(request.POST, instance=post, course=request.course)
+        form = CoursePostForm(request.POST, request.FILES, instance=post, course=request.course)
         if form.is_valid():
-            form.save()
+            previous_deadline = post.deadline
+            created_material = None
+            with transaction.atomic():
+                post = form.save()
+
+                remove_att = form.cleaned_data.get("remove_attachment") or request.POST.get("remove_attachment") == "true"
+                new_upload = form.cleaned_data.get("attachment")
+
+                # If removing attachment or uploading a replacement, delete old attachment(s)
+                if remove_att or new_upload:
+                    for att in post.attachments.all():
+                        att.delete()
+
+                # If a new file was uploaded, attach it
+                if new_upload:
+                    attachment = PostAttachment.objects.create(post=post, file=new_upload)
+                    if form.cleaned_data.get("add_to_materials"):
+                        choice = form.cleaned_data.get("topic")
+                        if choice == MaterialUploadForm.NEW_TOPIC:
+                            topic = get_or_create_topic(request.course, form.cleaned_data.get("new_topic"))
+                        elif choice:
+                            topic = get_object_or_404(request.course.topics, pk=choice)
+                        else:
+                            topic = None
+
+                        if topic:
+                            created_material = Material.objects.create(
+                                course=request.course, topic=topic, created_by=request.user,
+                                title=attachment.original_name[:150], file=attachment.file.name,
+                                original_name=attachment.original_name, size=attachment.size
+                            )
+
+            if post.deadline != previous_deadline and post.deadline:
+                notify_deadline(post)
+            if created_material:
+                notify_course_material(created_material)
+
             if api_request(request):
                 return JsonResponse({"id": post.pk, "title": post.title})
             messages.success(request, "Announcement updated successfully.")
@@ -609,3 +790,569 @@ def ta_remove(request, pk, student_id):
         return JsonResponse({"removed": removed})
     messages.success(request, "TA role removed." if removed else "That student was not a TA.")
     return redirect("course:detail", pk=pk)
+
+
+
+
+
+
+
+
+
+# --- Iteration 5.2: course Q&A JSON API --------------------------------------
+
+def qa_error(message, *, status=400, field=None):
+    if field:
+        return JsonResponse(
+            {"errors": {field: [{"message": message, "code": "invalid"}]}},
+            status=status,
+        )
+    return JsonResponse({"error": message}, status=status)
+
+
+def qa_json_404(view):
+    @wraps(view)
+    def wrapped(request, *args, **kwargs):
+        try:
+            return view(request, *args, **kwargs)
+        except Http404:
+            return JsonResponse({"error": "Not found."}, status=404)
+    return wrapped
+
+
+def qa_payload(request, *, boolean_fields=()):
+    if request.content_type != "application/json":
+        return request.POST, None
+    try:
+        data = json.loads(request.body)
+    except (ValueError, UnicodeDecodeError):
+        return None, qa_error("Invalid JSON body.", field="__all__")
+    if not isinstance(data, dict):
+        return None, qa_error("Provide a JSON object.", field="__all__")
+    for field, value in data.items():
+        if isinstance(value, str) or (field in boolean_fields and type(value) is bool):
+            continue
+        return None, qa_error("Provide a string value.", field=field)
+    return data, None
+
+
+def qa_text_value(data, field, max_length):
+    value = data.get(field)
+    if not isinstance(value, str) or not value.strip():
+        return None, qa_error("This field is required.", field=field)
+    value = value.strip()
+    if len(value) > max_length:
+        return None, qa_error(f"Ensure this value has at most {max_length} characters.", field=field)
+    return value, None
+
+
+def qa_boolean_value(request, data, field):
+    value = data.get(field)
+    if request.content_type == "application/json":
+        if type(value) is not bool:
+            return None, qa_error("Provide a JSON boolean.", field=field)
+        return value, None
+    if value not in {"true", "false"}:
+        return None, qa_error('Use "true" or "false".', field=field)
+    return value == "true", None
+
+
+def qa_question_queryset(course):
+    active_verified_answers = CourseAnswer.objects.filter(
+        question_id=OuterRef("pk"),
+        archived_at__isnull=True,
+        is_verified=True,
+    )
+    return (
+        CourseQuestion.objects.filter(course=course)
+        .select_related("author", "course")
+        .annotate(
+            answer_count=Count(
+                "answers",
+                filter=Q(answers__archived_at__isnull=True),
+                distinct=True,
+            ),
+            has_verified_answer=Exists(active_verified_answers),
+        )
+    )
+
+
+def qa_get_question(request, question_id, *, lock=False, allow_archived=False):
+    questions = CourseQuestion.objects.filter(course=request.course)
+    if lock:
+        questions = questions.select_for_update()
+    question = get_object_or_404(questions, pk=question_id)
+    if (question.archived_at is not None and not request.is_dept_override
+            and not allow_archived):
+        raise Http404
+    return question
+
+
+def qa_question_capabilities(request, question, answer_count):
+    user = request.user
+    is_mine = question.author_id == user.pk
+    is_student_author = is_mine and not user.is_staff and not user.is_superuser
+    active = question.archived_at is None
+    can_manage_content = request.can_manage_content
+    is_department = request.is_dept_override
+    can_edit = active and (
+        is_department or (is_student_author and answer_count == 0)
+    )
+    can_archive = active and (
+        is_department or request.is_owner or request.is_ta or is_student_author
+    )
+    return {
+        "is_mine": is_mine,
+        "can_edit": can_edit,
+        "can_archive": can_archive,
+        "can_answer": active and can_manage_content,
+        "can_pin": active and can_manage_content,
+        "can_verify": active and can_manage_content,
+    }
+
+
+def qa_question_data(request, question, *, include_body=False):
+    answer_count = question.answer_count
+    data = {
+        "id": question.pk,
+        "title": question.title,
+        "author_name": question.author_label,
+        "author_role_label": question.author_role_label,
+        "created_at": question.created_at,
+        "updated_at": question.updated_at,
+        "edited_at": question.edited_at,
+        "is_pinned": question.is_pinned,
+        "pinned_at": question.pinned_at,
+        "answer_count": answer_count,
+        "has_verified_answer": question.has_verified_answer,
+        **qa_question_capabilities(request, question, answer_count),
+    }
+    if include_body:
+        data["body"] = question.body
+    else:
+        data["body_excerpt"] = question.body[:240]
+    if request.can_manage_content:
+        data["archived_at"] = question.archived_at
+        data["can_restore"] = question.archived_at is not None and (
+            request.is_dept_override
+            or question.archived_by_id == request.user.pk
+        )
+    return data
+
+
+def qa_answer_data(request, question, answer):
+    is_mine = answer.author_id == request.user.pk
+    active = question.archived_at is None and answer.archived_at is None
+    is_department = request.is_dept_override
+    can_manage_content = request.can_manage_content
+    return {
+        "id": answer.pk,
+        "body": answer.body,
+        "author_name": answer.author_label,
+        "author_role_label": answer.author_role_label,
+        "created_at": answer.created_at,
+        "updated_at": answer.updated_at,
+        "edited_at": answer.edited_at,
+        "is_verified": answer.is_verified,
+        "verified_at": answer.verified_at,
+        "is_mine": is_mine,
+        "can_edit": active and (
+            is_department or (can_manage_content and is_mine)
+        ),
+        "can_archive": active and (
+            is_department or request.is_owner or request.is_ta
+            or (can_manage_content and is_mine)
+        ),
+        "can_verify": active and can_manage_content,
+        **({
+            "archived_at": answer.archived_at,
+            "can_restore": answer.archived_at is not None and (
+                is_department or answer.archived_by_id == request.user.pk
+            ),
+        } if can_manage_content else {}),
+    }
+
+
+def qa_refreshed_question(request, question):
+    return qa_question_queryset(request.course).get(pk=question.pk)
+
+
+def qa_write_response(question, request, *, status=200):
+    return JsonResponse(
+        {"question": qa_question_data(
+            request, qa_refreshed_question(request, question), include_body=True,
+        )},
+        status=status,
+    )
+
+
+@qa_json_404
+@course_access()
+@require_http_methods(["GET", "POST"])
+def qa_question_list(request, pk):
+    if request.method == "POST":
+        return qa_question_create_response(request, pk)
+    status_filter = request.GET.get("status", "")
+    if status_filter not in {"", "answered", "unanswered", "mine", "archived"}:
+        return qa_error("Unknown status filter.", field="status")
+    if status_filter == "archived" and not request.can_manage_content:
+        return qa_error("Only course staff may request archived questions.", field="status")
+
+    def positive_integer(name, default):
+        raw = request.GET.get(name)
+        if raw is None:
+            return default, None
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            return None, qa_error("Provide a positive integer.", field=name)
+        if value < 1:
+            return None, qa_error("Provide a positive integer.", field=name)
+        return value, None
+
+    page, error = positive_integer("page", 1)
+    if error:
+        return error
+    page_size, error = positive_integer("page_size", 20)
+    if error:
+        return error
+    if page_size > 100:
+        return qa_error("Page size cannot exceed 100.", field="page_size")
+
+    questions = qa_question_queryset(request.course)
+    if status_filter == "archived":
+        questions = questions.filter(archived_at__isnull=False)
+    else:
+        questions = questions.filter(archived_at__isnull=True)
+    if status_filter == "answered":
+        questions = questions.filter(answer_count__gt=0)
+    elif status_filter == "unanswered":
+        questions = questions.filter(answer_count=0)
+    elif status_filter == "mine":
+        questions = questions.filter(author=request.user)
+
+    search = request.GET.get("q", "").strip()
+    if search:
+        questions = questions.filter(Q(title__icontains=search) | Q(body__icontains=search))
+    questions = questions.order_by(
+        "-is_pinned", "-has_verified_answer", "-created_at", "-pk",
+    )
+
+    count = questions.count()
+    start = (page - 1) * page_size
+    results = questions[start:start + page_size] if start < count else []
+    return JsonResponse({
+        "count": count,
+        "page": page,
+        "page_size": page_size,
+        "results": [qa_question_data(request, question) for question in results],
+    })
+
+
+@qa_json_404
+@course_access()
+@require_http_methods(["GET"])
+def qa_question_detail(request, pk, question_id):
+    question = get_object_or_404(
+        qa_question_queryset(request.course),
+        pk=question_id,
+    )
+    if question.archived_at is not None and not request.can_manage_content:
+        raise Http404
+    answers = CourseAnswer.objects.filter(question=question).select_related("author")
+    if not request.can_manage_content:
+        answers = answers.filter(archived_at__isnull=True)
+    answers = answers.order_by("-is_verified", "created_at", "pk")
+    return JsonResponse({
+        "question": qa_question_data(request, question, include_body=True),
+        "answers": [qa_answer_data(request, question, answer) for answer in answers],
+    })
+
+
+def qa_question_create_response(request, pk):
+    if (request.user.is_staff or request.user.is_superuser
+            or CourseTA.objects.filter(course=request.course, user=request.user).exists()
+            or not Enrollment.objects.filter(course=request.course, student=request.user).exists()):
+        return qa_error(
+            "Only enrolled students who are not course TAs may post questions.",
+            status=403,
+        )
+    data, error = qa_payload(request)
+    if error:
+        return error
+    title, error = qa_text_value(data, "title", 200)
+    if error:
+        return error
+    body, error = qa_text_value(data, "body", 5000)
+    if error:
+        return error
+    question = create_course_question(
+        course=request.course,
+        author=request.user,
+        title=title,
+        body=body,
+    )
+    return JsonResponse(
+        qa_question_data(
+            request, qa_refreshed_question(request, question), include_body=True,
+        ),
+        status=201,
+    )
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_question_edit(request, pk, question_id):
+    with transaction.atomic():
+        question = qa_get_question(request, question_id, lock=True)
+        if question.archived_at is not None:
+            raise Http404
+        answer_count = CourseAnswer.objects.filter(
+            question=question, archived_at__isnull=True,
+        ).count()
+        is_student_author = (
+            question.author_id == request.user.pk
+            and not request.user.is_staff
+            and not request.user.is_superuser
+        )
+        if not request.is_dept_override and not (is_student_author and answer_count == 0):
+            return qa_error("You cannot edit this question.", status=403)
+        data, error = qa_payload(request)
+        if error:
+            return error
+        title, error = qa_text_value(data, "title", 200)
+        if error:
+            return error
+        body, error = qa_text_value(data, "body", 5000)
+        if error:
+            return error
+        if title != question.title or body != question.body:
+            question.title = title
+            question.body = body
+            question.edited_at = timezone.now()
+            question.save(update_fields=["title", "body", "edited_at", "updated_at"])
+    return qa_write_response(question, request)
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_question_archive(request, pk, question_id):
+    with transaction.atomic():
+        question = qa_get_question(request, question_id, lock=True)
+        if question.archived_at is not None:
+            raise Http404
+        is_student_author = (
+            question.author_id == request.user.pk
+            and not request.user.is_staff
+            and not request.user.is_superuser
+        )
+        if not (request.is_dept_override or request.is_owner or request.is_ta or is_student_author):
+            return qa_error("You cannot archive this question.", status=403)
+        question.archived_at = timezone.now()
+        question.archived_by = request.user
+        question.save(update_fields=["archived_at", "archived_by", "updated_at"])
+    return qa_write_response(question, request)
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_question_restore(request, pk, question_id):
+    with transaction.atomic():
+        question = qa_get_question(
+            request, question_id, lock=True, allow_archived=True,
+        )
+        if question.archived_at is None:
+            raise Http404
+        can_restore = request.is_dept_override or (
+            (request.is_owner or request.is_ta)
+            and question.archived_by_id == request.user.pk
+        )
+        if not can_restore:
+            return qa_error("You cannot restore this question.", status=403)
+        question.archived_at = None
+        question.archived_by = None
+        question.save(update_fields=["archived_at", "archived_by", "updated_at"])
+    return qa_write_response(question, request)
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_question_pin(request, pk, question_id):
+    with transaction.atomic():
+        question = qa_get_question(request, question_id, lock=True)
+        if question.archived_at is not None:
+            raise Http404
+        if not request.can_manage_content:
+            return qa_error("You cannot pin this question.", status=403)
+        data, error = qa_payload(request, boolean_fields={"is_pinned"})
+        if error:
+            return error
+        is_pinned, error = qa_boolean_value(request, data, "is_pinned")
+        if error:
+            return error
+        question.is_pinned = is_pinned
+        question.pinned_at = timezone.now() if is_pinned else None
+        question.save(update_fields=["is_pinned", "pinned_at", "updated_at"])
+    return qa_write_response(question, request)
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_answer_create(request, pk, question_id):
+    with transaction.atomic():
+        question = qa_get_question(request, question_id, lock=True)
+        if question.archived_at is not None:
+            raise Http404
+        if not request.can_manage_content:
+            return qa_error("Only the course owner, a TA, or Department may answer.", status=403)
+        data, error = qa_payload(request)
+        if error:
+            return error
+        body, error = qa_text_value(data, "body", 5000)
+        if error:
+            return error
+        answer = create_course_answer(question=question, author=request.user, body=body)
+    question = qa_refreshed_question(request, question)
+    return JsonResponse({
+        "answer": qa_answer_data(request, question, answer),
+        "question": qa_question_data(request, question, include_body=True),
+    }, status=201)
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_answer_edit(request, pk, question_id, answer_id):
+    with transaction.atomic():
+        question = qa_get_question(request, question_id, lock=True)
+        if question.archived_at is not None:
+            raise Http404
+        answer = get_object_or_404(
+            CourseAnswer.objects.select_for_update().filter(question=question),
+            pk=answer_id,
+        )
+        if answer.archived_at is not None:
+            raise Http404
+        if not request.is_dept_override and not (
+            request.can_manage_content and answer.author_id == request.user.pk
+        ):
+            return qa_error("You cannot edit this answer.", status=403)
+        data, error = qa_payload(request)
+        if error:
+            return error
+        body, error = qa_text_value(data, "body", 5000)
+        if error:
+            return error
+        if body != answer.body:
+            answer.body = body
+            answer.edited_at = timezone.now()
+            answer.save(update_fields=["body", "edited_at", "updated_at"])
+    question = qa_refreshed_question(request, question)
+    answer.refresh_from_db()
+    return JsonResponse({
+        "answer": qa_answer_data(request, question, answer),
+        "question": qa_question_data(request, question, include_body=True),
+    })
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_answer_archive(request, pk, question_id, answer_id):
+    with transaction.atomic():
+        question = qa_get_question(request, question_id, lock=True)
+        if question.archived_at is not None:
+            raise Http404
+        answer = get_object_or_404(
+            CourseAnswer.objects.select_for_update().filter(question=question),
+            pk=answer_id,
+        )
+        if answer.archived_at is not None:
+            raise Http404
+        can_archive = (
+            request.is_dept_override or request.is_owner or request.is_ta
+            or (request.can_manage_content and answer.author_id == request.user.pk)
+        )
+        if not can_archive:
+            return qa_error("You cannot archive this answer.", status=403)
+        answer.archived_at = timezone.now()
+        answer.archived_by = request.user
+        answer.save(update_fields=["archived_at", "archived_by", "updated_at"])
+    question = qa_refreshed_question(request, question)
+    answer.refresh_from_db()
+    return JsonResponse({
+        "answer": qa_answer_data(request, question, answer),
+        "question": qa_question_data(request, question, include_body=True),
+    })
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_answer_restore(request, pk, question_id, answer_id):
+    with transaction.atomic():
+        question = qa_get_question(request, question_id, lock=True)
+        if question.archived_at is not None:
+            raise Http404
+        answer = get_object_or_404(
+            CourseAnswer.objects.select_for_update().filter(question=question),
+            pk=answer_id,
+        )
+        if answer.archived_at is None:
+            raise Http404
+        can_restore = request.is_dept_override or (
+            (request.is_owner or request.is_ta)
+            and answer.archived_by_id == request.user.pk
+        )
+        if not can_restore:
+            return qa_error("You cannot restore this answer.", status=403)
+        answer.archived_at = None
+        answer.archived_by = None
+        answer.save(update_fields=["archived_at", "archived_by", "updated_at"])
+    question = qa_refreshed_question(request, question)
+    answer.refresh_from_db()
+    return JsonResponse({
+        "answer": qa_answer_data(request, question, answer),
+        "question": qa_question_data(request, question, include_body=True),
+    })
+
+
+@qa_json_404
+@course_access()
+@require_POST
+def qa_answer_verify(request, pk, question_id, answer_id):
+    with transaction.atomic():
+        question = qa_get_question(request, question_id, lock=True)
+        if question.archived_at is not None:
+            raise Http404
+        answer = get_object_or_404(
+            CourseAnswer.objects.select_for_update().filter(question=question),
+            pk=answer_id,
+        )
+        if answer.archived_at is not None:
+            raise Http404
+        if not request.can_manage_content:
+            return qa_error("You cannot verify this answer.", status=403)
+        data, error = qa_payload(request, boolean_fields={"is_verified"})
+        if error:
+            return error
+        is_verified, error = qa_boolean_value(request, data, "is_verified")
+        if error:
+            return error
+        answer.is_verified = is_verified
+        answer.verified_by = request.user if is_verified else None
+        answer.verified_at = timezone.now() if is_verified else None
+        answer.save(update_fields=[
+            "is_verified", "verified_by", "verified_at", "updated_at",
+        ])
+    question = qa_refreshed_question(request, question)
+    answer.refresh_from_db()
+    return JsonResponse({
+        "answer": qa_answer_data(request, question, answer),
+        "question": qa_question_data(request, question, include_body=True),
+    })

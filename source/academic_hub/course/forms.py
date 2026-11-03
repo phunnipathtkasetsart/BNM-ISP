@@ -8,8 +8,13 @@ from .models import CoursePost
 from .validators import validate_upload_size
 
 class CourseForm(forms.Form):
-    section = forms.CharField(label="Section (Sec)", max_length=20,
-                              widget=forms.TextInput(attrs={"placeholder": "e.g. 001"}))
+    section = forms.RegexField(
+        label="Section (Sec)", regex=r"^[0-9]+$", max_length=20, strip=True,
+        error_messages={"invalid": "Section must contain digits 0–9 only."},
+        widget=forms.TextInput(attrs={"placeholder": "e.g. 001", "inputmode": "numeric",
+                                      "pattern": "[0-9]+", "data-numeric-section": "",
+                                      "title": "Use digits 0–9 only."}),
+    )
     name = forms.CharField(label="Class name", max_length=120,
                           widget=forms.TextInput(attrs={"placeholder": "e.g. Software Engineering", "autofocus": True}))
     field_order = ["name", "section"]
@@ -113,8 +118,11 @@ class CoursePostForm(forms.ModelForm):
         validators=[validate_upload_size],
         widget=forms.FileInput(attrs={"class": "form-control"}),
     )
-
-
+    remove_attachment = forms.BooleanField(
+        required=False,
+        label="Remove current attachment",
+        widget=forms.CheckboxInput(attrs={"style": "width:auto;display:inline-block;margin-right:8px"}),
+    )
     add_to_materials = forms.BooleanField(
         required=False, label="Add attachment to Materials",
         widget=forms.CheckboxInput(attrs={"style": "width:auto;display:inline-block;margin-right:8px"}),

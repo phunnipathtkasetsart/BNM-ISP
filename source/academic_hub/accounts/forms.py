@@ -114,7 +114,7 @@ class RegisterForm(forms.ModelForm):
             "nisit_id": forms.TextInput(
                 attrs={
                     **NISIT_ATTRS,
-                    "placeholder": "Nisit Number (Student ID) (10 digits)",
+                    "placeholder": "Nisit ID (10 digits)",
                 }
             ),
             "department": forms.RadioSelect,

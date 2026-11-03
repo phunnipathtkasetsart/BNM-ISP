@@ -1,6 +1,8 @@
 {# Static advisor contact placeholder; no messaging or advisor assignment yet. #}
 <section class="course-sidebar advisor-dashboard" aria-labelledby="advisor-dashboard-title">
-  <div class="course-sidebar__label"><span>STUDENT SUPPORT</span><span class="course-sidebar__preview">Preview</span></div>
+  <details class="course-sidebar__fold" open data-fold-mobile>
+  <summary class="course-sidebar__label"><span>STUDENT SUPPORT</span><span class="course-sidebar__preview">Preview</span></summary>
+  <div class="course-sidebar__body">
   <div class="course-tool">
     <header class="course-tool__header">
       <span class="course-tool__icon" aria-hidden="true">✉</span>
@@ -14,4 +16,6 @@
     </div>
   </div>
   <p class="course-sidebar__note">Coming soon · Advisor messaging is not active yet.</p>
+  </div>
+  </details>
 </section>
