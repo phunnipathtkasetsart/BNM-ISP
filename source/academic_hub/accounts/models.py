@@ -142,3 +142,22 @@ class AdvisorAssignment(models.Model):
 
     def __str__(self):
         return f"{self.student_id} -> {self.advisor_id}"
+
+
+class GmailOAuthCredential(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="gmail_oauth_credential",
+    )
+    google_email = models.EmailField()
+    encrypted_refresh_token = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "gmail_oauth_credentials"
+
+    def __str__(self):
+        return f"Gmail authorization for {self.user_id}"

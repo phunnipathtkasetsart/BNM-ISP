@@ -16,10 +16,10 @@
               <span class="course-tool__muted">{{ advisor_assignment.advisor.get_full_name }}</span>
               <span class="advisor-contact__email">{{ advisor_assignment.advisor.email }}</span>
             </div>
-            <a class="course-tool__button" href="{{ advisor_compose_url }}"
+            <a class="course-tool__button" href="{% url 'accounts:gmail_oauth_start' %}"
                target="_blank" rel="noopener noreferrer">Contact advisor</a>
           </div>
-          <p class="course-sidebar__note advisor-contact__hint">Gmail opens with the recipient and message filled in. It uses the Google account currently signed in, so check that you are using your KU account before sending.</p>
+          <p class="course-sidebar__note advisor-contact__hint">A draft will be created in your KU Gmail for you to review and send.</p>
         {% else %}
           <p class="course-tool__empty">You have not been assigned an academic advisor. Please contact your department.</p>
         {% endif %}

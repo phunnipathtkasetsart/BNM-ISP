@@ -1,10 +1,7 @@
 import os
-
-
 import json
 from datetime import timedelta
 from functools import wraps
-from urllib.parse import urlencode
 
 from django.db.models import Count, Exists, OuterRef, Q
 from django.contrib import messages
@@ -141,7 +138,6 @@ def dashboard(request):
 
     is_student = not request.user.is_staff and not request.user.is_superuser
     advisor_assignment = None
-    advisor_compose_url = None
     if is_student:
         advisor_assignment = (
             AdvisorAssignment.objects.filter(
@@ -153,24 +149,6 @@ def dashboard(request):
             .select_related("advisor")
             .first()
         )
-        if advisor_assignment:
-            advisor = advisor_assignment.advisor
-            subject = f"Academic advising request - {request.user.get_full_name()}"
-            body = (
-                f"Dear {advisor.get_full_name()},\n\n"
-                "I would like to discuss an academic matter. Please let me know when "
-                "you are available.\n\n"
-                f"Thank you,\n{request.user.get_full_name()}\n"
-                f"Nisit ID: {request.user.nisit_id}\n"
-                f"Email: {request.user.email}"
-            )
-            advisor_compose_url = "https://mail.google.com/mail/?" + urlencode({
-                "view": "cm",
-                "fs": "1",
-                "to": advisor.email,
-                "su": subject,
-                "body": body,
-            })
 
     return render(
         request,
@@ -187,7 +165,6 @@ def dashboard(request):
             "join_form": JoinForm(),
             "is_student": is_student,
             "advisor_assignment": advisor_assignment,
-            "advisor_compose_url": advisor_compose_url,
         },
     )
 

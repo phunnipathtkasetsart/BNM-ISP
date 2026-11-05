@@ -66,6 +66,11 @@ GOOGLE_OAUTH_REDIRECT_URI = os.getenv(
     "GOOGLE_OAUTH_REDIRECT_URI",
     "http://localhost:8000/accounts/oauth/google/callback/",
 )
+GOOGLE_GMAIL_OAUTH_REDIRECT_URI = os.getenv(
+    "GOOGLE_GMAIL_OAUTH_REDIRECT_URI",
+    "http://localhost:8000/accounts/oauth/google/gmail/callback/",
+)
+GMAIL_TOKEN_ENCRYPTION_KEY = os.getenv("GMAIL_TOKEN_ENCRYPTION_KEY", "").strip()
 
 PASSWORD_RESET_BASE_URL = os.getenv("PASSWORD_RESET_BASE_URL", "").strip().rstrip("/")
 PASSWORD_RESET_TIMEOUT = timedelta(
