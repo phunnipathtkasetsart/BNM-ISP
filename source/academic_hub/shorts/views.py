@@ -9,13 +9,14 @@ session through to the views it lists, and these are not among them.
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Exists, OuterRef
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_http_methods
 
 from .forms import ShortForm
-from .models import Short
+from .models import Short, ShortLike
 from .services import create_short
 from .storage import signed_clip_url
 from .streaming import ranged_clip_response
@@ -34,10 +35,21 @@ def can_create_shorts(user):
     )
 
 
-def visible_shorts():
+def visible_shorts(user):
     # Every signed-in user sees every live short for now. Narrowing the feed
     # to a student's courses (US-14) needs shorts linked to courses first.
-    return Short.objects.filter(archived_at__isnull=True).prefetch_related("tags")
+    return (
+        Short.objects.filter(archived_at__isnull=True)
+        .annotate(
+            like_count=Count("likes", distinct=True),
+            comment_count=Count("comments", distinct=True),
+            liked=Exists(ShortLike.objects.filter(short=OuterRef("pk"), user=user)),
+        )
+        .prefetch_related("tags")
+        # Spelled out: Django drops Meta.ordering from counting (GROUP BY)
+        # queries, and without it the feed would come back in any order.
+        .order_by("-created_at", "-pk")
+    )
 
 
 def feed_item(short):
@@ -49,11 +61,16 @@ def feed_item(short):
         # A stable address on this site rather than a signed MinIO link, so
         # a clip loaded an hour from now still gets a link that is valid.
         "src": reverse("shorts:clip", args=[short.pk]),
+        "liked": short.liked,
+        "like_count": short.like_count,
+        "comment_count": short.comment_count,
+        "like_url": reverse("shorts:api_like", args=[short.pk]),
+        "comments_url": reverse("shorts:api_comments", args=[short.pk]),
     }
 
 
-def feed_page(offset):
-    rows = list(visible_shorts()[offset:offset + FEED_BATCH + 1])
+def feed_page(offset, user):
+    rows = list(visible_shorts(user)[offset:offset + FEED_BATCH + 1])
     has_more = len(rows) > FEED_BATCH
     return {
         "items": [feed_item(short) for short in rows[:FEED_BATCH]],
@@ -66,7 +83,7 @@ def feed_page(offset):
 @login_required(login_url="accounts:login")
 @require_GET
 def feed(request):
-    page = feed_page(0)
+    page = feed_page(0, request.user)
     return render(request, "shorts/feed.html", {
         "can_create": can_create_shorts(request.user),
         "feed": page,
@@ -83,7 +100,7 @@ def feed_api(request):
         offset = -1
     if offset < 0:
         return JsonResponse({"error": "offset must be a whole number, 0 or more."}, status=400)
-    return JsonResponse(feed_page(offset))
+    return JsonResponse(feed_page(offset, request.user))
 
 
 @login_required(login_url="accounts:login")

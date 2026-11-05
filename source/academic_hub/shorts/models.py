@@ -53,3 +53,46 @@ class Short(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class ShortLike(models.Model):
+    """One user liking one short. A second like is the same row, not a new one."""
+
+    short = models.ForeignKey(Short, on_delete=models.CASCADE, related_name="likes")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="short_likes",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["short", "user"], name="unique_short_like"),
+        ]
+
+
+class ShortComment(models.Model):
+    short = models.ForeignKey(Short, on_delete=models.CASCADE, related_name="comments")
+    author = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        db_constraint=False,
+        related_name="short_comments",
+    )
+    # Kept with the comment, as course Q&A does, so it still reads right if
+    # the account is later renamed or removed.
+    author_label = models.CharField(max_length=301)
+    author_role_label = models.CharField(max_length=30)
+    body = models.TextField(max_length=500)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        indexes = [models.Index(fields=["short", "-created_at"], name="short_comment_list_idx")]
+
+    def __str__(self):
+        return f"Comment on {self.short_id}"

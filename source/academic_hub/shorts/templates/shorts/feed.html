@@ -35,6 +35,8 @@
 {# The reel player (US-14, SRS-8). reels.js builds one slide per clip from #}
 {# the template below and keeps loading more, starting over at the end.   #}
 <section class="reels" data-reels data-api="{% url 'shorts:api_feed' %}" aria-label="Shorts">
+  {# Likes and comments are POSTs from reels.js; it sends this token with them. #}
+  {% csrf_token %}
   {% for message in messages %}<p class="reels__toast" role="status" data-reels-toast>{{ message }}</p>{% endfor %}
 
   <div class="reels__viewport" role="feed" aria-busy="false" tabindex="0" data-reels-viewport
@@ -50,10 +52,50 @@
   </div>
 
   <noscript><p class="reels__noscript">Turn on JavaScript to watch shorts.</p></noscript>
+
+  {# One comments panel for the whole feed, showing the clip on screen. #}
+  <div class="comments__backdrop" data-comments-close hidden></div>
+  <aside class="comments" id="reel-comments" role="dialog" aria-modal="false"
+         aria-labelledby="reel-comments-title" data-comments hidden>
+    <header class="comments__head">
+      <h2 id="reel-comments-title">Comments <span class="comments__total" data-comments-total></span></h2>
+      <button type="button" class="comments__close" data-comments-close aria-label="Close comments">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div class="comments__body" data-comments-body>
+      <p class="comments__empty" data-comments-empty hidden>No comments yet. Start the conversation.</p>
+      <ol class="comments__list" data-comments-list></ol>
+      <button type="button" class="comments__more" data-comments-more hidden>View more comments</button>
+      <p class="comments__status" data-comments-status role="status" aria-live="polite"></p>
+    </div>
+    <form class="comments__form" data-comments-form>
+      <label class="sr-only" for="reel-comment-input">Add a comment</label>
+      <textarea id="reel-comment-input" name="body" rows="1" maxlength="500"
+                placeholder="Add a comment…" data-comments-input></textarea>
+      <button type="submit" class="comments__post" data-comments-post disabled>Post</button>
+    </form>
+  </aside>
 </section>
+
+<template id="comment-template">
+  <li class="comment">
+    <span class="comment__avatar" aria-hidden="true" data-comment-initial></span>
+    <div class="comment__main">
+      <p class="comment__head">
+        <strong class="comment__author" data-comment-author></strong>
+        <span class="comment__role" data-comment-role></span>
+        <time class="comment__time" data-comment-time></time>
+      </p>
+      <p class="comment__body" data-comment-body></p>
+      <button type="button" class="comment__delete" data-comment-delete hidden>Delete</button>
+    </div>
+  </li>
+</template>
 
 <template id="reel-template">
   <article class="reel" aria-roledescription="short">
+    <div class="reel__stage">
     <div class="reel__frame">
       <video class="reel__video" playsinline loop muted preload="none" disablepictureinpicture></video>
 
@@ -79,6 +121,19 @@
 
       <div class="reel__progress" aria-hidden="true"><span data-reel-progress></span></div>
       <p class="reel__error" data-reel-error role="alert" hidden>This clip could not be played.</p>
+    </div>
+
+    {# Right-hand actions, as on Reels: beside the clip on a computer, over it on a phone. #}
+    <div class="reel__actions">
+      <button type="button" class="reel__action reel__action--like" data-reel-like aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 4.5 7.1 4.5c2.1 0 3.6 1.2 4.9 2.9 1.3-1.7 2.8-2.9 4.9-2.9 3.7 0 5.6 3.7 4.4 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>
+        <span class="reel__count" data-reel-like-count>0</span>
+      </button>
+      <button type="button" class="reel__action" data-reel-comments aria-haspopup="dialog" aria-controls="reel-comments">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 01-12.3 7.6L3.5 20.5l1.4-4.5A8.5 8.5 0 1120.5 11.5z"/></svg>
+        <span class="reel__count" data-reel-comment-count>0</span>
+      </button>
+    </div>
     </div>
   </article>
 </template>
