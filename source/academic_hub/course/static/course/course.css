@@ -704,6 +704,18 @@
   gap: 16px;
   flex-wrap: wrap;
 }
+.advisor-contact { min-width: 0; }
+.advisor-contact__email {
+  display: block;
+  margin-top: 4px;
+  color: #35705b;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.advisor-dashboard .advisor-contact__hint {
+  margin-top: 12px;
+  text-align: left;
+}
 
 /* Align the deadline panel with the dashboard's two-column layout. */
 .stage:has(.course-advisor-layout) > .deadline-widget {

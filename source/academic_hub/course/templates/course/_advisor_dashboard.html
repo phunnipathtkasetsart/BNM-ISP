@@ -1,7 +1,6 @@
-{# Static advisor contact placeholder; no messaging or advisor assignment yet. #}
 <section class="course-sidebar advisor-dashboard" aria-labelledby="advisor-dashboard-title">
   <details class="course-sidebar__fold" open data-fold-mobile>
-  <summary class="course-sidebar__label"><span>STUDENT SUPPORT</span><span class="course-sidebar__preview">Preview</span></summary>
+  <summary class="course-sidebar__label"><span>STUDENT SUPPORT</span></summary>
   <div class="course-sidebar__body">
   <div class="course-tool">
     <header class="course-tool__header">
@@ -9,13 +8,26 @@
       <h2 id="advisor-dashboard-title">Academic advisor <small>อาจารย์ที่ปรึกษา</small></h2>
     </header>
     <div class="course-tool__body">
-      <div class="course-tool__row">
-        <div><strong>Your academic advisor</strong><span class="course-tool__muted">Advisor contact information will appear here.</span></div>
-        <button class="course-tool__button" type="button" disabled>Send message</button>
-      </div>
+      {% if is_student %}
+        {% if advisor_assignment %}
+          <div class="course-tool__row">
+            <div class="advisor-contact">
+              <strong>Your academic advisor</strong>
+              <span class="course-tool__muted">{{ advisor_assignment.advisor.get_full_name }}</span>
+              <span class="advisor-contact__email">{{ advisor_assignment.advisor.email }}</span>
+            </div>
+            <a class="course-tool__button" href="{{ advisor_compose_url }}"
+               target="_blank" rel="noopener noreferrer">Contact advisor</a>
+          </div>
+          <p class="course-sidebar__note advisor-contact__hint">Gmail opens with the recipient and message filled in. It uses the Google account currently signed in, so check that you are using your KU account before sending.</p>
+        {% else %}
+          <p class="course-tool__empty">You have not been assigned an academic advisor. Please contact your department.</p>
+        {% endif %}
+      {% else %}
+        <p class="course-tool__empty">Academic advisor contact is available to students.</p>
+      {% endif %}
     </div>
   </div>
-  <p class="course-sidebar__note">Coming soon · Advisor messaging is not active yet.</p>
   </div>
   </details>
 </section>

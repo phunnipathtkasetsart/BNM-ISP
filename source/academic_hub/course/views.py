@@ -4,6 +4,7 @@ import os
 import json
 from datetime import timedelta
 from functools import wraps
+from urllib.parse import urlencode
 
 from django.db.models import Count, Exists, OuterRef, Q
 from django.contrib import messages
@@ -16,6 +17,8 @@ from django.utils import timezone
 
 from django.contrib.auth import get_user_model
 
+
+from accounts.models import AdvisorAssignment
 
 
 from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
@@ -136,6 +139,39 @@ def dashboard(request):
             "archived_courses": [course_data(c, request.user) for c in archived_courses],
         })
 
+    is_student = not request.user.is_staff and not request.user.is_superuser
+    advisor_assignment = None
+    advisor_compose_url = None
+    if is_student:
+        advisor_assignment = (
+            AdvisorAssignment.objects.filter(
+                student=request.user,
+                advisor__is_staff=True,
+                advisor__is_superuser=False,
+                advisor__is_active=True,
+            )
+            .select_related("advisor")
+            .first()
+        )
+        if advisor_assignment:
+            advisor = advisor_assignment.advisor
+            subject = f"Academic advising request - {request.user.get_full_name()}"
+            body = (
+                f"Dear {advisor.get_full_name()},\n\n"
+                "I would like to discuss an academic matter. Please let me know when "
+                "you are available.\n\n"
+                f"Thank you,\n{request.user.get_full_name()}\n"
+                f"Nisit ID: {request.user.nisit_id}\n"
+                f"Email: {request.user.email}"
+            )
+            advisor_compose_url = "https://mail.google.com/mail/?" + urlencode({
+                "view": "cm",
+                "fs": "1",
+                "to": advisor.email,
+                "su": subject,
+                "body": body,
+            })
+
     return render(
         request,
         "course/dashboard.html",
@@ -149,6 +185,9 @@ def dashboard(request):
             "upcoming_deadlines": upcoming_deadlines,
             "create_form": CourseForm(),
             "join_form": JoinForm(),
+            "is_student": is_student,
+            "advisor_assignment": advisor_assignment,
+            "advisor_compose_url": advisor_compose_url,
         },
     )
 

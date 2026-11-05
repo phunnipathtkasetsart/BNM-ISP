@@ -1,7 +1,8 @@
 import json
 import hashlib
 import logging
-import secrets
+import re
+import secrets
 from datetime import timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
@@ -28,7 +29,7 @@ from .middleware import (
     GUEST_SESSION_SECONDS,
     is_guest_request,
 )
-from .models import PasswordResetToken, User
+from .models import AdvisorAssignment, PasswordResetToken, User
 from course.models import Course
 
 
@@ -413,46 +414,156 @@ def is_department_admin(user):
 def roles_view(request):
     if not is_department_admin(request.user):
         return render(request, "accounts/no_access.html", status=403)
-
+
     notice = error = None
-
+
     if request.method == "POST":
-        target_id = request.POST.get("nisit_id", "")
-        new_role = request.POST.get("role", "")
-
-        if new_role not in ROLES:
-            error = "That is not a role we recognise."
-        elif target_id == request.user.nisit_id:
-            # Without this a department admin can demote themselves and lock
-            # everyone out of the only page that can put the role back.
-            error = "You cannot change your own role. Ask another Department admin."
-        else:
-            target = User.objects.filter(nisit_id=target_id).first()
-            if target is None:
-                error = "That account no longer exists."
-            elif target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
-                error = "This lecturer cannot change roles while they still own a class."
-            else:
-                flags = ROLES[new_role]
-                target.is_staff = flags["is_staff"]
-                target.is_superuser = flags["is_superuser"]
-                target.save(update_fields=["is_staff", "is_superuser"])
-                notice = f"{target.get_full_name()} is now {flags['label']}."
-
-    people = []
-    for u in User.objects.all().order_by("nisit_id"):
-        key = role_of(u)
-        people.append({
-            "user": u,
-            "role": key,
-            "role_label": ROLES[key]["label"],
-            "is_me": u.nisit_id == request.user.nisit_id,
-            "has_owned_classes": u.is_staff and Course.objects.filter(owner=u).exists(),
-        })
-
-    return render(request, "accounts/roles.html", {
-        "people": people,
-        "roles": [{"key": k, "label": v["label"]} for k, v in ROLES.items()],
-        "notice": notice,
-        "error": error,
-    })
+        action = request.POST.get("action", "role")
+        if action == "roles":
+            role_fields = {
+                key.removeprefix("role_for_"): value
+                for key, value in request.POST.items()
+                if key.startswith("role_for_")
+            }
+            changes = []
+            for target_id, new_role in role_fields.items():
+                target = User.objects.filter(nisit_id=target_id).first()
+                if target is None:
+                    error = f"Account {target_id} no longer exists."
+                    break
+                if target_id == request.user.nisit_id:
+                    error = "You cannot change your own role. Ask another Department admin."
+                    break
+                if new_role not in ROLES:
+                    error = f"That is not a role we recognise for {target.get_full_name()}."
+                    break
+                if role_of(target) == new_role:
+                    continue
+                if target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
+                    error = "This lecturer cannot change roles while they still own a class."
+                    break
+                changes.append((target, new_role))
+
+            if not error and changes:
+                with transaction.atomic():
+                    for target, new_role in changes:
+                        flags = ROLES[new_role]
+                        if new_role != "student":
+                            AdvisorAssignment.objects.filter(student=target).delete()
+                        if new_role != "lecturer":
+                            AdvisorAssignment.objects.filter(advisor=target).delete()
+                        target.is_staff = flags["is_staff"]
+                        target.is_superuser = flags["is_superuser"]
+                        target.save(update_fields=["is_staff", "is_superuser"])
+                notice = f"Role changes saved for {len(changes)} account{'s' if len(changes) != 1 else ''}."
+            elif not error:
+                notice = "There are no role changes to save."
+        elif action == "advisor":
+            target_id = request.POST.get("nisit_id", "")
+            target = User.objects.filter(nisit_id=target_id).first()
+            if target is None:
+                error = "That account no longer exists."
+            else:
+                selected_ids = set(request.POST.getlist("student_ids"))
+                typed_ids = set(re.split(r"[\s,;]+", request.POST.get("student_ids_text", "").strip()))
+                typed_ids.discard("")
+                selected_ids.update(typed_ids)
+                if role_of(target) != "lecturer" or not target.is_active:
+                    error = "Only active Lecturer accounts can have advised students."
+                else:
+                    students = list(User.objects.filter(
+                        nisit_id__in=selected_ids,
+                        is_staff=False,
+                        is_superuser=False,
+                        is_active=True,
+                    ))
+                    students_by_id = {student.nisit_id: student for student in students}
+                    invalid_ids = sorted(selected_ids - students_by_id.keys())
+                    if invalid_ids:
+                        error = (
+                            "These IDs are unknown, inactive, or not student accounts: "
+                            + ", ".join(invalid_ids)
+                        )
+                    else:
+                        with transaction.atomic():
+                            AdvisorAssignment.objects.filter(advisor=target).exclude(
+                                student_id__in=selected_ids
+                            ).delete()
+                            for student in students:
+                                AdvisorAssignment.objects.update_or_create(
+                                    student=student,
+                                    defaults={"advisor": target},
+                                )
+                        count = len(selected_ids)
+                        notice = (
+                            f"{count} advised student{'s' if count != 1 else ''} saved for "
+                            f"{target.get_full_name()}."
+                        )
+        elif action == "role":
+            target_id = request.POST.get("nisit_id", "")
+            target = User.objects.filter(nisit_id=target_id).first()
+            if target is None:
+                error = "That account no longer exists."
+            else:
+                new_role = request.POST.get("role", "")
+                if new_role not in ROLES:
+                    error = "That is not a role we recognise."
+                elif target_id == request.user.nisit_id:
+                    error = "You cannot change your own role. Ask another Department admin."
+                elif target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
+                    error = "This lecturer cannot change roles while they still own a class."
+                else:
+                    flags = ROLES[new_role]
+                    with transaction.atomic():
+                        if new_role != "student":
+                            AdvisorAssignment.objects.filter(student=target).delete()
+                        if new_role != "lecturer":
+                            AdvisorAssignment.objects.filter(advisor=target).delete()
+                        target.is_staff = flags["is_staff"]
+                        target.is_superuser = flags["is_superuser"]
+                        target.save(update_fields=["is_staff", "is_superuser"])
+                    notice = f"{target.get_full_name()} is now {flags['label']}."
+        else:
+            error = "That action is not recognised."
+
+    assignments = AdvisorAssignment.objects.filter(
+        advisor__is_staff=True,
+        advisor__is_superuser=False,
+        advisor__is_active=True,
+    ).select_related("advisor", "student")
+    assignments_by_student = {
+        assignment.student_id: assignment.advisor for assignment in assignments
+    }
+    advisee_counts = {}
+    for assignment in assignments:
+        advisee_counts[assignment.advisor_id] = advisee_counts.get(assignment.advisor_id, 0) + 1
+    student_users = User.objects.filter(
+        is_staff=False, is_superuser=False, is_active=True
+    ).order_by("nisit_id")
+    students = [
+        {
+            "user": student,
+            "advisor": assignments_by_student.get(student.nisit_id),
+        }
+        for student in student_users
+    ]
+    people = []
+    for u in User.objects.all().order_by("nisit_id"):
+        key = role_of(u)
+        people.append({
+            "user": u,
+            "role": key,
+            "role_label": ROLES[key]["label"],
+            "is_me": u.nisit_id == request.user.nisit_id,
+            "has_owned_classes": u.is_staff and Course.objects.filter(owner=u).exists(),
+            "advisor": assignments_by_student.get(u.nisit_id),
+            "advisee_count": advisee_counts.get(u.nisit_id, 0),
+        })
+
+    return render(request, "accounts/roles.html", {
+        "people": people,
+        "roles": [{"key": k, "label": v["label"]} for k, v in ROLES.items()],
+        "students": students,
+        "notice": notice,
+        "error": error,
+    })

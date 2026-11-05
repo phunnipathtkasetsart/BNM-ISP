@@ -120,3 +120,25 @@ class PasswordResetToken(models.Model):
 
     def is_valid(self):
         return self.used_at is None and self.expires_at > timezone.now()
+
+
+class AdvisorAssignment(models.Model):
+    student = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="advisor_assignment",
+    )
+    advisor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="advisee_assignments",
+    )
+
+    class Meta:
+        db_table = "academic_advisor_assignments"
+        ordering = ["student_id"]
+
+    def __str__(self):
+        return f"{self.student_id} -> {self.advisor_id}"

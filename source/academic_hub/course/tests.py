@@ -3,7 +3,9 @@ import shutil
 import tempfile
 from datetime import datetime, timedelta
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
+from accounts.models import AdvisorAssignment
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -497,6 +499,32 @@ class CourseTests(TestCase):
         self.assertContains(response, "Join class")
         self.sign_in(self.teacher)
         self.assertContains(self.client.get(self.url("dashboard")), "Create class")
+
+    def test_dashboard_tells_unassigned_student_to_contact_department(self):
+        self.sign_in(self.student)
+        response = self.client.get(self.url("dashboard"))
+        self.assertContains(
+            response,
+            "You have not been assigned an academic advisor. Please contact your department.",
+        )
+        self.assertNotContains(response, "Contact advisor")
+
+    def test_dashboard_prefills_gmail_compose_for_the_assigned_advisor(self):
+        AdvisorAssignment.objects.create(student=self.student, advisor=self.teacher)
+        self.sign_in(self.student)
+
+        response = self.client.get(self.url("dashboard"))
+
+        self.assertContains(response, "Your academic advisor")
+        self.assertContains(response, self.teacher.email)
+        self.assertContains(response, "Contact advisor")
+        self.assertContains(response, 'target="_blank" rel="noopener noreferrer"', html=False)
+        compose_url = response.context["advisor_compose_url"]
+        params = parse_qs(urlparse(compose_url).query)
+        self.assertEqual(urlparse(compose_url).netloc, "mail.google.com")
+        self.assertEqual(params["to"], [self.teacher.email])
+        self.assertIn(self.student.get_full_name(), params["su"][0])
+        self.assertIn(self.student.email, params["body"][0])
 
     def test_anonymous_and_guest_blocked(self):
         self.assertEqual(self.client.get(self.url("api_list")).status_code, 401)

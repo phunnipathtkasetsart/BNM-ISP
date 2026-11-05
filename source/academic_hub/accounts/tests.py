@@ -3,13 +3,14 @@ from types import SimpleNamespace
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.core import mail
-from django.utils import timezone
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 from datetime import timedelta
 import hashlib
 
 from .middleware import GUEST_ALLOWED_VIEWS, GUEST_SESSION_KEY, is_guest_request
 from .forms import LoginForm, RegisterForm, ResetPasswordForm
-from .models import PasswordResetToken, User
+from .models import AdvisorAssignment, PasswordResetToken, User
 
 
 @override_settings(
@@ -310,3 +311,175 @@ class GuestTimerTests(TestCase):
         client.get(reverse("announcements:faq_board"))
         client.get(reverse("announcements:public_board"))
         self.assertEqual(client.session.get_expiry_date(), before)
+
+
+class AdvisorAssignmentTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.department = User.objects.create_user(
+            nisit_id="7700000001",
+            email="advisor-department@ku.th",
+            password="test-password",
+            first_name="Department",
+            last_name="Admin",
+            department="ske",
+            is_superuser=True,
+        )
+        cls.student = User.objects.create_user(
+            nisit_id="7700000002",
+            email="advisor-student@ku.th",
+            password="test-password",
+            first_name="Test",
+            last_name="Student",
+            department="ske",
+        )
+        cls.other_student = User.objects.create_user(
+            nisit_id="7700000003",
+            email="advisor-student2@ku.th",
+            password="test-password",
+            first_name="Other",
+            last_name="Student",
+            department="ske",
+        )
+        cls.lecturer = User.objects.create_user(
+            nisit_id="7700000004",
+            email="advisor-lecturer@ku.th",
+            password="test-password",
+            first_name="Lecturer",
+            last_name="One",
+            department="ske",
+            is_staff=True,
+        )
+        cls.other_lecturer = User.objects.create_user(
+            nisit_id="7700000005",
+            email="advisor-lecturer2@ku.th",
+            password="test-password",
+            first_name="Lecturer",
+            last_name="Two",
+            department="ske",
+            is_staff=True,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.department)
+        self.roles_url = reverse("accounts:roles")
+
+    def assign(self, advisor_id, student_ids=(), student_ids_text=""):
+        return self.client.post(self.roles_url, {
+            "action": "advisor",
+            "nisit_id": advisor_id,
+            "student_ids": student_ids,
+            "student_ids_text": student_ids_text,
+        })
+
+    def test_department_can_assign_students_by_selection_and_student_ids(self):
+        page = self.client.get(self.roles_url)
+        self.assertEqual(
+            [row["user"] for row in page.context["students"]],
+            [self.student, self.other_student],
+        )
+        self.assertContains(page, "Assign advised students")
+
+        self.assign(
+            self.lecturer.nisit_id,
+            student_ids=[self.student.nisit_id],
+            student_ids_text=self.other_student.nisit_id,
+        )
+        assignment = AdvisorAssignment.objects.get(student=self.student)
+        self.assertEqual(assignment.advisor, self.lecturer)
+        self.assertEqual(
+            AdvisorAssignment.objects.get(student=self.other_student).advisor,
+            self.lecturer,
+        )
+
+        self.assign(self.lecturer.nisit_id, student_ids=[self.student.nisit_id])
+        self.assertEqual(AdvisorAssignment.objects.filter(advisor=self.lecturer).count(), 1)
+        self.assertFalse(AdvisorAssignment.objects.filter(student=self.other_student).exists())
+
+        self.assign(self.other_lecturer.nisit_id, student_ids_text=self.student.nisit_id)
+        self.assertEqual(
+            AdvisorAssignment.objects.get(student=self.student).advisor,
+            self.other_lecturer,
+        )
+
+        response = self.assign(self.other_lecturer.nisit_id)
+        self.assertContains(response, "0 advised students saved")
+        self.assertFalse(AdvisorAssignment.objects.filter(student=self.student).exists())
+
+    def test_non_department_users_cannot_assign_and_non_students_are_rejected(self):
+        self.client.force_login(self.student)
+        self.assertEqual(self.client.get(self.roles_url).status_code, 403)
+
+        self.client.force_login(self.department)
+        response = self.assign(
+            self.lecturer.nisit_id,
+            student_ids=[self.other_lecturer.nisit_id],
+        )
+        self.assertContains(response, "unknown, inactive, or not student accounts")
+        self.assertFalse(AdvisorAssignment.objects.filter(student=self.student).exists())
+
+    def test_invalid_student_id_does_not_change_existing_assignments(self):
+        AdvisorAssignment.objects.create(student=self.student, advisor=self.lecturer)
+        response = self.assign(
+            self.lecturer.nisit_id,
+            student_ids=[self.other_student.nisit_id],
+            student_ids_text="9999999999",
+        )
+        self.assertContains(response, "9999999999")
+        self.assertEqual(
+            list(AdvisorAssignment.objects.filter(advisor=self.lecturer).values_list("student_id", flat=True)),
+            [self.student.nisit_id],
+        )
+
+    def test_role_changes_are_saved_together_with_one_submit(self):
+        response = self.client.post(self.roles_url, {
+            "action": "roles",
+            f"role_for_{self.student.nisit_id}": "lecturer",
+            f"role_for_{self.other_student.nisit_id}": "department",
+        })
+        self.assertContains(response, "Role changes saved for 2 accounts.")
+        self.student.refresh_from_db()
+        self.other_student.refresh_from_db()
+        self.assertTrue(self.student.is_staff)
+        self.assertTrue(self.other_student.is_superuser)
+
+    def test_bulk_role_changes_reject_invalid_submissions_without_partial_updates(self):
+        response = self.client.post(self.roles_url, {
+            "action": "roles",
+            f"role_for_{self.student.nisit_id}": "lecturer",
+            f"role_for_{self.other_student.nisit_id}": "not-a-role",
+        })
+        self.assertContains(response, "not a role we recognise")
+        self.student.refresh_from_db()
+        self.assertFalse(self.student.is_staff)
+
+    def test_roles_page_has_one_save_button_for_role_changes(self):
+        response = self.client.get(self.roles_url)
+        self.assertContains(response, "Save changes")
+        self.assertNotContains(response, ">Save<", html=False)
+        self.assertContains(response, "Assign students")
+
+    def test_assignments_are_cleared_when_a_student_or_advisor_changes_role(self):
+        self.assign(self.lecturer.nisit_id, student_ids=[self.student.nisit_id])
+        self.client.post(self.roles_url, {
+            "action": "role",
+            "nisit_id": self.student.nisit_id,
+            "role": "lecturer",
+        })
+        self.assertFalse(AdvisorAssignment.objects.filter(student=self.student).exists())
+
+        self.assign(self.lecturer.nisit_id, student_ids=[self.other_student.nisit_id])
+        self.client.post(self.roles_url, {
+            "action": "role",
+            "nisit_id": self.lecturer.nisit_id,
+            "role": "student",
+        })
+        self.assertFalse(AdvisorAssignment.objects.filter(advisor=self.lecturer).exists())
+
+    def test_student_can_have_only_one_advisor_assignment(self):
+        AdvisorAssignment.objects.create(student=self.student, advisor=self.lecturer)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AdvisorAssignment.objects.create(
+                student=self.student,
+                advisor=self.other_lecturer,
+            )
