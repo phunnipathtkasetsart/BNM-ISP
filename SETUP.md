@@ -70,6 +70,18 @@ You can now access the site in your browser at:
 
 **http://localhost:8000**
 
+### Gmail API advisor drafts (optional)
+
+To let students create advisor-email drafts in their own KU Gmail accounts:
+
+1. Configure `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET` in `.env`.
+2. Register `http://localhost:8000/accounts/oauth/google/gmail/callback/` as an authorized redirect URI for that OAuth client. For deployment, use the matching HTTPS callback URL and set `GOOGLE_GMAIL_OAUTH_REDIRECT_URI`.
+3. Generate a Fernet key with `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` and set it as `GMAIL_TOKEN_ENCRYPTION_KEY`. Keep it secret and stable; rotating it requires students to reconnect Gmail.
+4. Enable the Gmail API and request the `gmail.compose` OAuth scope for the Google Cloud project. Google may require consent-screen verification for this scope.
+5. Rebuild the web image after changing dependencies or environment configuration: `docker compose up --build`.
+
+The app requests consent only for Gmail draft access, verifies the authorized Google email matches the student's registered `@ku.th` address, stores only an encrypted refresh token, and creates a draft for the student to review and send.
+
 ### 4. Apply Initial Database Migrations
 
 Open a **new terminal tab/window**, navigate to `BNM-ISP/source/academic_hub`, and run:
@@ -128,4 +140,3 @@ Apply migrations to the database:
 ```bash
 docker compose exec web python manage.py migrate
 ```
-
