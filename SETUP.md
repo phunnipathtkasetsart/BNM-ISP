@@ -129,3 +129,17 @@ Apply migrations to the database:
 docker compose exec web python manage.py migrate
 ```
 
+
+### Shorts Video Storage (MinIO)
+
+Shorts clips are stored in MinIO, an S3-compatible object store that Docker
+Compose starts as the `minio` service. Nothing needs setting up by hand: the
+web container creates the `shorts` bucket on startup.
+
+* MinIO console: **http://localhost:9001**. Sign in with `MINIO_ROOT_USER` /
+  `MINIO_ROOT_PASSWORD` from `.env`, or the defaults `bnm-minio` /
+  `bnm-minio-dev-password` if you have not set them.
+* The image is `pgsty/silo`, the maintained community build of MinIO. MinIO
+  stopped publishing its own `minio/minio` image in 2026.
+* `docker compose down -v` deletes uploaded clips along with the database.
+* Running `manage.py` outside Docker stores clips in `media/shorts/` instead.

@@ -1,11 +1,15 @@
 /* ================================================================
    SHORTS (DoomScroll, US-14)
    Builds on board.css, which supplies the tab bar, .board, .panel,
-   .feed and the "Create" button. Only what differs lives here.
+   .feed and the "Create" button. The Create Short form also uses
+   annform.css, the announcement form's styles. Only what differs
+   lives here.
    ================================================================ */
 
 /* One column: there is no FAQ side panel on this page. */
 .shorts-board{grid-template-columns:minmax(0,1fr)}
+/* A form reads badly at full width; match the announcement form. */
+.shorts-board--form{max-width:calc(760 * var(--u));margin:0 auto}
 
 .shorts-notice{
   margin:0 calc(28 * var(--u)) calc(12 * var(--u));
@@ -14,6 +18,37 @@
   background:var(--ku-mint);color:var(--ink-soft);
   font-size:calc(13.5 * var(--u));
 }
+
+/* --- Create Short form --- */
+.shorts-required{color:var(--danger)}
+.annform input[type="file"]{
+  width:100%;font-family:var(--font-ui);font-size:calc(13.5 * var(--u));
+  color:var(--ink);background:var(--field);
+  border:1px dashed var(--field-line);border-radius:var(--r-field);
+  padding:calc(12 * var(--u)) calc(13 * var(--u));cursor:pointer;
+}
+.annform input[type="file"]:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:1px}
+.annform__field--bad input[type="file"]{border-color:var(--danger-line);background:var(--danger-bg)}
+.shorts-clip-status:empty{display:none}
+.shorts-clip-status--bad{color:var(--danger)}
+
+.shorts-btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--ku-green-800);color:#fff;border:0;cursor:pointer;
+  font-family:var(--font-ui);font-weight:700;font-size:calc(14 * var(--u));
+  padding:calc(10 * var(--u)) calc(22 * var(--u));
+  border-radius:calc(8 * var(--u));text-decoration:none;
+}
+.shorts-btn:hover{background:#24463C}
+.shorts-btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+.shorts-btn:disabled{opacity:.7;cursor:progress}
+.shorts-btn--quiet{background:#E5E7EB;color:#374151;font-weight:600}
+.shorts-btn--quiet:hover{background:#D9DCE1}
+
 @media (max-width:900px){
   .shorts-notice{margin-left:18px;margin-right:18px}
+  .annform{padding-left:18px;padding-right:18px}
+}
+@media (pointer:coarse){
+  .shorts-btn{min-height:44px}
 }

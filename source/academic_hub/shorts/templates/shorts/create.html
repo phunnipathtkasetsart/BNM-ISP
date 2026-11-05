@@ -3,6 +3,7 @@
 {% block title %}Create Short — KU Student Portal{% endblock %}
 {% block page_css %}
   <link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">
+  <link rel="stylesheet" href="{% static 'accounts/css/annform.css' %}">
   <link rel="stylesheet" href="{% static 'shorts/shorts.css' %}">
 {% endblock %}
 
@@ -25,16 +26,47 @@
   <a class="subnav__tab subnav__tab--on" href="{% url 'shorts:feed' %}" aria-current="page">Shorts</a>
 </nav>
 
-<div class="board shorts-board">
+<div class="board shorts-board shorts-board--form">
   <section class="board__main panel">
     <div class="panel__head">
       <h1>Create Short</h1>
-      <p class="panel__sub">Post a short study video for students.</p>
+      <p class="panel__sub">
+        Posted as <strong>{% if request.user.is_superuser %}Department{% else %}Lecturer{% endif %}</strong>.
+        Clips can be up to 1:30 long.
+      </p>
     </div>
-    <div class="feed">
-      {# Placeholder until the upload form and video storage are built. #}
-      <p class="feed__empty">The upload form is not built yet. <a href="{% url 'shorts:feed' %}">Back to Shorts</a></p>
-    </div>
+
+    {% if form.non_field_errors %}
+      <div class="banner banner--bad" role="alert">{{ form.non_field_errors.0 }}</div>
+    {% endif %}
+
+    {# data-* limits feed create.js, which checks a clip as soon as it is picked. #}
+    <form method="post" enctype="multipart/form-data" class="annform" novalidate
+          data-short-form data-max-seconds="{{ max_seconds }}" data-max-bytes="{{ max_bytes }}">
+      {% csrf_token %}
+
+      {% for field in form %}
+        <div class="annform__field{% if field.errors %} annform__field--bad{% endif %}"{% if field.name == "clip" %} data-clip-field{% endif %}>
+          <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="shorts-required" aria-hidden="true">*</span>{% endif %}</label>
+          {{ field }}
+          {% if field.help_text %}
+            <p class="annform__help">{{ field.help_text }}</p>
+          {% endif %}
+          {% if field.name == "clip" %}
+            <p class="annform__help shorts-clip-status" data-clip-status aria-live="polite"></p>
+          {% endif %}
+          {% if field.errors %}
+            <p class="annform__error" role="alert"{% if field.name == "clip" %} data-clip-server-error{% endif %}>{{ field.errors.0 }}</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <div class="annform__actions">
+        <button type="submit" class="shorts-btn" data-short-submit>Upload short</button>
+        <a class="shorts-btn shorts-btn--quiet" href="{% url 'shorts:feed' %}">Cancel</a>
+      </div>
+    </form>
   </section>
 </div>
+<script src="{% static 'shorts/create.js' %}" defer></script>
 {% endblock %}
