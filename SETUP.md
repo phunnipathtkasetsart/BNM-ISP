@@ -143,3 +143,7 @@ web container creates the `shorts` bucket on startup.
   stopped publishing its own `minio/minio` image in 2026.
 * `docker compose down -v` deletes uploaded clips along with the database.
 * Running `manage.py` outside Docker stores clips in `media/shorts/` instead.
+* Clips play straight from MinIO on port 9000, through short-lived signed
+  links. To watch on a phone on the same Wi-Fi, open the site at the
+  laptop's address (e.g. `http://192.168.1.20:8000`) after adding that
+  address to `ALLOWED_HOSTS` in `.env`.

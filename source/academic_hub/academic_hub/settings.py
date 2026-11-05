@@ -177,6 +177,19 @@ SHORTS_MAX_SECONDS = 90  # "a clip can't be longer than 1:30"
 SHORTS_MAX_UPLOAD_MB = int(os.getenv("SHORTS_MAX_UPLOAD_MB", "100"))
 SHORTS_MAX_UPLOAD_BYTES = SHORTS_MAX_UPLOAD_MB * 1024 * 1024
 
+# How the app reaches MinIO (inside Docker: the "minio" service).
+MINIO_ENDPOINT_URL = os.getenv("MINIO_ENDPOINT_URL", "http://minio:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "")
+# How the viewer's browser reaches MinIO, for playing clips. Left blank, it
+# is the host the site was opened on plus MINIO_PUBLIC_PORT, so the same
+# setup works at localhost and from a phone on the same Wi-Fi.
+MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "").strip().rstrip("/")
+MINIO_PUBLIC_PORT = int(os.getenv("MINIO_PUBLIC_PORT", "9000"))
+# Lifetime of the signed link a clip plays from. The page asks the app for
+# a fresh link each time a clip loads, so this only has to outlast one view.
+SHORTS_URL_SECONDS = int(os.getenv("SHORTS_URL_SECONDS", "3600"))
+
 if SHORTS_STORAGE == "minio":
     from botocore.config import Config as _BotoConfig
 
@@ -184,9 +197,9 @@ if SHORTS_STORAGE == "minio":
         "BACKEND": "storages.backends.s3.S3Storage",
         "OPTIONS": {
             "bucket_name": SHORTS_BUCKET,
-            "endpoint_url": os.getenv("MINIO_ENDPOINT_URL", "http://minio:9000"),
-            "access_key": os.getenv("MINIO_ACCESS_KEY", ""),
-            "secret_key": os.getenv("MINIO_SECRET_KEY", ""),
+            "endpoint_url": MINIO_ENDPOINT_URL,
+            "access_key": MINIO_ACCESS_KEY,
+            "secret_key": MINIO_SECRET_KEY,
             # MinIO ignores the region but SigV4 signing needs one.
             "region_name": "us-east-1",
             # The bucket stays private; clips will be served through

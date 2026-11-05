@@ -4,6 +4,7 @@
 {% block page_css %}
   <link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">
   <link rel="stylesheet" href="{% static 'shorts/shorts.css' %}">
+  {% if has_shorts %}<link rel="stylesheet" href="{% static 'shorts/reels.css' %}">{% endif %}
 {% endblock %}
 
 {% block topbar_mod %}topbar--signed-in{% endblock %}
@@ -30,6 +31,62 @@
   {% endif %}
 </nav>
 
+{% if has_shorts %}
+{# The reel player (US-14, SRS-8). reels.js builds one slide per clip from #}
+{# the template below and keeps loading more, starting over at the end.   #}
+<section class="reels" data-reels data-api="{% url 'shorts:api_feed' %}" aria-label="Shorts">
+  {% for message in messages %}<p class="reels__toast" role="status" data-reels-toast>{{ message }}</p>{% endfor %}
+
+  <div class="reels__viewport" role="feed" aria-busy="false" tabindex="0" data-reels-viewport
+       aria-label="Shorts. Swipe up or down, or use the arrow keys, to move between clips."></div>
+
+  <div class="reels__nav">
+    <button type="button" class="reels__step" data-reels-prev aria-label="Previous short">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+    </button>
+    <button type="button" class="reels__step" data-reels-next aria-label="Next short">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+  </div>
+
+  <noscript><p class="reels__noscript">Turn on JavaScript to watch shorts.</p></noscript>
+</section>
+
+<template id="reel-template">
+  <article class="reel" aria-roledescription="short">
+    <div class="reel__frame">
+      <video class="reel__video" playsinline loop muted preload="none" disablepictureinpicture></video>
+
+      {# The whole clip is the play/pause button, as on Reels. #}
+      <button type="button" class="reel__toggle" data-reel-toggle aria-label="Pause">
+        <span class="reel__state" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        </span>
+      </button>
+
+      <button type="button" class="reel__mute" data-reel-mute aria-pressed="true" aria-label="Turn sound on">
+        <svg class="reel__icon-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>
+        <svg class="reel__icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg>
+      </button>
+
+      <div class="reel__shade" aria-hidden="true"></div>
+      <div class="reel__info">
+        <h2 class="reel__title" data-reel-title></h2>
+        <p class="reel__desc" data-reel-desc></p>
+        <button type="button" class="reel__more" data-reel-more hidden>more</button>
+        <ul class="reel__tags" data-reel-tags aria-label="Tags"></ul>
+      </div>
+
+      <div class="reel__progress" aria-hidden="true"><span data-reel-progress></span></div>
+      <p class="reel__error" data-reel-error role="alert" hidden>This clip could not be played.</p>
+    </div>
+  </article>
+</template>
+
+{{ feed|json_script:"reels-data" }}
+<script src="{% static 'shorts/reels.js' %}" defer></script>
+
+{% else %}
 <div class="board shorts-board">
   <section class="board__main panel">
     <div class="panel__head">
@@ -44,4 +101,5 @@
     </div>
   </section>
 </div>
+{% endif %}
 {% endblock %}

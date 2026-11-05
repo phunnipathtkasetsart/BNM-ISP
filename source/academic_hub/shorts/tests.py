@@ -275,3 +275,152 @@ class ClipRulesTests(SimpleTestCase):
         from django import forms
         with self.assertRaises(forms.ValidationError):
             parse_tags("!!!")
+
+
+class FeedFixtures(InMemoryClips, Users):
+    @classmethod
+    def setUpTestData(cls):
+        cls.make_users()
+
+    def make_short(self, title="Clip", tags=(), archived=False, body=None):
+        short = Short(title=title, description=f"About {title}", duration_seconds=30,
+                      author=self.lecturer, author_label="Lecturer")
+        short.clip = SimpleUploadedFile("c.mp4", body or mp4_bytes(30), content_type="video/mp4")
+        short.save()
+        if tags:
+            short.tags.set([Tag.objects.get_or_create(slug=t, defaults={"label": t})[0] for t in tags])
+        if archived:
+            Short.objects.filter(pk=short.pk).update(archived_at="2026-01-01T00:00:00Z")
+        return short
+
+
+class FeedTests(FeedFixtures, TestCase):
+    def test_empty_feed_shows_the_empty_panel(self):
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("shorts:feed"))
+        self.assertContains(response, "No shorts yet.")
+        self.assertNotContains(response, "reels-data")
+
+    def test_feed_hands_the_player_titles_descriptions_and_tags(self):
+        old = self.make_short("Older", tags=["recursion"])
+        new = self.make_short("Newer", tags=["big-o", "ske"])
+        self.make_short("Hidden", archived=True)
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("shorts:feed"))
+        self.assertContains(response, 'id="reel-template"')
+        items = response.context["feed"]["items"]
+        self.assertEqual([i["title"] for i in items], ["Newer", "Older"])  # newest first
+        self.assertEqual(items[0]["description"], "About Newer")
+        self.assertEqual(sorted(items[0]["tags"]), ["SKE", "big-o"])  # labels, not slugs
+        self.assertEqual(items[1]["src"], reverse("shorts:clip", args=[old.pk]))
+        self.assertIsNone(response.context["feed"]["next"])
+        # The data reaches the page as JSON for reels.js.
+        self.assertContains(response, '<script id="reels-data" type="application/json">')
+        self.assertNotContains(response, "Hidden")
+        self.assertNotIn(new.clip.name, response.content.decode())  # no storage paths leak
+
+    def test_feed_api_pages_through_and_signals_the_end(self):
+        for n in range(10):
+            self.make_short(f"Clip {n}")
+        self.client.force_login(self.student)
+        first = self.client.get(reverse("shorts:api_feed"), {"offset": 0}).json()
+        self.assertEqual(len(first["items"]), 8)
+        self.assertEqual(first["next"], 8)
+        second = self.client.get(reverse("shorts:api_feed"), {"offset": 8}).json()
+        self.assertEqual([i["title"] for i in second["items"]], ["Clip 1", "Clip 0"])
+        self.assertIsNone(second["next"])  # the page starts over from offset 0
+
+    def test_feed_api_rejects_a_bad_offset(self):
+        self.client.force_login(self.student)
+        for bad in ("-1", "abc"):
+            response = self.client.get(reverse("shorts:api_feed"), {"offset": bad})
+            self.assertEqual(response.status_code, 400)
+
+    def test_signed_out_visitors_get_nothing(self):
+        short = self.make_short()
+        for url in (reverse("shorts:api_feed"), reverse("shorts:clip", args=[short.pk])):
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 302)
+            self.assertIn(reverse("accounts:login"), response["Location"])
+
+
+@override_settings(SHORTS_STORAGE="local")
+class LocalClipStreamingTests(FeedFixtures, TestCase):
+    """Without MinIO the app serves the bytes, and must honour Range requests."""
+
+    def setUp(self):
+        super().setUp()
+        self.body = mp4_bytes(30) + bytes(range(256)) * 4
+        self.short = self.make_short(body=self.body)
+        self.url = reverse("shorts:clip", args=[self.short.pk])
+        self.client.force_login(self.student)
+
+    def get(self, range_header=None):
+        extra = {"HTTP_RANGE": range_header} if range_header else {}
+        response = self.client.get(self.url, **extra)
+        return response, b"".join(response.streaming_content) if response.streaming else b""
+
+    def test_whole_file(self):
+        response, body = self.get()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(body, self.body)
+        self.assertEqual(response["Content-Type"], "video/mp4")
+        self.assertEqual(response["Accept-Ranges"], "bytes")
+        self.assertEqual(response["Content-Length"], str(len(self.body)))
+
+    def test_byte_range(self):
+        response, body = self.get("bytes=10-19")
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(body, self.body[10:20])
+        self.assertEqual(response["Content-Range"], f"bytes 10-19/{len(self.body)}")
+        self.assertEqual(response["Content-Length"], "10")
+
+    def test_open_ended_and_suffix_ranges(self):
+        _, tail = self.get("bytes=100-")
+        self.assertEqual(tail, self.body[100:])
+        response, last = self.get("bytes=-5")
+        self.assertEqual(last, self.body[-5:])
+        self.assertEqual(response["Content-Range"],
+                         f"bytes {len(self.body) - 5}-{len(self.body) - 1}/{len(self.body)}")
+
+    def test_range_past_the_end(self):
+        response, _ = self.get(f"bytes={len(self.body) + 10}-")
+        self.assertEqual(response.status_code, 416)
+        self.assertEqual(response["Content-Range"], f"bytes */{len(self.body)}")
+
+    def test_archived_clip_is_not_served(self):
+        Short.objects.filter(pk=self.short.pk).update(archived_at="2026-01-01T00:00:00Z")
+        response, _ = self.get()
+        self.assertEqual(response.status_code, 404)
+
+
+@override_settings(SHORTS_STORAGE="minio", SHORTS_BUCKET="shorts", MINIO_PUBLIC_URL="",
+                   MINIO_PUBLIC_PORT=9000, MINIO_ACCESS_KEY="key", MINIO_SECRET_KEY="secret",
+                   SHORTS_URL_SECONDS=3600)
+class MinioClipLinkTests(FeedFixtures, TestCase):
+    """With MinIO the app only signs a link; the browser streams from MinIO."""
+
+    # A phone on the same Wi-Fi opens the site at the laptop's address, which
+    # has to be in ALLOWED_HOSTS for the site to load at all.
+    @override_settings(ALLOWED_HOSTS=["localhost", "192.168.1.20"])
+    def test_redirects_to_a_signed_link_on_the_host_the_site_was_opened_on(self):
+        short = self.make_short()
+        self.client.force_login(self.student)
+        for host in ("localhost:8000", "192.168.1.20:8000"):
+            with self.subTest(host=host):
+                response = self.client.get(reverse("shorts:clip", args=[short.pk]), HTTP_HOST=host)
+                self.assertEqual(response.status_code, 302)
+                location = response["Location"]
+                name = host.split(":")[0]
+                self.assertTrue(location.startswith(f"http://{name}:9000/shorts/{short.clip.name}?"),
+                                location)
+                self.assertIn("X-Amz-Signature=", location)
+                self.assertIn("X-Amz-Expires=3600", location)
+                self.assertEqual(response["Cache-Control"], "private, no-store")
+
+    @override_settings(MINIO_PUBLIC_URL="https://media.example.ku.th")
+    def test_public_url_setting_wins(self):
+        short = self.make_short()
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("shorts:clip", args=[short.pk]))
+        self.assertTrue(response["Location"].startswith("https://media.example.ku.th/shorts/clips/"))
