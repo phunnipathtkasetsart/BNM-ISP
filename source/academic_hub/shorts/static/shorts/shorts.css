@@ -1,0 +1,19 @@
+/* ================================================================
+   SHORTS (DoomScroll, US-14)
+   Builds on board.css, which supplies the tab bar, .board, .panel,
+   .feed and the "Create" button. Only what differs lives here.
+   ================================================================ */
+
+/* One column: there is no FAQ side panel on this page. */
+.shorts-board{grid-template-columns:minmax(0,1fr)}
+
+.shorts-notice{
+  margin:0 calc(28 * var(--u)) calc(12 * var(--u));
+  padding:calc(10 * var(--u)) calc(14 * var(--u));
+  border-radius:calc(10 * var(--u));
+  background:var(--ku-mint);color:var(--ink-soft);
+  font-size:calc(13.5 * var(--u));
+}
+@media (max-width:900px){
+  .shorts-notice{margin-left:18px;margin-right:18px}
+}

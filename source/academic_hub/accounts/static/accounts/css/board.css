@@ -189,11 +189,14 @@
 .subnav__action:hover{background:#24463C}
 .subnav__action:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .subnav__action-short{display:none}
-/* Small phones: Home, Course, Calendar and the full label do not fit on
-   one row, so the button reads "+ Create", and on the smallest phones just
-   "+". Screen readers still hear the whole label. */
-@media (max-width:560px){
-  .subnav__tab{padding:10px 20px 10px 12px;font-size:13.5px}
+/* Small phones: Home, Course, Calendar, Shorts and the full label do not
+   fit on one row, so the button reads "+ Create", and on the smallest phones
+   just "+". Screen readers still hear the whole label. The tabs also tighten
+   up so four of them leave room for the button. Keep at least 14px of right
+   padding on a tab: the angled clip-path eats that much of its corner. */
+@media (max-width:640px){
+  .subnav{padding:0 10px}
+  .subnav__tab{padding:10px 16px 10px 9px;font-size:13.5px}
   .subnav__action{font-size:12.5px;padding:6px 12px}
   .subnav__action-short{display:inline}
   .subnav__action-full{
@@ -205,6 +208,8 @@
    forum reuses .subnav__action for "Create question", which has no short
    label, so shrinking it there spilled the text out of the circle. */
 @media (max-width:400px){
+  .subnav{padding:0 4px;gap:0}
+  .subnav__tab{padding:10px 15px 10px 7px;font-size:12.5px}
   .subnav .subnav__action{font-size:17px;line-height:1;width:32px;height:32px;padding:0;display:grid;place-items:center}
   .subnav .subnav__action-word{display:none}
 }
