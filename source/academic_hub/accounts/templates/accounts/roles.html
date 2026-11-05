@@ -44,6 +44,8 @@
           {% comment %} No control at all rather than a disabled one: a department
              admin demoting themselves would lock everyone out of this page. {% endcomment %}
           <span class="rolerow__self">This is you</span>
+        {% elif p.has_owned_classes %}
+          <span class="rolerow__self">Cannot change role while this lecturer owns a class</span>
         {% else %}
           <form method="post" class="rolerow__set">
             {% csrf_token %}
