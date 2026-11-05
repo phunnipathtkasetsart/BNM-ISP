@@ -29,6 +29,7 @@ from .middleware import (
     is_guest_request,
 )
 from .models import PasswordResetToken, User
+from course.models import Course
 
 
 logger = logging.getLogger(__name__)
@@ -429,6 +430,8 @@ def roles_view(request):
             target = User.objects.filter(nisit_id=target_id).first()
             if target is None:
                 error = "That account no longer exists."
+            elif target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
+                error = "This lecturer cannot change roles while they still own a class."
             else:
                 flags = ROLES[new_role]
                 target.is_staff = flags["is_staff"]
@@ -444,6 +447,7 @@ def roles_view(request):
             "role": key,
             "role_label": ROLES[key]["label"],
             "is_me": u.nisit_id == request.user.nisit_id,
+            "has_owned_classes": u.is_staff and Course.objects.filter(owner=u).exists(),
         })
 
     return render(request, "accounts/roles.html", {
