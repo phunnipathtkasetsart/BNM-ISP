@@ -215,7 +215,7 @@
               <div class="qa__a">
                 <div class="qa__description" data-faq-description>{{ question.body }}</div>
                 <button class="qa__more" type="button" data-faq-description-toggle aria-expanded="false" hidden>Show more</button>
-                <p><a href="{% url 'announcements:forum_question_detail' question.pk %}">Open question and comments</a></p>
+                <a class="qa__open" href="{% url 'announcements:forum_question_detail' question.pk %}">Open question and comments</a>
               </div>
             </details>
           {% endfor %}
