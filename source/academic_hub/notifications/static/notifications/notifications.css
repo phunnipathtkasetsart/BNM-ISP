@@ -60,6 +60,10 @@
   line-height: 1;
 }
 
+.notification-bell__count[hidden] {
+  display: none;
+}
+
 .notification-bell__panel {
   position: absolute;
   top: calc(100% + 12px);
