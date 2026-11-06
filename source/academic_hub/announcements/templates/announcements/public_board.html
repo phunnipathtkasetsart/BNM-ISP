@@ -206,13 +206,27 @@
           <h2>{% if can_manage %}FAQ{% else %}Most FAQ{% endif %}</h2>
         </div>
         <div class="faq__list">
+          {% if not pinned_forum_questions and not faqs %}
+            <p class="feed__empty">{% if query %}No FAQs match <strong>{{ query }}</strong>.{% else %}No questions published yet.{% endif %}</p>
+          {% endif %}
+          {% for question in pinned_forum_questions %}
+            <details class="qa">
+              <summary class="qa__q">{{ question.title }}</summary>
+              <div class="qa__a">
+                <div class="qa__description" data-faq-description>{{ question.body }}</div>
+                <button class="qa__more" type="button" data-faq-description-toggle aria-expanded="false" hidden>Show more</button>
+                <p><a href="{% url 'announcements:forum_question_detail' question.pk %}">Open question and comments</a></p>
+              </div>
+            </details>
+          {% endfor %}
           {% for f in faqs %}
             <details class="qa">
               <summary class="qa__q">{{ f.question }}</summary>
-              <div class="qa__a">{{ f.answer|linebreaks }}</div>
+              <div class="qa__a">
+                <div class="qa__description" data-faq-description>{{ f.answer }}</div>
+                <button class="qa__more" type="button" data-faq-description-toggle aria-expanded="false" hidden>Show more</button>
+              </div>
             </details>
-          {% empty %}
-            <p class="feed__empty">{% if query %}No FAQs match <strong>{{ query }}</strong>.{% else %}No questions published yet.{% endif %}</p>
           {% endfor %}
         </div>
         <a class="faq__forum-link" href="{% url 'announcements:faq_board' %}">Open the FAQ forum</a>
@@ -223,4 +237,5 @@
 </div>
 
 <a class="switcher" href="{% url 'announcements:faq_board' %}" aria-label="Go to FAQ"><span>FAQ</span></a>
+<script src="{% static 'announcements/js/faq-board.js' %}" defer></script>
 {% endblock %}
