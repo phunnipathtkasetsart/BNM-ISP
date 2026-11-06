@@ -150,10 +150,15 @@
 .qa__a{padding:0 calc(24 * var(--u)) calc(13 * var(--u)) 0;font-size:calc(13 * var(--u));color:var(--ink-soft)}
 .qa__a p{margin:0 0 calc(8 * var(--u))}
 .qa__description{
-  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:6;
+  display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:6;line-clamp:6;
   overflow:hidden;white-space:pre-line;overflow-wrap:anywhere;
 }
-.qa__description--expanded{display:block;-webkit-line-clamp:unset;overflow:visible}
+.qa__description--expanded{
+  display:block;
+  -webkit-line-clamp:none;line-clamp:none;
+  overflow:visible;
+}
 .qa__more{
   margin:calc(5 * var(--u)) 0 calc(8 * var(--u));padding:0;border:0;
   background:none;color:var(--ku-green-800);font:inherit;font-weight:700;
