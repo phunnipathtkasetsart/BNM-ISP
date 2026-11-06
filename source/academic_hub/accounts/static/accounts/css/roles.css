@@ -68,3 +68,11 @@
   .select{flex:1}
   .stage{align-items:start}
 }
+/* Way back to the board, since this page has no subnav */
+.backlink{
+  display:inline-block;margin-bottom:calc(8 * var(--u));
+  color:var(--ku-green-800);font-weight:700;font-size:calc(13 * var(--u));
+  text-decoration:none;
+}
+.backlink:hover{text-decoration:underline}
+.backlink:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
