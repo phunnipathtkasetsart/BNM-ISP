@@ -3,17 +3,26 @@
    A signed-in working page rather than a centred card: it is a list
    to scan and act on, so it gets a wide panel and rows, not a form.
    ================================================================ */
+/* base.css caps .panel at 760px, which is too narrow for four columns and
+   (with overflow:hidden) clipped the "N students" label. Widen it here only. */
+.panel{width:min(calc(960 * var(--u)), 100%)}
 .panel__foot strong{color:var(--ink-soft)}
 
 .rolelist{border-top:1px solid var(--hairline)}
+
+/* Fixed columns so every row lines up, even when a row has no control:
+   who | role pill | role select or "This is you" | advisor button + count */
 .rolerow{
-  display:flex;align-items:center;gap:calc(16 * var(--u));
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 110px 140px 300px;
+  align-items:center;
+  column-gap:calc(16 * var(--u));
   padding:calc(14 * var(--u)) calc(28 * var(--u));
   border-bottom:1px solid var(--hairline);
 }
 /* The signed-in admin's own row, marked so it is obvious why it has no control */
 .rolerow--me{background:var(--field)}
-.rolerow__who{display:flex;flex-direction:column;min-width:220px;flex:1 1 260px}
+.rolerow__who{grid-column:1;display:flex;flex-direction:column;min-width:0}
 .rolerow__name{
   font-weight:600;color:var(--ink);font-size:calc(14.5 * var(--u));
   overflow-wrap:anywhere;
@@ -28,10 +37,11 @@
 }
 .rolerow__self{
   font-size:calc(12.5 * var(--u));color:var(--ink-muted);
-  font-style:italic;flex:none;
+  font-style:italic;
 }
+.rolerow > .rolerow__self{grid-column:3}
 .rolerow__restriction{
-  flex:1 0 100%;margin:calc(-6 * var(--u)) 0 0;
+  grid-column:1 / -1;margin:calc(-6 * var(--u)) 0 0;
   padding-top:calc(8 * var(--u));border-top:1px solid var(--hairline);
   color:var(--ink-muted);font-size:calc(12.5 * var(--u));font-style:italic;
 }
@@ -46,7 +56,7 @@
 .pill--student{background:#EDF1EF;color:var(--ink-soft);border-color:var(--hairline)}
 .pill--lecturer{background:#E4F0EA;color:#2C6B54;border-color:#BCDCCB}
 .pill--department{background:var(--ku-green-800);color:#fff}
-.rolerow__role{display:inline-flex;align-items:center;gap:6px;flex:none}
+.rolerow__role{grid-column:2;justify-self:start;display:inline-flex;align-items:center;gap:6px}
 .role-info{
   position:relative;display:inline-grid;place-items:center;
   width:17px;height:17px;border:1px solid #87958f;border-radius:50%;
@@ -73,7 +83,7 @@
 .role-info:hover::after,.role-info:focus-visible::after{transform:translate(-50%, 0)}
 .role-info:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
 
-.rolerow__advisor{display:flex;align-items:center;gap:calc(8 * var(--u));margin:0;flex:none}
+.rolerow__advisor{grid-column:4;justify-self:start;display:flex;align-items:center;gap:calc(8 * var(--u));margin:0}
 .rolerow__advisor .rolerow__self{white-space:nowrap}
 .role-management-form{margin:0}
 .role-management-actions{display:flex;justify-content:flex-end;padding:calc(16 * var(--u)) calc(28 * var(--u))}
@@ -110,6 +120,7 @@
 .advisor-sheet__actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
 .advisor-sheet__cancel{background:#e8eeeb;color:var(--ink-soft)}
 .select{
+  grid-column:3;width:100%;
   font-family:var(--font-ui);font-size:calc(13.5 * var(--u));color:var(--ink);
   background:var(--field);border:1px solid var(--field-line);
   border-radius:var(--r-field);padding:calc(8 * var(--u)) calc(10 * var(--u));
@@ -126,12 +137,16 @@
 @media (max-width:720px){
   .panel__head,.rolerow,.panel__foot,.rolelist__empty{padding-left:18px;padding-right:18px}
   .banner{margin-left:18px;margin-right:18px}
-  /* Stacked, so the name and the control each get the full width instead of
-     being crushed into three competing columns. */
-  .rolerow{flex-wrap:wrap;gap:10px}
-  .rolerow__who{flex:1 1 100%;min-width:0}
-  .rolerow__advisor{flex:1 1 100%;min-width:0;justify-content:flex-start;flex-wrap:wrap}
+  /* Single column: name, role, control and advisor button each get the full
+     width, stacked in source order. */
+  .rolerow{grid-template-columns:minmax(0,1fr);row-gap:10px}
+  .rolerow__who,
+  .rolerow__role,
+  .rolerow > .select,
+  .rolerow > .rolerow__self,
+  .rolerow__advisor,
+  .rolerow__restriction{grid-column:1}
+  .rolerow__advisor{flex-wrap:wrap}
   .role-management-actions{padding:14px 18px}
-  .select{flex:1}
   .stage{align-items:start}
 }
