@@ -76,12 +76,13 @@
       return;
     }
     if (submit) {
+      var idle = submit.textContent;
       submit.disabled = true;
-      submit.textContent = "Uploading…";
+      submit.textContent = submit.dataset.busyLabel || "Uploading…";
       // Re-enable if the browser restores the page from its back/forward cache.
       window.addEventListener("pageshow", function () {
         submit.disabled = false;
-        submit.textContent = "Upload short";
+        submit.textContent = idle;
       });
     }
   });

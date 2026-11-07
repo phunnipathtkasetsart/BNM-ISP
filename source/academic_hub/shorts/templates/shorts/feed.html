@@ -19,17 +19,7 @@
 {% endblock %}
 
 {% block content %}
-<nav class="subnav" aria-label="Sections">
-  <a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a>
-  <a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>
-  <a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>
-  <a class="subnav__tab subnav__tab--on" href="{% url 'shorts:feed' %}" aria-current="page">Shorts</a>
-
-  {# Same slot and markup as "Create Announcement" on the Home board. #}
-  {% if can_create %}
-    <a class="subnav__action" href="{% url 'shorts:create' %}"><span class="subnav__action-full">Create Short</span><span class="subnav__action-short" aria-hidden="true">+<span class="subnav__action-word"> Create</span></span></a>
-  {% endif %}
-</nav>
+{% include "shorts/_subnav.html" %}
 
 {% if has_shorts %}
 {# The reel player (US-14, SRS-8). reels.js builds one slide per clip from #}

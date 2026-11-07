@@ -71,6 +71,17 @@ class ShortForm(forms.Form):
         help_text="MP4 or MOV, up to 1:30 long.",
     )
 
+    def __init__(self, *args, editing=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.clip_duration = None
+        if editing:
+            # Editing keeps the current clip unless a new one is chosen.
+            self.fields["clip"].required = False
+            self.fields["clip"].label = "Replace clip"
+            self.fields["clip"].help_text = (
+                "Optional. MP4 or MOV, up to 1:30 long. Leave empty to keep the current clip."
+            )
+
     def clean_title(self):
         title = self.cleaned_data["title"].strip()
         if not title:
@@ -90,6 +101,8 @@ class ShortForm(forms.Form):
 
     def clean_clip(self):
         clip = self.cleaned_data["clip"]
+        if not clip:  # only possible when editing: keep the clip there is
+            return None
         # Kept on the form so the view does not have to read the file twice.
         self.clip_duration = clip_duration(clip)
         return clip

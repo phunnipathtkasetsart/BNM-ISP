@@ -1,6 +1,6 @@
 {% extends "accounts/base.html" %}
 {% load static %}
-{% block title %}Create Short — KU Student Portal{% endblock %}
+{% block title %}{% if short %}Edit Short{% else %}Create Short{% endif %} — KU Student Portal{% endblock %}
 {% block page_css %}
   <link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">
   <link rel="stylesheet" href="{% static 'accounts/css/annform.css' %}">
@@ -19,22 +19,39 @@
 {% endblock %}
 
 {% block content %}
-<nav class="subnav" aria-label="Sections">
-  <a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a>
-  <a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>
-  <a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>
-  <a class="subnav__tab subnav__tab--on" href="{% url 'shorts:feed' %}" aria-current="page">Shorts</a>
-</nav>
+{% if short %}
+  {% include "shorts/_subnav.html" with can_create=True current="manage" %}
+{% else %}
+  {% include "shorts/_subnav.html" with can_create=True current="create" %}
+{% endif %}
 
 <div class="board shorts-board shorts-board--form">
   <section class="board__main panel">
     <div class="panel__head">
-      <h1>Create Short</h1>
-      <p class="panel__sub">
-        Posted as <strong>{% if request.user.is_superuser %}Department{% else %}Lecturer{% endif %}</strong>.
-        Clips can be up to 1:30 long.
-      </p>
+      {% if short %}
+        <h1>Edit Short</h1>
+        <p class="panel__sub">Change the details below, or upload a new clip to replace the current one.</p>
+      {% else %}
+        <h1>Create Short</h1>
+        <p class="panel__sub">
+          Posted as <strong>{% if request.user.is_superuser %}Department{% else %}Lecturer{% endif %}</strong>.
+          Clips can be up to 1:30 long.
+        </p>
+      {% endif %}
     </div>
+
+    {% if short %}
+      {# The clip as it is now, so the person editing can see what they would replace. #}
+      <div class="shorts-current">
+        <video class="shorts-current__video" src="{% url 'shorts:clip' short.pk %}#t=0.5"
+               preload="metadata" controls playsinline muted></video>
+        <div class="shorts-current__about">
+          <p class="shorts-current__label">Current clip</p>
+          <p class="shorts-current__name">{{ short.original_name|default:"Clip" }}</p>
+          <p class="shorts-current__meta">{{ length }} · uploaded {{ short.created_at|date:"j M Y, H:i" }}{% if request.user.is_superuser and short.author_id != request.user.pk %} by {{ short.author.get_full_name|default:short.author_label }}{% endif %}</p>
+        </div>
+      </div>
+    {% endif %}
 
     {% if form.non_field_errors %}
       <div class="banner banner--bad" role="alert">{{ form.non_field_errors.0 }}</div>
@@ -62,8 +79,12 @@
       {% endfor %}
 
       <div class="annform__actions">
-        <button type="submit" class="shorts-btn" data-short-submit>Upload short</button>
-        <a class="shorts-btn shorts-btn--quiet" href="{% url 'shorts:feed' %}">Cancel</a>
+        <button type="submit" class="shorts-btn" data-short-submit
+                data-busy-label="{% if short %}Saving…{% else %}Uploading…{% endif %}">{% if short %}Save changes{% else %}Upload short{% endif %}</button>
+        <a class="shorts-btn shorts-btn--quiet" href="{% if short %}{% url 'shorts:manage' %}{% else %}{% url 'shorts:feed' %}{% endif %}">Cancel</a>
+        {% if short %}
+          <a class="shorts-btn shorts-btn--danger-quiet shorts-form__delete" href="{% url 'shorts:delete' short.pk %}">Delete short</a>
+        {% endif %}
       </div>
     </form>
   </section>

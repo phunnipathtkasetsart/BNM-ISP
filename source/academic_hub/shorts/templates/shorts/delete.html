@@ -1,0 +1,50 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block title %}Delete short — KU Student Portal{% endblock %}
+{% block page_css %}
+  <link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">
+  <link rel="stylesheet" href="{% static 'shorts/shorts.css' %}">
+{% endblock %}
+
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+{% endblock %}
+
+{% block topbar_right %}
+  {% include "accounts/_account_menu.html" %}
+{% endblock %}
+
+{% block content %}
+{% include "shorts/_subnav.html" with current="manage" %}
+
+{# Deleting cannot be undone, so it always goes through this page first. #}
+<div class="board shorts-board shorts-board--form">
+  <section class="board__main panel">
+    <div class="panel__head">
+      <h1>Delete this short?</h1>
+      <p class="panel__sub">This removes the video for everyone. It cannot be undone.</p>
+    </div>
+
+    <div class="shorts-current shorts-current--delete">
+      <video class="shorts-current__video" src="{% url 'shorts:clip' short.pk %}#t=0.5"
+             preload="metadata" playsinline muted></video>
+      <div class="shorts-current__about">
+        <p class="shorts-current__name">{{ short.title }}</p>
+        <p class="shorts-current__meta">{{ length }} · uploaded {{ short.created_at|date:"j M Y, H:i" }}</p>
+        <p class="shorts-current__meta">
+          Its {{ like_count }} like{{ like_count|pluralize }} and {{ comment_count }} comment{{ comment_count|pluralize }} will be deleted too.
+        </p>
+      </div>
+    </div>
+
+    <form method="post" class="shorts-confirm">
+      {% csrf_token %}
+      <button type="submit" class="shorts-btn shorts-btn--danger">Delete short</button>
+      <a class="shorts-btn shorts-btn--quiet" href="{% url 'shorts:manage' %}">Cancel</a>
+    </form>
+  </section>
+</div>
+{% endblock %}

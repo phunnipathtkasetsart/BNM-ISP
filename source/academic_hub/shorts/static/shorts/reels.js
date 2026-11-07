@@ -156,6 +156,13 @@
     var current = slides[index];
     // Comments belong to the clip they were opened on; moving on closes them.
     if (commentsFor && commentsFor !== current) closeComments(false);
+    // Keyboard focus follows the clip. Left on the previous clip's button,
+    // Space would press that button and play or pause a clip that is no
+    // longer on screen, instead of the one being watched.
+    var focused = document.activeElement;
+    if (focused && focused !== viewport && viewport.contains(focused) && !current.el.contains(focused)) {
+      viewport.focus({ preventScroll: true });
+    }
     try { current.video.currentTime = 0; } catch (e) { /* not loaded yet */ }
     play(current);
     prevButton.disabled = index === 0;
@@ -192,7 +199,11 @@
     mute.setAttribute("aria-pressed", muted ? "true" : "false");
     mute.setAttribute("aria-label", muted ? "Turn sound on" : "Turn sound off");
 
-    el.querySelector("[data-reel-toggle]").addEventListener("click", function () { toggle(slide); });
+    el.querySelector("[data-reel-toggle]").addEventListener("click", function () {
+      // Only the clip on screen can be played or paused, however the press
+      // reached an off-screen one (a stale focus, a tap mid-swipe).
+      if (slides[active] === slide) toggle(slide);
+    });
     mute.addEventListener("click", function () {
       setMuted(!muted);
       if (!muted && slides[active] === slide && video.paused && !slide.userPaused) play(slide);

@@ -9,6 +9,7 @@ session through to the views it lists, and these are not among them.
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator
 from django.db.models import Count, Exists, OuterRef
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -17,13 +18,15 @@ from django.views.decorators.http import require_GET, require_http_methods
 
 from .forms import ShortForm
 from .models import Short, ShortLike
-from .services import create_short
+from .services import create_short, update_short
 from .storage import signed_clip_url
 from .streaming import ranged_clip_response
+from .validators import format_duration
 
 # Clips sent per request. The page asks for the next batch a few clips
 # before it runs out, so scrolling never waits on the network.
 FEED_BATCH = 8
+MANAGE_PER_PAGE = 20
 
 
 def can_create_shorts(user):
@@ -141,8 +144,107 @@ def create(request):
         messages.success(request, f"“{short.title}” was uploaded.")
         return redirect("shorts:feed")
 
+    return render_short_form(request, form, short=None)
+
+
+def render_short_form(request, form, *, short):
+    """Create Short and the edit page share one template; short=None is create."""
     return render(request, "shorts/create.html", {
         "form": form,
+        "short": short,
+        "length": format_duration(short.duration_seconds) if short else "",
         "max_seconds": settings.SHORTS_MAX_SECONDS,
         "max_bytes": settings.SHORTS_MAX_UPLOAD_BYTES,
     }, status=400 if form.is_bound else 200)
+
+
+# --- Edit Short: managing uploaded shorts ------------------------------------
+
+def manageable_shorts(user):
+    """The shorts this user may edit and delete.
+
+    Lecturers manage the shorts they uploaded. The Department manages every
+    short on the site, as it moderates everything else.
+    """
+    rows = Short.objects.all() if user.is_superuser else Short.objects.filter(author=user)
+    return rows.select_related("author")
+
+
+def staff_only(request):
+    """None if the user may manage shorts, otherwise the response to send."""
+    if can_create_shorts(request.user):
+        return None
+    messages.error(request, "Only lecturers and the Department can edit shorts.")
+    return redirect("shorts:feed")
+
+
+@login_required(login_url="accounts:login")
+@require_GET
+def manage(request):
+    if (refused := staff_only(request)) is not None:
+        return refused
+    rows = (
+        manageable_shorts(request.user)
+        .annotate(like_count=Count("likes", distinct=True),
+                  comment_count=Count("comments", distinct=True))
+        .prefetch_related("tags")
+        .order_by("-created_at", "-pk")  # counting drops Meta.ordering
+    )
+    page = Paginator(rows, MANAGE_PER_PAGE).get_page(request.GET.get("page"))
+    for short in page:
+        short.length = format_duration(short.duration_seconds)
+    return render(request, "shorts/manage.html", {
+        "page_obj": page,
+        "is_department": request.user.is_superuser,
+        "can_create": True,
+    })
+
+
+@login_required(login_url="accounts:login")
+@require_http_methods(["GET", "POST"])
+def edit(request, pk):
+    if (refused := staff_only(request)) is not None:
+        return refused
+    # Someone else's short is a 404, not a 403: it does not say it exists.
+    short = get_object_or_404(manageable_shorts(request.user), pk=pk)
+    form = ShortForm(
+        request.POST or None, request.FILES or None, auto_id="short_%s", editing=True,
+        initial={
+            "title": short.title,
+            "description": short.description,
+            "tags": ", ".join(tag.label for tag in short.tags.all()),
+        },
+    )
+    if request.method == "POST" and form.is_valid():
+        update_short(
+            short,
+            title=form.cleaned_data["title"],
+            description=form.cleaned_data["description"],
+            tags=form.cleaned_data["tags"],
+            clip=form.cleaned_data["clip"],
+            duration_seconds=form.clip_duration,
+        )
+        messages.success(request, f"“{short.title}” was updated.")
+        return redirect("shorts:manage")
+    return render_short_form(request, form, short=short)
+
+
+@login_required(login_url="accounts:login")
+@require_http_methods(["GET", "POST"])
+def delete(request, pk):
+    """GET asks to confirm; POST deletes the short, its clip, likes and comments."""
+    if (refused := staff_only(request)) is not None:
+        return refused
+    short = get_object_or_404(manageable_shorts(request.user), pk=pk)
+    if request.method == "POST":
+        title = short.title
+        short.delete()  # signals.py removes the clip from storage
+        messages.success(request, f"“{title}” was deleted.")
+        return redirect("shorts:manage")
+    return render(request, "shorts/delete.html", {
+        "short": short,
+        "length": format_duration(short.duration_seconds),
+        "like_count": short.likes.count(),
+        "comment_count": short.comments.count(),
+        "can_create": True,
+    })

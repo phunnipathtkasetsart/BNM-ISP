@@ -43,19 +43,50 @@ def create_short(*, author, title, description, tags, clip, duration_seconds):
             short = Short(
                 title=title,
                 description=description,
-                original_name=os.path.basename(clip.name)[:255],
-                size=clip.size,
-                duration_seconds=duration_seconds,
                 author=author,
                 author_label="Department" if author.is_superuser else "Lecturer",
             )
-            clip.content_type = CONTENT_TYPES.get(
-                os.path.splitext(clip.name)[1].lower(), "video/mp4")
-            short.clip = clip
+            attach_clip(short, clip, duration_seconds)
             short.save()
             short.tags.set(tag_rows)
     except Exception:
         if short is not None and short.clip.name:
             short.clip.storage.delete(short.clip.name)
+        raise
+    return short
+
+
+def attach_clip(short, clip, duration_seconds):
+    """Point the short at a new upload; saving the short then stores it."""
+    clip.content_type = CONTENT_TYPES.get(os.path.splitext(clip.name)[1].lower(), "video/mp4")
+    short.clip = clip
+    short.original_name = os.path.basename(clip.name)[:255]
+    short.size = clip.size
+    short.duration_seconds = duration_seconds
+
+
+def update_short(short, *, title, description, tags, clip=None, duration_seconds=None):
+    """Change a short's details and, if a new clip is given, swap the video.
+
+    The old clip is deleted from storage only once the change is safely
+    saved. If saving fails, the new upload is deleted instead and the short
+    keeps its old clip, so a failed edit never loses a video.
+    """
+    old_name = short.clip.name
+    storage = short.clip.storage
+    try:
+        with transaction.atomic():
+            tag_rows = resolve_tags(tags)
+            short.title = title
+            short.description = description
+            if clip is not None:
+                attach_clip(short, clip, duration_seconds)
+            short.save()
+            short.tags.set(tag_rows)
+            if clip is not None and old_name:
+                transaction.on_commit(lambda: storage.delete(old_name))
+    except Exception:
+        if clip is not None and short.clip.name and short.clip.name != old_name:
+            storage.delete(short.clip.name)
         raise
     return short

@@ -1,0 +1,24 @@
+{% comment %}
+The tab bar on every Shorts page. Staff get two buttons where the Home
+board has "Create Announcement": Create Short, then Edit Short.
+current: "create" or "manage" marks the page being shown.
+{% endcomment %}
+<nav class="subnav" aria-label="Sections">
+  <a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a>
+  <a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>
+  <a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>
+  <a class="subnav__tab subnav__tab--on" href="{% url 'shorts:feed' %}"{% if not current %} aria-current="page"{% endif %}>Shorts</a>
+
+  {% if can_create %}
+    <span class="subnav__actions">
+      <a class="subnav__action{% if current == 'create' %} subnav__action--on{% endif %}" href="{% url 'shorts:create' %}"{% if current == 'create' %} aria-current="page"{% endif %}>
+        <span class="subnav__action-full">Create Short</span>
+        <span class="subnav__action-short" aria-hidden="true">+<span class="subnav__action-word"> Create</span></span>
+      </a>
+      <a class="subnav__action{% if current == 'manage' %} subnav__action--on{% endif %}" href="{% url 'shorts:manage' %}"{% if current == 'manage' %} aria-current="page"{% endif %}>
+        <span class="subnav__action-full">Edit Short</span>
+        <span class="subnav__action-short" aria-hidden="true"><svg class="subnav__action-icon" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg><span class="subnav__action-word"> Edit</span></span>
+      </a>
+    </span>
+  {% endif %}
+</nav>
