@@ -21,6 +21,7 @@
 {% block content %}
 <section class="panel">
   <div class="panel__head">
+      <a class="backlink" href="{% url 'announcements:public_board' %}">&larr; Back to Home</a>
     <h1>Manage roles</h1>
     <p class="panel__sub">{{ people|length }} account{{ people|length|pluralize }} in the
     department. Assign students to their academic advisor from each Lecturer's account.</p>
