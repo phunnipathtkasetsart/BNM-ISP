@@ -39,9 +39,10 @@
       <ul class="shorts-list">
         {% for short in page_obj %}
           <li class="shorts-row">
-            {# A still from the clip: #t=0.5 makes the browser show that frame. #}
-            <a class="shorts-row__thumb" href="{% url 'shorts:edit' short.pk %}" tabindex="-1" aria-hidden="true">
+            {# A still from the clip (#t=0.5 shows that frame); clicking it watches the short in the feed. #}
+            <a class="shorts-row__thumb" href="{% url 'shorts:feed' %}?start={{ short.pk }}" tabindex="-1" aria-hidden="true">
               <video src="{% url 'shorts:clip' short.pk %}#t=0.5" preload="metadata" muted playsinline></video>
+              <span class="shorts-row__play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span>
               <span class="shorts-row__length">{{ short.length }}</span>
             </a>
             <div class="shorts-row__main">
@@ -60,6 +61,7 @@
               </p>
             </div>
             <div class="shorts-row__actions">
+              <a class="shorts-btn shorts-btn--small shorts-btn--quiet" href="{% url 'shorts:feed' %}?start={{ short.pk }}" aria-label="View “{{ short.title }}” in the feed">View</a>
               <a class="shorts-btn shorts-btn--small" href="{% url 'shorts:edit' short.pk %}" aria-label="Edit “{{ short.title }}”">Edit</a>
               <a class="shorts-btn shorts-btn--small shorts-btn--danger-quiet" href="{% url 'shorts:delete' short.pk %}" aria-label="Delete “{{ short.title }}”">Delete</a>
             </div>

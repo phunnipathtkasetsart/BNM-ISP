@@ -807,3 +807,43 @@ class ReplyTests(FeedFixtures, TestCase):
         self.assertEqual(self.client.post(reply["delete_url"]).status_code, 403)
         self.client.force_login(self.department)
         self.assertEqual(self.client.post(reply["delete_url"]).status_code, 200)
+
+
+class StartAtShortTests(FeedFixtures, TestCase):
+    """Edit Short's View opens the feed on that short: /shorts/?start=<id>."""
+
+    def setUp(self):
+        super().setUp()
+        self.shorts = [self.make_short(f"Clip {n}") for n in range(10)]  # Clip 9 is newest
+        self.client.force_login(self.student)
+
+    def titles(self, response):
+        return [item["title"] for item in response.context["feed"]["items"]]
+
+    def test_start_puts_that_short_first_without_repeating_it(self):
+        target = self.shorts[5]  # inside the first batch of 8
+        titles = self.titles(self.client.get(reverse("shorts:feed"), {"start": target.pk}))
+        self.assertEqual(titles[0], "Clip 5")
+        self.assertEqual(titles.count("Clip 5"), 1)
+        self.assertEqual(titles[1:], ["Clip 9", "Clip 8", "Clip 7", "Clip 6", "Clip 4", "Clip 3", "Clip 2"])
+
+    def test_start_on_an_older_short_keeps_the_usual_batch_after_it(self):
+        target = self.shorts[0]  # not in the first batch
+        response = self.client.get(reverse("shorts:feed"), {"start": target.pk})
+        titles = self.titles(response)
+        self.assertEqual(titles[0], "Clip 0")
+        self.assertEqual(len(titles), 9)
+        self.assertEqual(response.context["feed"]["next"], 8)  # paging carries on unchanged
+
+    def test_unknown_or_archived_start_is_ignored(self):
+        Short.objects.filter(pk=self.shorts[3].pk).update(archived_at="2026-01-01T00:00:00Z")
+        for start in ("999999", str(self.shorts[3].pk), "abc"):
+            titles = self.titles(self.client.get(reverse("shorts:feed"), {"start": start}))
+            self.assertEqual(titles[0], "Clip 9")
+
+    def test_edit_short_links_to_the_feed(self):
+        self.shorts[2].author = self.lecturer
+        self.client.force_login(self.lecturer)
+        link = f'{reverse("shorts:feed")}?start={self.shorts[2].pk}'
+        self.assertContains(self.client.get(reverse("shorts:manage")), link)
+        self.assertContains(self.client.get(reverse("shorts:edit", args=[self.shorts[2].pk])), "View in feed")

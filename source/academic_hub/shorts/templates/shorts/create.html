@@ -49,6 +49,7 @@
           <p class="shorts-current__label">Current clip</p>
           <p class="shorts-current__name">{{ short.original_name|default:"Clip" }}</p>
           <p class="shorts-current__meta">{{ length }} · uploaded {{ short.created_at|date:"j M Y, H:i" }}{% if request.user.is_superuser and short.author_id != request.user.pk %} by {{ short.author.get_full_name|default:short.author_label }}{% endif %}</p>
+          <a class="shorts-current__view" href="{% url 'shorts:feed' %}?start={{ short.pk }}">View in feed &rarr;</a>
         </div>
       </div>
     {% endif %}

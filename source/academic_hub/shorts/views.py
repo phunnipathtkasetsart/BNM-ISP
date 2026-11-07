@@ -87,6 +87,16 @@ def feed_page(offset, user):
 @require_GET
 def feed(request):
     page = feed_page(0, request.user)
+    # ?start=<id> opens the feed on that short (from Edit Short's "View"),
+    # then carries on through the usual feed. It is taken out of the first
+    # batch so it does not show twice in a row; offsets are unchanged, so
+    # nothing is skipped, and it comes round again in the loop as normal.
+    start = request.GET.get("start", "")
+    if start.isdigit():
+        first = visible_shorts(request.user).filter(pk=int(start)).first()
+        if first is not None:
+            page["items"] = [feed_item(first)] + [
+                item for item in page["items"] if item["id"] != first.pk]
     return render(request, "shorts/feed.html", {
         "can_create": can_create_shorts(request.user),
         "feed": page,
