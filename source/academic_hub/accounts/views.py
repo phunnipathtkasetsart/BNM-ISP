@@ -5,7 +5,7 @@ import re
 import secrets
 from datetime import timedelta
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.conf import settings
@@ -249,7 +249,11 @@ def gmail_oauth_callback(request):
         credential.google_email = google_email
         credential.encrypted_refresh_token = encrypt_refresh_token(refresh_token)
         credential.save()
-        create_advisor_draft(request.user, assignment.advisor, access_token=access_token)
+        draft_message_id = create_advisor_draft(
+            request.user,
+            assignment.advisor,
+            access_token=access_token,
+        )
     except GmailAuthorizationError:
         request.session["gmail_oauth_force_consent"] = True
         messages.error(request, "Gmail authorization expired or was incomplete. Please try again.")
@@ -261,7 +265,8 @@ def gmail_oauth_callback(request):
     return redirect(
         "https://mail.google.com/mail/?"
         + urlencode({"authuser": request.user.email})
-        + "#drafts"
+        + "#inbox?"
+        + urlencode({"compose": draft_message_id})
     )
 
 

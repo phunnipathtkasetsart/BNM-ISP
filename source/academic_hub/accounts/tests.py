@@ -602,7 +602,7 @@ class GmailDraftFlowTests(TestCase):
                 "email": self.student.email,
                 "email_verified": True,
             }),
-            patch("accounts.views.create_advisor_draft") as create_draft,
+            patch("accounts.views.create_advisor_draft", return_value="draft-message-123") as create_draft,
         ):
             response = self.client.get(
                 reverse("accounts:gmail_oauth_callback"),
@@ -613,7 +613,7 @@ class GmailDraftFlowTests(TestCase):
             response["Location"],
             "https://mail.google.com/mail/?authuser="
             + urlencode({"authuser": self.student.email}).split("=", 1)[1]
-            + "#drafts",
+            + "#inbox?compose=draft-message-123",
         )
         credential = GmailOAuthCredential.objects.get(user=self.student)
         self.assertEqual(credential.google_email, self.student.email)
@@ -656,10 +656,13 @@ class GmailDraftFlowTests(TestCase):
         self.assertFalse(GmailOAuthCredential.objects.filter(user=self.student).exists())
 
     def test_draft_api_payload_uses_student_and_advisor_addresses(self):
-        with patch("accounts.gmail._request_json", return_value={"id": "draft-id"}) as request:
-            draft_id = _create_draft("access-token", self.student, self.advisor)
+        with patch(
+            "accounts.gmail._request_json",
+            return_value={"id": "draft-id", "message": {"id": "draft-message-id"}},
+        ) as request:
+            message_id = _create_draft("access-token", self.student, self.advisor)
 
-        self.assertEqual(draft_id, "draft-id")
+        self.assertEqual(message_id, "draft-message-id")
         request_data = request.call_args.args[0]
         payload = json.loads(request_data.data)
         raw = payload["message"]["raw"]

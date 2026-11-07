@@ -145,10 +145,11 @@ def _create_draft(access_token, student, advisor):
         },
         method="POST",
     ), authorization_error_statuses=(401, 403))
-    draft_id = response.get("id")
-    if not draft_id:
-        raise GmailIntegrationError("Gmail did not return the created draft.")
-    return draft_id
+    message = response.get("message")
+    message_id = message.get("id") if isinstance(message, dict) else None
+    if not isinstance(message_id, str) or not message_id:
+        raise GmailIntegrationError("Gmail did not return the created draft message ID.")
+    return message_id
 
 
 def create_advisor_draft(student, advisor, *, access_token=None):
