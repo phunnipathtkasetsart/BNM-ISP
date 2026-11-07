@@ -318,7 +318,6 @@ class ForumCategoryForm(forms.ModelForm):
 
 class ForumQuestionFilterForm(forms.Form):
     class Audience(models.TextChoices):
-        EVERYONE = "everyone", "Everyone"
         SKE = "ske", "SKE"
         CPE = "cpe", "CPE"
 

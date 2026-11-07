@@ -364,11 +364,7 @@ def _render_faq_board(
             questions = questions.filter(
                 Q(title__icontains=query) | Q(body__icontains=query)
             )
-        if filters["audience"] == ForumQuestionFilterForm.Audience.EVERYONE:
-            questions = questions.filter(
-                visibility=ForumQuestion.Visibility.EVERYONE
-            )
-        elif filters["audience"] in {
+        if filters["audience"] in {
             ForumQuestionFilterForm.Audience.SKE,
             ForumQuestionFilterForm.Audience.CPE,
         }:
