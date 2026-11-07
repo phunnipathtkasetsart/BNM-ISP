@@ -75,6 +75,12 @@ class ShortLike(models.Model):
 
 class ShortComment(models.Model):
     short = models.ForeignKey(Short, on_delete=models.CASCADE, related_name="comments")
+    # Set on replies: the comment the thread hangs from. Threads are one level
+    # deep, as on Reels: replying to a reply joins the same thread, so parent
+    # is always a top-level comment. Deleting it takes its replies with it.
+    parent = models.ForeignKey(
+        "self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies",
+    )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
@@ -92,7 +98,10 @@ class ShortComment(models.Model):
 
     class Meta:
         ordering = ["-created_at", "-pk"]
-        indexes = [models.Index(fields=["short", "-created_at"], name="short_comment_list_idx")]
+        indexes = [
+            models.Index(fields=["short", "-created_at"], name="short_comment_list_idx"),
+            models.Index(fields=["parent", "created_at"], name="short_reply_list_idx"),
+        ]
 
     def __str__(self):
         return f"Comment on {self.short_id}"

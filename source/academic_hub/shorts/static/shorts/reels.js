@@ -14,7 +14,8 @@
 
    Beside each clip are a like button and a comments button. Likes change
    on screen at once and are put back if the server refuses. Comments open
-   in one shared panel for the clip on screen. */
+   in one shared panel for the clip on screen; any comment can be replied
+   to, and replies fold under it behind "View N replies". */
 (function () {
   "use strict";
 
@@ -331,8 +332,11 @@
     return then.toLocaleDateString(undefined, { day: "numeric", month: "short" });
   }
 
+  // One thread per top-level comment: its replies load the first time the
+  // thread is opened, oldest first, as on Reels.
   function commentNode(comment) {
     var li = commentTemplate.content.firstElementChild.cloneNode(true);
+    var isReply = comment.parent_id !== null && comment.parent_id !== undefined;
     li.dataset.id = comment.id;
     li.querySelector("[data-comment-initial]").textContent = (comment.author || "?").trim().charAt(0).toUpperCase();
     li.querySelector("[data-comment-author]").textContent = comment.author;
@@ -342,13 +346,103 @@
     time.textContent = ago(comment.created_at);
     time.title = new Date(comment.created_at).toLocaleString();
     li.querySelector("[data-comment-body]").textContent = comment.body;
+
     var del = li.querySelector("[data-comment-delete]");
     if (comment.delete_url) {
       del.hidden = false;
       del.addEventListener("click", function () { deleteComment(li, del, comment.delete_url); });
     }
+
+    // A reply's Reply button joins the thread of the comment above it.
+    li.querySelector("[data-comment-reply]").addEventListener("click", function () {
+      var threadLi = isReply ? li.closest("[data-comment-replies]").closest(".comment") : li;
+      startReply(threadLi, comment);
+    });
+
+    var toggle = li.querySelector("[data-comment-toggle]");
+    var more = li.querySelector("[data-comment-more-replies]");
+    if (isReply) {
+      // Threads are one level deep, so replies carry no thread of their own.
+      toggle.remove();
+      more.remove();
+      li.querySelector("[data-comment-replies]").remove();
+    } else {
+      li.thread = { url: comment.replies_url, count: comment.reply_count || 0,
+                    loaded: false, open: false, nextAfter: null, loading: false };
+      toggle.addEventListener("click", function () { setThreadOpen(li, !li.thread.open); });
+      more.addEventListener("click", function () { loadReplies(li, li.thread.nextAfter); });
+      paintThread(li);
+    }
     return li;
   }
+
+  function paintThread(li) {
+    var thread = li.thread;
+    var toggle = li.querySelector("[data-comment-toggle]");
+    toggle.hidden = thread.count === 0;
+    toggle.setAttribute("aria-expanded", thread.open ? "true" : "false");
+    li.querySelector("[data-comment-toggle-label]").textContent = thread.open
+      ? "Hide replies"
+      : "View " + thread.count + (thread.count === 1 ? " reply" : " replies");
+    li.querySelector("[data-comment-replies]").hidden = !thread.open;
+    li.querySelector("[data-comment-more-replies]").hidden = !(thread.open && thread.nextAfter !== null);
+  }
+
+  function setThreadOpen(li, open) {
+    li.thread.open = open;
+    paintThread(li);
+    if (open && !li.thread.loaded) loadReplies(li, null);
+  }
+
+  function loadReplies(li, after) {
+    var thread = li.thread, token = listToken;
+    if (thread.loading) return Promise.resolve();
+    thread.loading = true;
+    var box = li.querySelector("[data-comment-replies]");
+    return getJSON(thread.url + (after ? "?after=" + after : ""))
+      .then(function (data) {
+        if (token !== listToken) return;
+        if (!after) box.textContent = "";
+        data.items.forEach(function (c) { box.appendChild(commentNode(c)); });
+        thread.loaded = true;
+        thread.nextAfter = data.next_after;
+        thread.count = data.reply_count;
+      })
+      .catch(function (message) { if (token === listToken) statusNote.textContent = message; })
+      .then(function () { thread.loading = false; paintThread(li); });
+  }
+
+  function threadFor(id) {
+    return list.querySelector(':scope > .comment[data-id="' + id + '"]');
+  }
+
+  /* ---------- replying ---------- */
+  var replying = panel.querySelector("[data-comments-replying]");
+  var replyingName = panel.querySelector("[data-comments-replying-name]");
+  var replyTo = null;       // {id, author, threadLi} while writing a reply
+
+  function startReply(threadLi, comment) {
+    replyTo = { id: comment.id, author: comment.author, threadLi: threadLi };
+    replyingName.textContent = comment.author;
+    replying.hidden = false;
+    // Start the reply with an @mention, as Reels does; it can be edited away.
+    var mention = "@" + comment.author + " ";
+    if (!input.value.trim() || /^@/.test(input.value)) input.value = mention;
+    sizeInput();
+    input.focus({ preventScroll: true });
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
+
+  function cancelReply() {
+    if (replyTo && input.value.trim() === "@" + replyTo.author) input.value = "";
+    replyTo = null;
+    replying.hidden = true;
+    sizeInput();
+  }
+  panel.querySelector("[data-comments-replying-cancel]").addEventListener("click", function () {
+    cancelReply();
+    input.focus({ preventScroll: true });
+  });
 
   function showEmpty() { emptyNote.hidden = list.children.length > 0; }
 
@@ -377,6 +471,7 @@
     list.textContent = "";
     emptyNote.hidden = true;
     nextBefore = null;
+    cancelReply();
     panel.hidden = false;
     backdrop.hidden = false;
     root.classList.add("has-comments");
@@ -390,6 +485,7 @@
     if (!slide) return;
     commentsFor = null;
     listToken += 1;
+    cancelReply();
     panel.hidden = true;
     backdrop.hidden = true;
     root.classList.remove("has-comments");
@@ -411,35 +507,75 @@
   // Enter posts, Shift+Enter starts a new line. isComposing: a Thai (or any
   // IME) word still being composed must not be sent half-typed.
   input.addEventListener("keydown", function (e) {
+    if (e.key === "Escape" && replyTo) {
+      // Escape backs out of the reply first; a second Escape closes the panel.
+      e.preventDefault();
+      e.stopPropagation();
+      cancelReply();
+      return;
+    }
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       if (!postButton.disabled) form.requestSubmit ? form.requestSubmit() : form.dispatchEvent(new Event("submit", { cancelable: true }));
     }
   });
 
+  function flash(li) {
+    if (calm) return;
+    li.classList.add("is-new");
+    window.setTimeout(function () { li.classList.remove("is-new"); }, 1300);
+  }
+
   form.addEventListener("submit", function (e) {
     e.preventDefault();
-    var slide = commentsFor, body = input.value.trim();
+    var slide = commentsFor, body = input.value.trim(), target = replyTo;
     if (!slide || !body) return;
     postButton.disabled = true;
     input.readOnly = true;
     statusNote.textContent = "";
-    send(slide.item.comments_url, { body: body })
+    var payload = { body: body };
+    if (target) payload.reply_to = target.id;
+    send(slide.item.comments_url, payload)
       .then(function (data) {
+        var comment = data.comment;
         if (commentsFor === slide) {
-          list.insertBefore(commentNode(data.comment), list.firstChild);
-          panel.querySelector("[data-comments-body]").scrollTop = 0;
-          showEmpty();
+          if (comment.parent_id) {
+            // Into its thread, opened, at the end (threads read oldest first).
+            var threadLi = threadFor(comment.parent_id) || (target && target.threadLi);
+            if (threadLi) {
+              threadLi.thread.count = data.reply_count;
+              var place = function () {
+                if (!threadLi.querySelector('[data-comment-replies] > .comment[data-id="' + comment.id + '"]')) {
+                  var node = commentNode(comment);
+                  threadLi.querySelector("[data-comment-replies]").appendChild(node);
+                  flash(node);
+                }
+                threadLi.thread.open = true;
+                paintThread(threadLi);
+              };
+              if (threadLi.thread.loaded) place();
+              else { threadLi.thread.open = true; loadReplies(threadLi, null).then(place); }
+            }
+          } else {
+            var node = commentNode(comment);
+            list.insertBefore(node, list.firstChild);
+            panel.querySelector("[data-comments-body]").scrollTop = 0;
+            flash(node);
+            showEmpty();
+          }
         }
         states[slide.item.id].comments = data.comment_count;
         paint(slide.item.id);
         input.value = "";
+        if (replyTo === target) cancelReply();
       })
       .catch(function (message) { statusNote.textContent = message; })
       .then(function () { input.readOnly = false; sizeInput(); input.focus({ preventScroll: true }); });
   });
 
   // First press arms the button ("Delete?"), a second within 3s deletes.
+  // Deleting a comment also deletes its replies; the server says how many
+  // are left so the counts stay right.
   function deleteComment(li, button, url) {
     if (!button.classList.contains("is-confirming")) {
       button.classList.add("is-confirming");
@@ -455,7 +591,14 @@
     button.disabled = true;
     send(url, {})
       .then(function (data) {
+        var box = li.parentElement;
+        var threadLi = box && box.matches("[data-comment-replies]") ? box.closest(".comment") : null;
+        if (replyTo && (replyTo.threadLi === li || String(replyTo.id) === li.dataset.id)) cancelReply();
         li.remove();
+        if (threadLi && typeof data.reply_count === "number") {
+          threadLi.thread.count = data.reply_count;
+          paintThread(threadLi);
+        }
         showEmpty();
         states[slide.item.id].comments = data.comment_count;
         paint(slide.item.id);

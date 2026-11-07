@@ -232,11 +232,31 @@ body:has(.reels) .topbar{display:none}
 }
 .comment__time{color:var(--ink-muted);font-size:12px}
 .comment__body{margin:3px 0 0;font-family:var(--font-ui);font-size:14px;line-height:1.45;color:var(--ink);white-space:pre-line;overflow-wrap:anywhere}
-.comment__delete{
-  margin-top:4px;padding:0;border:0;background:none;cursor:pointer;
+.comment__actions{margin:4px 0 0;display:flex;gap:14px}
+.comment__action{
+  padding:0;border:0;background:none;cursor:pointer;
   font-family:var(--font-ui);font-size:12px;font-weight:600;color:var(--ink-muted);
 }
+.comment__action:hover{color:var(--ink)}
+.comment__action:focus-visible,.comment__toggle:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px;border-radius:4px}
+.comment__action[hidden]{display:none}
 .comment__delete:hover,.comment__delete.is-confirming{color:var(--danger)}
+
+/* --- replies: indented under their comment, folded behind "View N replies" --- */
+.comment__toggle{
+  display:flex;align-items:center;gap:10px;margin:8px 0 0;padding:0;
+  border:0;background:none;cursor:pointer;
+  font-family:var(--font-ui);font-size:12.5px;font-weight:600;color:var(--ink-muted);
+}
+.comment__toggle[hidden]{display:none}
+.comment__toggle:hover{color:var(--ink)}
+.comment__toggle-line{display:inline-block;width:24px;border-top:1px solid var(--ink-muted)}
+.comment__replies{list-style:none;margin:2px 0 0;padding:0}
+.comment__replies[hidden]{display:none}
+.comment__replies .comment{padding:8px 0 4px}
+.comment__replies .comment__avatar{flex-basis:26px;height:26px;font-size:11.5px}
+.comment.is-new{animation:comment-new 1.2s ease}
+@keyframes comment-new{from{background:#E1ECE6}to{background:transparent}}
 .comments__empty{margin:28px 0;text-align:center;color:var(--ink-muted);font-family:var(--font-ui);font-size:14px}
 .comments__more{
   display:block;margin:6px auto 10px;border:0;background:none;cursor:pointer;
@@ -245,10 +265,20 @@ body:has(.reels) .topbar{display:none}
 .comments__more[hidden]{display:none}
 .comments__status{margin:6px 0;text-align:center;color:var(--danger);font-family:var(--font-ui);font-size:12.5px}
 .comments__status:empty{display:none}
-.comments__form{
-  display:flex;align-items:flex-end;gap:8px;
-  padding:10px 12px;border-top:1px solid var(--hairline);background:var(--card);
+.comments__form{padding:10px 12px;border-top:1px solid var(--hairline);background:var(--card)}
+.comments__compose{display:flex;align-items:flex-end;gap:8px}
+.comments__replying{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin:-2px 4px 8px;font-family:var(--font-ui);font-size:12.5px;color:var(--ink-muted);
 }
+.comments__replying[hidden]{display:none}
+.comments__replying strong{color:var(--ink)}
+.comments__replying-cancel{
+  width:26px;height:26px;border:0;border-radius:50%;background:none;cursor:pointer;
+  color:var(--ink-muted);display:grid;place-items:center;
+}
+.comments__replying-cancel:hover{background:rgba(0,0,0,.06);color:var(--ink)}
+.comments__replying-cancel svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
 .comments__form textarea{
   flex:1;resize:none;min-height:38px;max-height:104px;
   padding:9px 12px;border:1px solid var(--field-line);border-radius:18px;background:#fff;
@@ -284,4 +314,5 @@ body:has(.reels) .topbar{display:none}
   .reel__state,.reels__toast{transition:none}
   .reel__action svg{transition:none}
   .reel__action--like.is-popping svg{animation:none}
+  .comment.is-new{animation:none}
 }

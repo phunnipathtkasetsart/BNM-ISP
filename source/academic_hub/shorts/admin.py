@@ -15,6 +15,6 @@ class ShortAdmin(admin.ModelAdmin):
 
 @admin.register(ShortComment)
 class ShortCommentAdmin(admin.ModelAdmin):
-    list_display = ("short", "author_label", "author_role_label", "created_at")
+    list_display = ("short", "author_label", "author_role_label", "parent", "created_at")
     search_fields = ("body", "author_label")
-    readonly_fields = ("short", "author", "author_label", "author_role_label", "created_at")
+    readonly_fields = ("short", "parent", "author", "author_label", "author_role_label", "created_at")

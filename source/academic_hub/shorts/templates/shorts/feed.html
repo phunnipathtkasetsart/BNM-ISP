@@ -60,10 +60,18 @@
       <p class="comments__status" data-comments-status role="status" aria-live="polite"></p>
     </div>
     <form class="comments__form" data-comments-form>
-      <label class="sr-only" for="reel-comment-input">Add a comment</label>
-      <textarea id="reel-comment-input" name="body" rows="1" maxlength="500"
-                placeholder="Add a comment…" data-comments-input></textarea>
-      <button type="submit" class="comments__post" data-comments-post disabled>Post</button>
+      <p class="comments__replying" data-comments-replying hidden>
+        <span>Replying to <strong data-comments-replying-name></strong></span>
+        <button type="button" class="comments__replying-cancel" data-comments-replying-cancel aria-label="Cancel reply">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </p>
+      <div class="comments__compose">
+        <label class="sr-only" for="reel-comment-input">Add a comment</label>
+        <textarea id="reel-comment-input" name="body" rows="1" maxlength="500"
+                  placeholder="Add a comment…" data-comments-input></textarea>
+        <button type="submit" class="comments__post" data-comments-post disabled>Post</button>
+      </div>
     </form>
   </aside>
 </section>
@@ -78,7 +86,18 @@
         <time class="comment__time" data-comment-time></time>
       </p>
       <p class="comment__body" data-comment-body></p>
-      <button type="button" class="comment__delete" data-comment-delete hidden>Delete</button>
+      <p class="comment__actions">
+        <button type="button" class="comment__action" data-comment-reply>Reply</button>
+        <button type="button" class="comment__action comment__delete" data-comment-delete hidden>Delete</button>
+      </p>
+      {# Top-level comments only: the thread of replies, folded until asked for. #}
+      <button type="button" class="comment__toggle" data-comment-toggle aria-expanded="false" hidden>
+        <span class="comment__toggle-line" aria-hidden="true"></span><span data-comment-toggle-label></span>
+      </button>
+      <ol class="comment__replies" data-comment-replies hidden></ol>
+      <button type="button" class="comment__toggle" data-comment-more-replies hidden>
+        <span class="comment__toggle-line" aria-hidden="true"></span><span>View more replies</span>
+      </button>
     </div>
   </li>
 </template>
