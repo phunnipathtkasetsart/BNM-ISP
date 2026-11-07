@@ -19,7 +19,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.middleware import is_guest_request
-from notifications.services import notify_announcement
+from notifications.services import notify_announcement, notify_forum_reply
 from .forms import (
     AnnouncementForm,
     ForumCategoryForm,
@@ -698,6 +698,7 @@ def forum_reply_create(request, pk):
         reply.author_label = _forum_author_label(request.user)
         reply.author_role = _forum_role_label(request.user)
         reply.save()
+        notify_forum_reply(reply)
         return redirect("announcements:forum_question_detail", pk=question.pk)
 
     return _render_faq_board(

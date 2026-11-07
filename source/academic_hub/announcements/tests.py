@@ -13,6 +13,8 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateformat import format as date_format
 
+from notifications.models import Notification
+
 from .forms import AnnouncementForm
 from .models import (
     Announcement,
@@ -818,6 +820,7 @@ class ForumQuestionTests(TestCase):
         self.assertEqual(detail.status_code, 200)
         self.assertContains(detail, "SKE department content.")
         self.assertContains(detail, "Comments")
+        self.assertNotContains(detail, "Course</a>")
         self.assertNotContains(detail, "Question thread")
 
     def test_guest_cannot_post_a_question(self):
@@ -1031,6 +1034,16 @@ class ForumQuestionTests(TestCase):
         self.assertEqual(accepted.status_code, 302)
         self.assertEqual(
             accepted["Location"],
+            self.forum_url("forum_question_detail", self.ske_question.pk),
+        )
+        notification = Notification.objects.get(
+            recipient=self.student,
+            event_key=f"forum-reply:{self.ske_question.replies.get().pk}",
+        )
+        self.assertEqual(notification.kind, "forum_reply")
+        self.assertEqual(notification.title, "New comment on your FAQ question")
+        self.assertEqual(
+            notification.url,
             self.forum_url("forum_question_detail", self.ske_question.pk),
         )
         reply = self.ske_question.replies.get()
