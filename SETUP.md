@@ -129,3 +129,50 @@ Apply migrations to the database:
 docker compose exec web python manage.py migrate
 ```
 
+
+### Shorts Video Storage (MinIO)
+
+Shorts clips are stored in MinIO, an S3-compatible object store that Docker
+Compose starts as the `minio` service. Nothing needs setting up by hand: the
+web container creates the `shorts` bucket on startup.
+
+* MinIO console: **http://localhost:9001**. Sign in with `MINIO_ROOT_USER` /
+  `MINIO_ROOT_PASSWORD` from `.env`, or the defaults `bnm-minio` /
+  `bnm-minio-dev-password` if you have not set them.
+* The image is `pgsty/silo`, the maintained community build of MinIO. MinIO
+  stopped publishing its own `minio/minio` image in 2026.
+* `docker compose down -v` deletes uploaded clips along with the database.
+* Running `manage.py` outside Docker stores clips in `media/shorts/` instead.
+* Clips play straight from MinIO on port 9000, through short-lived signed
+  links. To watch on a phone on the same Wi-Fi, open the site at the
+  laptop's address (e.g. `http://192.168.1.20:8000`) after adding that
+  address to `ALLOWED_HOSTS` in `.env`.
+
+### Sharing Shorts With the Team (Seed)
+
+Clips live in each person's own MinIO, so a push does not carry them. To
+give everyone the same set of shorts, export them into the repo:
+
+```bash
+# On the machine that has the shorts:
+docker compose exec web python manage.py export_shorts_seed
+```
+
+This writes `source/academic_hub/shorts/seed/` (the video files plus
+`shorts.json` with each short's title, description, tags and uploader).
+Commit and push that folder. Running the export again replaces it with the
+current shorts.
+
+Everyone else, after pulling:
+
+```bash
+docker compose exec web python manage.py seed_shorts
+```
+
+It uploads each clip to their MinIO and creates the short. Running it again
+only adds shorts that are not there yet. Likes and comments are not copied.
+A short keeps its uploader if that account exists on the other machine;
+otherwise it shows as posted by that role (Lecturer or Department).
+
+Keep the seed small: every clone downloads it, and GitHub rejects any file
+over 100 MB.
