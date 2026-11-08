@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'course',
     'calendar_app',
     'notifications',
+    'shorts',
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -165,6 +166,77 @@ AUTH_PASSWORD_VALIDATORS = [
 MEDIA_ROOT = BASE_DIR / "media"
 MAX_UPLOAD_MB = int(os.getenv("MAX_UPLOAD_MB", "50"))
 MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024
+
+
+# Shorts (DoomScroll) clips (SRS-8, proposal section 10)
+# Clips live in MinIO, the S3-compatible object store docker-compose runs
+# next to the app, so large video files stay out of PostgreSQL and off the
+# app's own disk. docker-compose sets SHORTS_STORAGE=minio; anywhere else
+# (running manage.py outside Docker) the default "local" writes clips under
+# MEDIA_ROOT/shorts instead, which the proposal names as the fallback.
+SHORTS_STORAGE = os.getenv("SHORTS_STORAGE", "local").strip().lower()
+SHORTS_BUCKET = os.getenv("SHORTS_BUCKET", "shorts")
+SHORTS_MAX_SECONDS = 90  # "a clip can't be longer than 1:30"
+# A 90-second phone clip runs well past the 50 MB limit course files use,
+# so clips get their own ceiling.
+SHORTS_MAX_UPLOAD_MB = int(os.getenv("SHORTS_MAX_UPLOAD_MB", "100"))
+SHORTS_MAX_UPLOAD_BYTES = SHORTS_MAX_UPLOAD_MB * 1024 * 1024
+
+# How the app reaches MinIO (inside Docker: the "minio" service).
+MINIO_ENDPOINT_URL = os.getenv("MINIO_ENDPOINT_URL", "http://minio:9000")
+MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "")
+MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "")
+# How the viewer's browser reaches MinIO, for playing clips. Left blank, it
+# is the host the site was opened on plus MINIO_PUBLIC_PORT, so the same
+# setup works at localhost and from a phone on the same Wi-Fi.
+MINIO_PUBLIC_URL = os.getenv("MINIO_PUBLIC_URL", "").strip().rstrip("/")
+MINIO_PUBLIC_PORT = int(os.getenv("MINIO_PUBLIC_PORT", "9000"))
+# Lifetime of the signed link a clip plays from. The page asks the app for
+# a fresh link each time a clip loads, so this only has to outlast one view.
+SHORTS_URL_SECONDS = int(os.getenv("SHORTS_URL_SECONDS", "3600"))
+
+if SHORTS_STORAGE == "minio":
+    from botocore.config import Config as _BotoConfig
+
+    _shorts_storage = {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": SHORTS_BUCKET,
+            "endpoint_url": MINIO_ENDPOINT_URL,
+            "access_key": MINIO_ACCESS_KEY,
+            "secret_key": MINIO_SECRET_KEY,
+            # MinIO ignores the region but SigV4 signing needs one.
+            "region_name": "us-east-1",
+            # The bucket stays private; clips will be served through
+            # short-lived signed links once playback is built.
+            "default_acl": None,
+            "querystring_auth": True,
+            "file_overwrite": False,
+            "client_config": _BotoConfig(
+                signature_version="s3v4",
+                # Bucket in the path (http://minio:9000/shorts/...), because
+                # "shorts.minio" does not resolve inside the Docker network.
+                s3={"addressing_style": "path"},
+                # boto3 1.36+ adds new checksum headers to every upload by
+                # default; only send them where S3 requires them.
+                request_checksum_calculation="when_required",
+                response_checksum_validation="when_required",
+            ),
+        },
+    }
+else:
+    _shorts_storage = {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {"location": MEDIA_ROOT / "shorts"},
+    }
+
+# "default" and "staticfiles" are Django's own defaults, spelled out because
+# defining STORAGES replaces them. Course files keep using "default".
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    "shorts": _shorts_storage,
+}
 
 
 # Internationalization

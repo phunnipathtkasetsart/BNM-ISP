@@ -1,0 +1,169 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block title %}Shorts — KU Student Portal{% endblock %}
+{% block page_css %}
+  <link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">
+  <link rel="stylesheet" href="{% static 'shorts/shorts.css' %}">
+  {% if has_shorts %}<link rel="stylesheet" href="{% static 'shorts/reels.css' %}">{% endif %}
+{% endblock %}
+
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+{% endblock %}
+
+{% block topbar_right %}
+  {% include "accounts/_account_menu.html" %}
+{% endblock %}
+
+{% block content %}
+{% include "shorts/_subnav.html" %}
+
+{% if has_shorts %}
+{# The reel player (US-14, SRS-8). reels.js builds one slide per clip from #}
+{# the template below and keeps loading more, starting over at the end.   #}
+<section class="reels" data-reels data-api="{% url 'shorts:api_feed' %}" aria-label="Shorts">
+  {# Likes and comments are POSTs from reels.js; it sends this token with them. #}
+  {% csrf_token %}
+  {% for message in messages %}<p class="reels__toast" role="status" data-reels-toast>{{ message }}</p>{% endfor %}
+
+  <div class="reels__viewport" role="feed" aria-busy="false" tabindex="0" data-reels-viewport
+       aria-label="Shorts. Swipe up or down, or use the arrow keys, to move between clips."></div>
+
+  <div class="reels__nav">
+    <button type="button" class="reels__step" data-reels-prev aria-label="Previous short">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg>
+    </button>
+    <button type="button" class="reels__step" data-reels-next aria-label="Next short">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+    </button>
+  </div>
+
+  <noscript><p class="reels__noscript">Turn on JavaScript to watch shorts.</p></noscript>
+
+  {# One comments panel for the whole feed, showing the clip on screen. #}
+  <div class="comments__backdrop" data-comments-close hidden></div>
+  <aside class="comments" id="reel-comments" role="dialog" aria-modal="false"
+         aria-labelledby="reel-comments-title" data-comments hidden>
+    <header class="comments__head">
+      <h2 id="reel-comments-title">Comments <span class="comments__total" data-comments-total></span></h2>
+      <button type="button" class="comments__close" data-comments-close aria-label="Close comments">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </header>
+    <div class="comments__body" data-comments-body>
+      <p class="comments__empty" data-comments-empty hidden>No comments yet. Start the conversation.</p>
+      <ol class="comments__list" data-comments-list></ol>
+      <button type="button" class="comments__more" data-comments-more hidden>View more comments</button>
+      <p class="comments__status" data-comments-status role="status" aria-live="polite"></p>
+    </div>
+    <form class="comments__form" data-comments-form>
+      <p class="comments__replying" data-comments-replying hidden>
+        <span>Replying to <strong data-comments-replying-name></strong></span>
+        <button type="button" class="comments__replying-cancel" data-comments-replying-cancel aria-label="Cancel reply">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </p>
+      <div class="comments__compose">
+        <label class="sr-only" for="reel-comment-input">Add a comment</label>
+        <textarea id="reel-comment-input" name="body" rows="1" maxlength="500"
+                  placeholder="Add a comment…" data-comments-input></textarea>
+        <button type="submit" class="comments__post" data-comments-post disabled>Post</button>
+      </div>
+    </form>
+  </aside>
+</section>
+
+<template id="comment-template">
+  <li class="comment">
+    <span class="comment__avatar" aria-hidden="true" data-comment-initial></span>
+    <div class="comment__main">
+      <p class="comment__head">
+        <strong class="comment__author" data-comment-author></strong>
+        <span class="comment__role" data-comment-role></span>
+        <time class="comment__time" data-comment-time></time>
+      </p>
+      <p class="comment__body" data-comment-body></p>
+      <p class="comment__actions">
+        <button type="button" class="comment__action" data-comment-reply>Reply</button>
+        <button type="button" class="comment__action comment__delete" data-comment-delete hidden>Delete</button>
+      </p>
+      {# Top-level comments only: the thread of replies, folded until asked for. #}
+      <button type="button" class="comment__toggle" data-comment-toggle aria-expanded="false" hidden>
+        <span class="comment__toggle-line" aria-hidden="true"></span><span data-comment-toggle-label></span>
+      </button>
+      <ol class="comment__replies" data-comment-replies hidden></ol>
+      <button type="button" class="comment__toggle" data-comment-more-replies hidden>
+        <span class="comment__toggle-line" aria-hidden="true"></span><span>View more replies</span>
+      </button>
+    </div>
+  </li>
+</template>
+
+<template id="reel-template">
+  <article class="reel" aria-roledescription="short">
+    <div class="reel__stage">
+    <div class="reel__frame">
+      <video class="reel__video" playsinline loop muted preload="none" disablepictureinpicture></video>
+
+      {# The whole clip is the play/pause button, as on Reels. #}
+      <button type="button" class="reel__toggle" data-reel-toggle aria-label="Pause">
+        <span class="reel__state" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg>
+        </span>
+      </button>
+
+      <button type="button" class="reel__mute" data-reel-mute aria-pressed="true" aria-label="Turn sound on">
+        <svg class="reel__icon-muted" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l4 6M21 9l-4 6"/></svg>
+        <svg class="reel__icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/></svg>
+      </button>
+
+      <div class="reel__shade" aria-hidden="true"></div>
+      <div class="reel__info">
+        <h2 class="reel__title" data-reel-title></h2>
+        <p class="reel__desc" data-reel-desc></p>
+        <button type="button" class="reel__more" data-reel-more hidden>more</button>
+        <ul class="reel__tags" data-reel-tags aria-label="Tags"></ul>
+      </div>
+
+      <div class="reel__progress" aria-hidden="true"><span data-reel-progress></span></div>
+      <p class="reel__error" data-reel-error role="alert" hidden>This clip could not be played.</p>
+    </div>
+
+    {# Right-hand actions, as on Reels: beside the clip on a computer, over it on a phone. #}
+    <div class="reel__actions">
+      <button type="button" class="reel__action reel__action--like" data-reel-like aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-9.3-9.2C1.5 8.2 3.4 4.5 7.1 4.5c2.1 0 3.6 1.2 4.9 2.9 1.3-1.7 2.8-2.9 4.9-2.9 3.7 0 5.6 3.7 4.4 6.8-1.8 4.6-9.3 9.2-9.3 9.2z"/></svg>
+        <span class="reel__count" data-reel-like-count>0</span>
+      </button>
+      <button type="button" class="reel__action" data-reel-comments aria-haspopup="dialog" aria-controls="reel-comments">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.5a8.5 8.5 0 01-12.3 7.6L3.5 20.5l1.4-4.5A8.5 8.5 0 1120.5 11.5z"/></svg>
+        <span class="reel__count" data-reel-comment-count>0</span>
+      </button>
+    </div>
+    </div>
+  </article>
+</template>
+
+{{ feed|json_script:"reels-data" }}
+<script src="{% static 'shorts/reels.js' %}" defer></script>
+
+{% else %}
+<div class="board shorts-board">
+  <section class="board__main panel">
+    <div class="panel__head">
+      <h1>Shorts</h1>
+      <p class="panel__sub">Short study videos from your courses and the department.</p>
+    </div>
+
+    {% for message in messages %}<p class="shorts-notice" role="status">{{ message }}</p>{% endfor %}
+
+    <div class="feed">
+      <p class="feed__empty">No shorts yet.{% if can_create %} Use <strong>Create Short</strong> to post the first one.{% endif %}</p>
+    </div>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

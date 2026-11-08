@@ -1,0 +1,318 @@
+/* ================================================================
+   SHORTS REEL PLAYER (US-14, SRS-8)
+   Laid out like Instagram Reels: one vertical clip fills the space
+   under the tab bar, and the feed snaps from clip to clip. The card is
+   9:16 and black; every clip is scaled to the card's full width, so its
+   whole width is always on screen, and a wider clip (a landscape
+   recording) gets black above and below it. Around the card is the
+   site's own campus background.
+   ================================================================ */
+
+/* The reel takes the rest of the window, and the page itself stops
+   scrolling, so a swipe always moves the reel and never the page.
+   --reels-top is set by reels.js to where the reel starts. */
+.stage:has(.reels){display:block;padding:0;max-width:none}
+body:has(.reels){overflow:hidden}
+/* The site's top bar (name, notifications, account menu) steps aside here
+   so the clip gets that height as well. The tab bar stays: it is the way
+   back to Home, Course and Calendar, and holds Create Short for staff. */
+body:has(.reels) .topbar{display:none}
+
+.reels{
+  position:relative;z-index:4;width:100%;
+  height:calc(100vh - var(--reels-top, 140px));
+  height:calc(100dvh - var(--reels-top, 140px));
+  /* No backdrop of its own: the campus photo behind every page shows. */
+  background:transparent;color:var(--ink);
+}
+
+.reels__viewport{
+  height:100%;overflow-y:auto;overscroll-behavior:contain;
+  scroll-snap-type:y mandatory;
+  scrollbar-width:none;outline:none;
+}
+.reels__viewport::-webkit-scrollbar{display:none}
+.reels__viewport:focus-visible{box-shadow:inset 0 0 0 2px var(--ku-green-800)}
+
+/* One clip per screen, and one at a time: scroll-snap-stop keeps a hard
+   flick from skipping past the next clip. */
+.reel{
+  height:100%;scroll-snap-align:start;scroll-snap-stop:always;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px 0;
+  /* Lets the card size itself from this slide's height (cqh below). */
+  container-type:size;
+}
+/* The stage is the card plus the like/comment column beside it. */
+.reel__stage{position:relative;flex:0 0 auto;height:100%;display:flex}
+/* A 9:16 card as tall as the slide (narrower only if the window is; the
+   152px keeps room for the like/comment column on either side). */
+.reel__frame{
+  position:relative;flex:0 0 auto;height:100%;
+  aspect-ratio:9/16;max-width:calc(100cqw - 152px);
+  background:#000;border-radius:12px;overflow:hidden;
+  box-shadow:0 10px 30px rgba(28,60,50,.25);
+}
+/* Always exactly as wide as the card, centred top to bottom. A wide clip
+   leaves black above and below; a clip taller than 9:16 loses an equal
+   strip at the top and bottom instead (overflow), as on Reels. */
+.reel__video{
+  position:absolute;left:0;top:50%;
+  width:100%;height:auto;max-height:none;
+  transform:translateY(-50%);
+}
+
+/* --- play / pause: the whole clip is the button --- */
+.reel__toggle{
+  position:absolute;inset:0;z-index:1;
+  display:grid;place-items:center;
+  background:none;border:0;padding:0;cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+}
+.reel__state{
+  width:72px;height:72px;border-radius:50%;
+  background:rgba(0,0,0,.45);display:grid;place-items:center;
+  opacity:0;transform:scale(.85);transition:opacity .15s ease, transform .15s ease;
+}
+.reel__state svg{width:30px;height:30px;fill:#fff;margin-left:4px}
+.reel.is-paused .reel__state{opacity:1;transform:none}
+.reel__toggle:focus-visible .reel__state{opacity:1;transform:none;outline:2px solid #fff;outline-offset:2px}
+
+/* --- sound --- */
+.reel__mute{
+  position:absolute;top:12px;right:12px;z-index:3;
+  width:36px;height:36px;border-radius:50%;border:0;
+  background:rgba(0,0,0,.5);color:#fff;
+  /* The ring keeps the button visible over black letterboxing too. */
+  box-shadow:0 0 0 1px rgba(255,255,255,.28);
+  display:grid;place-items:center;cursor:pointer;
+}
+.reel__mute svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.reel__mute svg path:first-child{fill:currentColor}
+.reel__mute[aria-pressed="true"] .reel__icon-sound,
+.reel__mute[aria-pressed="false"] .reel__icon-muted{display:none}
+.reel__mute:focus-visible{outline:2px solid #fff;outline-offset:2px}
+
+/* --- title, description, tags over the bottom of the clip --- */
+.reel__shade{
+  position:absolute;left:0;right:0;bottom:0;height:45%;z-index:1;pointer-events:none;
+  background:linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,.35) 55%, rgba(0,0,0,0));
+}
+.reel__info{
+  position:absolute;left:0;right:0;bottom:0;z-index:2;
+  padding:0 16px 22px 16px;
+  pointer-events:none; /* taps fall through to play/pause */
+  text-shadow:0 1px 2px rgba(0,0,0,.45);
+}
+.reel__title{margin:0 0 4px;font-family:var(--font-display);font-weight:700;font-size:15px;line-height:1.3;color:#fff}
+.reel__desc{
+  margin:0;font-family:var(--font-ui);font-size:14px;line-height:1.4;color:rgba(255,255,255,.92);
+  white-space:pre-line;overflow-wrap:anywhere;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+}
+.reel__desc:empty{display:none}
+.reel.is-expanded .reel__desc{
+  display:block;-webkit-line-clamp:unset;max-height:38vh;overflow-y:auto;pointer-events:auto;
+}
+.reel__more{
+  pointer-events:auto;background:none;border:0;padding:2px 0;cursor:pointer;
+  font-family:var(--font-ui);font-weight:600;font-size:14px;color:rgba(255,255,255,.72);
+}
+.reel__more:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.reel__tags{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:4px 10px}
+.reel__tags:empty{display:none}
+.reel__tags li{font-family:var(--font-ui);font-weight:600;font-size:13px;color:#fff}
+
+.reel__progress{position:absolute;left:0;right:0;bottom:0;height:3px;z-index:3;background:rgba(255,255,255,.22)}
+.reel__progress span{display:block;height:100%;width:0;background:#fff}
+
+.reel__error{
+  position:absolute;left:16px;right:16px;top:50%;transform:translateY(-50%);z-index:3;
+  margin:0;padding:10px 14px;border-radius:10px;text-align:center;
+  background:rgba(0,0,0,.65);font-family:var(--font-ui);font-weight:600;font-size:14px;
+}
+
+/* --- desktop: up/down buttons beside the clip --- */
+.reels__nav{
+  position:absolute;right:24px;top:50%;transform:translateY(-50%);z-index:5;
+  display:flex;flex-direction:column;gap:12px;
+}
+.reels__step{
+  width:44px;height:44px;border-radius:50%;border:0;cursor:pointer;
+  background:var(--card);color:var(--ku-green-800);display:grid;place-items:center;
+  box-shadow:0 4px 14px rgba(28,60,50,.22);
+}
+.reels__step svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.reels__step:hover{background:#fff}
+.reels__step:disabled{opacity:.3;cursor:default}
+.reels__step:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+
+/* --- "uploaded" and other one-off messages --- */
+.reels__toast{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);z-index:6;
+  margin:0;max-width:calc(100% - 32px);
+  padding:8px 16px;border-radius:999px;
+  background:rgba(255,255,255,.96);color:var(--ink);
+  font-family:var(--font-ui);font-weight:600;font-size:13px;
+  box-shadow:0 6px 18px rgba(0,0,0,.3);transition:opacity .3s ease;
+}
+.reels__toast.is-gone{opacity:0;pointer-events:none}
+.reels__noscript{margin:0;padding:48px 16px;text-align:center;font-family:var(--font-ui)}
+
+/* --- like and comment: a column to the right of the clip, as on Reels --- */
+.reel__actions{
+  position:absolute;left:100%;bottom:20px;margin-left:14px;z-index:3;
+  display:flex;flex-direction:column;align-items:center;gap:18px;
+}
+.reel__action{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  background:none;border:0;padding:0;cursor:pointer;
+  color:var(--ku-green-900);font-family:var(--font-ui);font-weight:600;font-size:12.5px;
+  -webkit-tap-highlight-color:transparent;
+}
+/* Each icon sits in a white circle, so it reads the same over a bright
+   clip, black letterboxing or the campus photo. */
+.reel__action svg{
+  box-sizing:content-box;width:24px;height:24px;padding:11px;
+  background:#fff;border-radius:50%;box-shadow:0 4px 12px rgba(28,60,50,.22);
+  fill:none;stroke:currentColor;stroke-width:1.9;stroke-linejoin:round;
+  transition:transform .15s ease;
+}
+.reel__action:active svg{transform:scale(.88)}
+.reel__action:focus-visible{outline:none}
+.reel__action:focus-visible svg{outline:2px solid var(--ku-green-800);outline-offset:3px}
+.reel__action--like[aria-pressed="true"] svg{fill:#ED4956;stroke:#ED4956}
+.reel__action--like.is-popping svg{animation:reel-pop .35s ease}
+@keyframes reel-pop{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+.reel__count{color:var(--ink);min-height:1em}
+
+/* --- comments: a panel beside the clip, a sheet from the bottom on phones --- */
+.comments{
+  position:absolute;z-index:8;top:16px;bottom:16px;right:24px;
+  width:min(380px, calc(100% - 48px));
+  display:flex;flex-direction:column;overflow:hidden;
+  background:var(--card);color:var(--ink);border-radius:14px;
+  box-shadow:0 18px 50px rgba(28,60,50,.3);
+}
+.comments[hidden],.comments__backdrop[hidden]{display:none}
+.reels.has-comments .reels__nav{display:none}
+/* With comments open on a wide screen, the clip moves left to make room,
+   so the panel never covers the clip or its like/comment buttons. Narrower
+   screens get the bottom sheet instead (below), which leaves the clip be. */
+@media (min-width:1024px){
+  .reels.has-comments .reel{padding-right:428px}
+}
+.comments__head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:12px 12px 12px 16px;border-bottom:1px solid var(--hairline);
+}
+.comments__head h2{margin:0;font-family:var(--font-display);font-weight:700;font-size:16px;color:var(--ink)}
+.comments__total{color:var(--ink-muted);font-weight:600;font-size:14px}
+.comments__close{
+  width:36px;height:36px;border:0;border-radius:50%;background:none;cursor:pointer;
+  color:var(--ink);display:grid;place-items:center;
+}
+.comments__close:hover{background:rgba(0,0,0,.06)}
+.comments__close:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:1px}
+.comments__close svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.comments__body{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:4px 16px 8px}
+.comments__list{list-style:none;margin:0;padding:0}
+.comment{display:flex;gap:10px;padding:10px 0}
+.comment__avatar{
+  flex:0 0 32px;height:32px;border-radius:50%;
+  background:var(--ku-sage);color:#fff;display:grid;place-items:center;
+  font-family:var(--font-ui);font-weight:700;font-size:13px;
+}
+.comment__main{flex:1;min-width:0}
+.comment__head{margin:0;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 6px;font-family:var(--font-ui);font-size:13px}
+.comment__author{font-weight:700;color:var(--ink)}
+.comment__role{
+  font-size:11px;font-weight:600;color:var(--ku-green-800);
+  background:#E1ECE6;border-radius:999px;padding:1px 7px;
+}
+.comment__time{color:var(--ink-muted);font-size:12px}
+.comment__body{margin:3px 0 0;font-family:var(--font-ui);font-size:14px;line-height:1.45;color:var(--ink);white-space:pre-line;overflow-wrap:anywhere}
+.comment__actions{margin:4px 0 0;display:flex;gap:14px}
+.comment__action{
+  padding:0;border:0;background:none;cursor:pointer;
+  font-family:var(--font-ui);font-size:12px;font-weight:600;color:var(--ink-muted);
+}
+.comment__action:hover{color:var(--ink)}
+.comment__action:focus-visible,.comment__toggle:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px;border-radius:4px}
+.comment__action[hidden]{display:none}
+.comment__delete:hover,.comment__delete.is-confirming{color:var(--danger)}
+
+/* --- replies: indented under their comment, folded behind "View N replies" --- */
+.comment__toggle{
+  display:flex;align-items:center;gap:10px;margin:8px 0 0;padding:0;
+  border:0;background:none;cursor:pointer;
+  font-family:var(--font-ui);font-size:12.5px;font-weight:600;color:var(--ink-muted);
+}
+.comment__toggle[hidden]{display:none}
+.comment__toggle:hover{color:var(--ink)}
+.comment__toggle-line{display:inline-block;width:24px;border-top:1px solid var(--ink-muted)}
+.comment__replies{list-style:none;margin:2px 0 0;padding:0}
+.comment__replies[hidden]{display:none}
+.comment__replies .comment{padding:8px 0 4px}
+.comment__replies .comment__avatar{flex-basis:26px;height:26px;font-size:11.5px}
+.comment.is-new{animation:comment-new 1.2s ease}
+@keyframes comment-new{from{background:#E1ECE6}to{background:transparent}}
+.comments__empty{margin:28px 0;text-align:center;color:var(--ink-muted);font-family:var(--font-ui);font-size:14px}
+.comments__more{
+  display:block;margin:6px auto 10px;border:0;background:none;cursor:pointer;
+  color:var(--ku-green-800);font-family:var(--font-ui);font-weight:600;font-size:13px;
+}
+.comments__more[hidden]{display:none}
+.comments__status{margin:6px 0;text-align:center;color:var(--danger);font-family:var(--font-ui);font-size:12.5px}
+.comments__status:empty{display:none}
+.comments__form{padding:10px 12px;border-top:1px solid var(--hairline);background:var(--card)}
+.comments__compose{display:flex;align-items:flex-end;gap:8px}
+.comments__replying{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin:-2px 4px 8px;font-family:var(--font-ui);font-size:12.5px;color:var(--ink-muted);
+}
+.comments__replying[hidden]{display:none}
+.comments__replying strong{color:var(--ink)}
+.comments__replying-cancel{
+  width:26px;height:26px;border:0;border-radius:50%;background:none;cursor:pointer;
+  color:var(--ink-muted);display:grid;place-items:center;
+}
+.comments__replying-cancel:hover{background:rgba(0,0,0,.06);color:var(--ink)}
+.comments__replying-cancel svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.comments__form textarea{
+  flex:1;resize:none;min-height:38px;max-height:104px;
+  padding:9px 12px;border:1px solid var(--field-line);border-radius:18px;background:#fff;
+  font-family:var(--font-ui);font-size:14px;line-height:1.4;color:var(--ink);
+}
+.comments__form textarea:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:1px}
+.comments__post{
+  border:0;background:none;cursor:pointer;padding:9px 6px;
+  color:var(--ku-green-800);font-family:var(--font-ui);font-weight:700;font-size:14px;
+}
+.comments__post:disabled{opacity:.4;cursor:default}
+.comments__backdrop{display:none}
+
+/* --- phones: the card may use the full width, swiping replaces the buttons --- */
+@media (max-width:640px){
+  .reel{padding:0}
+  .reel__frame{max-width:100cqw;border-radius:0;box-shadow:none}
+  .reels__nav{display:none}
+  /* Over the clip, in white, leaving the bottom-left to the title. */
+  .reel__actions{left:auto;right:10px;bottom:84px;margin:0;gap:20px}
+  .reel__action svg{box-shadow:0 3px 10px rgba(0,0,0,.35)}
+  .reel__count{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+  .reel__info{padding-right:72px}
+  /* Under 16px, iPhone Safari zooms the whole page when the box is tapped. */
+  .comments__form textarea{font-size:16px}
+}
+/* Phones and tablets: comments slide up from the bottom over the clip. */
+@media (max-width:1023px){
+  .comments{top:auto;left:0;right:0;bottom:0;width:auto;height:72%;border-radius:16px 16px 0 0}
+  .comments__backdrop:not([hidden]){display:block;position:absolute;inset:0;z-index:7;background:rgba(0,0,0,.35)}
+}
+@media (prefers-reduced-motion:reduce){
+  .reel__state,.reels__toast{transition:none}
+  .reel__action svg{transition:none}
+  .reel__action--like.is-popping svg{animation:none}
+  .comment.is-new{animation:none}
+}

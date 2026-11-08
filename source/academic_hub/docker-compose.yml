@@ -16,12 +16,36 @@ services:
       timeout: 5s
       retries: 5
 
+  # Object storage for Shorts clips (proposal section 10).
+  # MinIO itself no longer publishes images: Docker Hub dropped minio/minio
+  # and quay.io stopped serving it in 2026. pgsty/silo is the maintained
+  # community build of the same MinIO server, with the same S3 API and the
+  # same MINIO_* settings. Pinned to a release tag so every machine runs the
+  # same version.
+  minio:
+    image: docker.io/pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-bnm-minio}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-bnm-minio-dev-password}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"  # S3 API
+      - "9001:9001"  # web console: http://localhost:9001
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   web:
     build: .
-    command: sh -c "python manage.py migrate --noinput && python manage.py runserver 0.0.0.0:8000"
+    command: sh -c "python manage.py migrate --noinput && python manage.py ensure_shorts_bucket && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - .:/app
-      - ./media:/app/media  
+      - ./media:/app/media
     ports:
       - "8000:8000"
     env_file:
@@ -32,9 +56,18 @@ services:
       - POSTGRES_PASSWORD=postgres
       - DB_HOST=db
       - DB_PORT=5432
+      # Shorts clips go to the minio service above. The same credentials
+      # as MINIO_ROOT_*, so an existing .env needs no new lines.
+      - SHORTS_STORAGE=minio
+      - MINIO_ENDPOINT_URL=http://minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER:-bnm-minio}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD:-bnm-minio-dev-password}
     depends_on:
       db:
+        condition: service_healthy
+      minio:
         condition: service_healthy
 
 volumes:
   postgres_data:
+  minio_data:

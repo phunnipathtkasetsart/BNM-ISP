@@ -1,0 +1,32 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block title %}Create FAQ category — KU Student Portal{% endblock %}
+{% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">{% endblock %}
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+{% endblock %}
+{% block topbar_right %}{% include "accounts/_account_menu.html" %}{% endblock %}
+{% block content %}
+<div class="board faq-board">
+  <section class="board__main panel">
+    <div class="panel__head faq-board__head">
+      <h1>Create FAQ category</h1>
+    </div>
+    <form method="post" class="forum-form">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ return_to }}">
+      {{ form.non_field_errors }}
+      <div class="forum-form__field">
+        {{ form.name.label_tag }}{{ form.name }}
+        {% for error in form.name.errors %}<span class="forum-form__error">{{ error }}</span>{% endfor %}
+      </div>
+      <div class="forum-form__actions">
+        <button type="submit" class="daterow__go">Create category</button>
+        <a class="forum-form__cancel" href="{{ return_to }}">Cancel</a>
+      </div>
+    </form>
+  </section>
+</div>
+{% endblock %}
