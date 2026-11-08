@@ -1,0 +1,56 @@
+{% load tz %}
+<div id="forum-results">
+  <p class="forum-results__count" role="status">
+    {{ page_obj.paginator.count }} question{{ page_obj.paginator.count|pluralize }}
+  </p>
+  <div class="feed">
+    {% for t in threads %}
+      <article class="post forum-question-card{% if t.archived_at %} post--archived{% endif %}">
+        <div class="post__top">
+          <h2 class="post__title">
+            <a class="forum-question-link" href="{% url 'announcements:forum_question_detail' t.pk %}">{{ t.title }}</a>
+          </h2>
+          {% if t.is_pinned %}<span class="badge badge--pinned">PINNED</span>{% endif %}
+          {% if not t.is_published %}<span class="badge badge--closed">UNPUBLISHED</span>{% endif %}
+          {% if t.archived_at %}<span class="badge badge--closed">ARCHIVED</span>{% endif %}
+        </div>
+        <p class="post__meta">
+          <span class="forum-author-role">{{ t.author_role }}</span>
+          <span class="forum-audience-tag">{{ t.audience_label }}</span>
+          {% if t.category %}<span class="forum-category-tag">{{ t.category.name }}</span>{% endif %}
+          {{ t.author_label }} &middot; Posted
+          {% timezone "Asia/Bangkok" %}
+            {% now "Y-m-d" as today %}
+            {% if t.created_at|date:"Y-m-d" == today %}{{ t.created_at|date:"H:i" }}{% else %}{{ t.created_at|date:"j M Y" }}{% endif %}
+          {% endtimezone %}
+          {% if t.updated_by_label %}
+            &middot; Updated
+            {% timezone "Asia/Bangkok" %}
+              {% now "Y-m-d" as today %}
+              {% if t.updated_at|date:"Y-m-d" == today %}{{ t.updated_at|date:"H:i" }}{% else %}{{ t.updated_at|date:"j M Y" }}{% endif %}
+            {% endtimezone %}
+            {% if not t.updated_by_is_author %}({{ t.updated_by_label }}){% endif %}
+          {% endif %}
+        </p>
+        <p class="post__body">{{ t.body|truncatewords:32 }}</p>
+        <p class="forum-card__comments">
+          {{ t.comment_count }} comment{{ t.comment_count|pluralize }}
+        </p>
+      </article>
+    {% empty %}
+      <p class="feed__empty">No questions match the selected search and filters.</p>
+    {% endfor %}
+  </div>
+
+  {% if page_obj.paginator.num_pages > 1 %}
+    <nav class="forum-pagination" aria-label="Question pages">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if active_filters %}&amp;{{ active_filters }}{% endif %}">Previous</a>
+      {% endif %}
+      <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if active_filters %}&amp;{{ active_filters }}{% endif %}">Next</a>
+      {% endif %}
+    </nav>
+  {% endif %}
+</div>

@@ -19,7 +19,6 @@
 {% block content %}
 <nav class="subnav" aria-label="Sections">
   <a class="subnav__tab subnav__tab--on" href="{% url 'announcements:faq_board' %}">FAQ Forum</a>
-  {% if not is_guest %}<a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>{% else %}<span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see your courses">Course</span>{% endif %}
 </nav>
 
 <div class="board faq-board faq-board--detail">
@@ -32,19 +31,22 @@
     </div>
 
     {% if question_form %}
-      <form method="post" class="forum-form">
+      <form id="forum-question-form" method="post" class="forum-form">
         {% csrf_token %}
         <h2>Edit question</h2>
         {{ question_form.non_field_errors }}
         {% for field in question_form %}
-          <div class="forum-form__field{% if field.name == 'is_published' %} forum-form__field--checkbox{% endif %}">
-            {% if field.name == "is_published" %}
+          <div class="forum-form__field{% if field.name == 'is_published' or field.name == 'is_pinned' %} forum-form__field--checkbox{% endif %}">
+            {% if field.name == "is_published" or field.name == "is_pinned" %}
               <div class="forum-form__checkbox-control">{{ field.label_tag }}{{ field }}</div>
             {% else %}
               {{ field.label_tag }}{{ field }}
             {% endif %}
             {% if field.help_text %}<span class="forum-form__help">{{ field.help_text }}</span>{% endif %}
             {% for error in field.errors %}<span class="forum-form__error">{{ error }}</span>{% endfor %}
+            {% if field.name == "category" and can_manage_forum_content %}
+              <a class="forum-category-create-link" data-forum-category-link href="{% url 'announcements:forum_category_create' %}?next={{ request.get_full_path|urlencode }}">Create a category</a>
+            {% endif %}
           </div>
         {% endfor %}
         <div class="forum-form__actions">
@@ -52,16 +54,21 @@
           <a class="forum-form__cancel" href="{% url 'announcements:forum_question_detail' selected_question.pk %}">Cancel</a>
         </div>
       </form>
+      <p id="forum-draft-status" class="sr-only" role="status" aria-live="polite"></p>
     {% endif %}
 
     <article class="post{% if selected_question.archived_at %} post--archived{% endif %} forum-detail-post">
       <div class="post__top">
         <h1 class="post__title">{{ selected_question.title }}</h1>
+        {% if selected_question.is_pinned %}<span class="badge badge--pinned">PINNED</span>{% endif %}
         {% if not selected_question.is_published %}<span class="badge badge--closed">UNPUBLISHED</span>{% endif %}
         {% if selected_question.archived_at %}<span class="badge badge--closed">ARCHIVED</span>{% endif %}
       </div>
       <p class="post__meta">
-        <span class="forum-author-role">{{ selected_question.author_role }}</span> {{ selected_question.author_label }} &middot; Posted
+        <span class="forum-author-role">{{ selected_question.author_role }}</span>
+        <span class="forum-audience-tag">{{ selected_question.audience_label }}</span>
+        {% if selected_question.category %}<span class="forum-category-tag">{{ selected_question.category.name }}</span>{% endif %}
+        {{ selected_question.author_label }} &middot; Posted
         {% timezone "Asia/Bangkok" %}
           {% now "Y-m-d" as today %}
           {% if selected_question.created_at|date:"Y-m-d" == today %}{{ selected_question.created_at|date:"H:i" }}{% else %}{{ selected_question.created_at|date:"j M Y" }}{% endif %}
@@ -74,17 +81,18 @@
           {% endtimezone %}
           {% if not selected_question.updated_by_is_author %}({{ selected_question.updated_by_label }}){% endif %}
         {% endif %}
-        {% if selected_question.visibility != "everyone" %}
-          &middot;
-          <span class="forum-question-audience">{% for tag in selected_question.departments.all %}{% if not forloop.first %}, {% endif %}{{ tag.label }}{% empty %}Department only{% endfor %}</span>
-        {% endif %}
       </p>
       <div class="thread__body forum-detail-post__body">{{ selected_question.body|linebreaks }}</div>
 
       {% if not question_form %}
         {% if role == "department" or role == "lecturer" or role == "student" and selected_question.author_id == request.user.pk %}
           <div class="forum-actions">
-            <a class="post__edit" href="{% url 'announcements:forum_question_edit' selected_question.pk %}">{% if role == "lecturer" %}Edit tags{% else %}Edit question{% endif %}</a>
+            <a class="post__edit" href="{% url 'announcements:forum_question_edit' selected_question.pk %}">Edit question</a>
+            {% if role == "department" %}
+              <form method="post" action="{% url 'announcements:forum_question_pin' selected_question.pk %}">
+                {% csrf_token %}<button type="submit" class="forum-action-button">{% if selected_question.is_pinned %}Unpin from Most FAQ{% else %}Pin to Most FAQ{% endif %}</button>
+              </form>
+            {% endif %}
             {% if role == "department" and selected_question.archived_at %}
               <form method="post" action="{% url 'announcements:forum_question_restore' selected_question.pk %}">
                 {% csrf_token %}<button type="submit" class="forum-action-button">Restore question</button>
@@ -169,4 +177,5 @@
 
 <a class="switcher switcher--back" href="{% url 'announcements:public_board' %}"
    aria-label="Back to announcements"><span>Home</span></a>
+<script src="{% static 'announcements/js/faq-board.js' %}" defer></script>
 {% endblock %}
