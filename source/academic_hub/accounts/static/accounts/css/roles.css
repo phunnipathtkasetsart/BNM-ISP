@@ -13,10 +13,10 @@
 }
 /* The signed-in admin's own row, marked so it is obvious why it has no control */
 .rolerow--me{background:var(--field)}
-.rolerow__who{display:flex;flex-direction:column;min-width:0;flex:1}
+.rolerow__who{display:flex;flex-direction:column;min-width:220px;flex:1 1 260px}
 .rolerow__name{
   font-weight:600;color:var(--ink);font-size:calc(14.5 * var(--u));
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  overflow-wrap:anywhere;
 }
 .rolerow__id{
   font-size:calc(12.5 * var(--u));color:var(--ink-soft);
@@ -30,6 +30,11 @@
   font-size:calc(12.5 * var(--u));color:var(--ink-muted);
   font-style:italic;flex:none;
 }
+.rolerow__restriction{
+  flex:1 0 100%;margin:calc(-6 * var(--u)) 0 0;
+  padding-top:calc(8 * var(--u));border-top:1px solid var(--hairline);
+  color:var(--ink-muted);font-size:calc(12.5 * var(--u));font-style:italic;
+}
 
 /* Role is state, so it reads as a chip rather than another line of text. */
 .pill{
@@ -41,8 +46,69 @@
 .pill--student{background:#EDF1EF;color:var(--ink-soft);border-color:var(--hairline)}
 .pill--lecturer{background:#E4F0EA;color:#2C6B54;border-color:#BCDCCB}
 .pill--department{background:var(--ku-green-800);color:#fff}
+.rolerow__role{display:inline-flex;align-items:center;gap:6px;flex:none}
+.role-info{
+  position:relative;display:inline-grid;place-items:center;
+  width:17px;height:17px;border:1px solid #87958f;border-radius:50%;
+  color:#65756e;font-size:12px;font-weight:700;font-style:normal;line-height:1;
+  cursor:help
+}
+.role-info::after{
+  content:attr(data-tooltip);position:absolute;z-index:5;left:50%;top:calc(100% + 8px);
+  width:max-content;max-width:min(280px, calc(100vw - 48px));padding:8px 10px;
+  border-radius:6px;background:#183e35;color:#fff;font-size:12px;font-weight:500;
+  line-height:1.4;text-align:left;white-space:normal;box-shadow:0 4px 14px #183e3533;
+  opacity:0;visibility:hidden;transform:translate(-50%, -3px);
+  transition:opacity .14s ease, transform .14s ease, visibility .14s ease;
+  pointer-events:none
+}
+.role-info::before{
+  content:"";position:absolute;z-index:6;left:50%;top:calc(100% + 3px);
+  border:5px solid transparent;border-bottom-color:#183e35;
+  opacity:0;visibility:hidden;transform:translateX(-50%);
+  transition:opacity .14s ease, visibility .14s ease
+}
+.role-info:hover::after,.role-info:focus-visible::after,
+.role-info:hover::before,.role-info:focus-visible::before{opacity:1;visibility:visible}
+.role-info:hover::after,.role-info:focus-visible::after{transform:translate(-50%, 0)}
+.role-info:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
 
-.rolerow__set{display:flex;align-items:center;gap:calc(8 * var(--u));margin:0;flex:none}
+.rolerow__advisor{display:flex;align-items:center;gap:calc(8 * var(--u));margin:0;flex:none}
+.rolerow__advisor .rolerow__self{white-space:nowrap}
+.role-management-form{margin:0}
+.role-management-actions{display:flex;justify-content:flex-end;padding:calc(16 * var(--u)) calc(28 * var(--u))}
+.advisor-sheet{width:min(620px, calc(100vw - 32px));max-height:calc(100vh - 40px);overflow:auto;background:#fff}
+.advisor-sheet .sheet__head{
+  display:flex;align-items:flex-start;justify-content:space-between;
+  gap:calc(12 * var(--u));margin-bottom:calc(14 * var(--u))
+}
+.advisor-sheet .sheet__head h2{color:var(--ink)}
+.advisor-sheet .sheet__x{
+  flex:none;width:auto;background:none;border:0;padding:0 2px;
+  color:#6b7b85;font-size:22px;line-height:1;cursor:pointer
+}
+.advisor-sheet .sheet__x:hover{color:var(--ink)}
+.advisor-sheet .sheet__x:focus-visible{
+  outline:2px solid var(--ku-green-800);outline-offset:3px;border-radius:4px
+}
+.advisor-sheet__intro{margin:8px 0 0;color:var(--ink-soft);font-size:13px;line-height:1.5}
+.advisor-sheet__form{display:grid;gap:8px}
+.advisor-sheet__label{font-size:13px;font-weight:600;color:var(--ink)}
+.advisor-sheet__ids,.advisor-sheet__search{
+  box-sizing:border-box;width:100%;border:1px solid var(--field-line);border-radius:var(--r-field);
+  padding:10px;font:inherit;color:var(--ink);background:var(--field)
+}
+.advisor-sheet__students{max-height:260px;overflow:auto;border:1px solid var(--hairline);border-radius:var(--r-field)}
+.advisor-sheet__student{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-bottom:1px solid var(--hairline);cursor:pointer}
+.advisor-sheet__student:last-child{border-bottom:0}
+.advisor-sheet__student input{margin-top:4px;accent-color:var(--ku-green-800)}
+.advisor-sheet__student span{display:grid;gap:3px;min-width:0}
+.advisor-sheet__student strong{font-size:13px;color:var(--ink)}
+.advisor-sheet__student small{font-size:12px;color:var(--ink-muted);overflow-wrap:anywhere}
+.advisor-sheet__student[hidden]{display:none}
+.advisor-sheet__empty{padding:14px;color:var(--ink-muted)}
+.advisor-sheet__actions{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+.advisor-sheet__cancel{background:#e8eeeb;color:var(--ink-soft)}
 .select{
   font-family:var(--font-ui);font-size:calc(13.5 * var(--u));color:var(--ink);
   background:var(--field);border:1px solid var(--field-line);
@@ -63,8 +129,9 @@
   /* Stacked, so the name and the control each get the full width instead of
      being crushed into three competing columns. */
   .rolerow{flex-wrap:wrap;gap:10px}
-  .rolerow__who{flex:1 1 100%}
-  .rolerow__set{flex:1 1 100%}
+  .rolerow__who{flex:1 1 100%;min-width:0}
+  .rolerow__advisor{flex:1 1 100%;min-width:0;justify-content:flex-start;flex-wrap:wrap}
+  .role-management-actions{padding:14px 18px}
   .select{flex:1}
   .stage{align-items:start}
 }

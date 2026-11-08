@@ -1,6 +1,4 @@
 import os
-
-
 import json
 from datetime import timedelta
 from functools import wraps
@@ -16,6 +14,8 @@ from django.utils import timezone
 
 from django.contrib.auth import get_user_model
 
+
+from accounts.models import AdvisorAssignment
 
 
 from .forms import (CourseForm, CoursePostForm, CsvRosterForm, JoinForm,
@@ -136,6 +136,20 @@ def dashboard(request):
             "archived_courses": [course_data(c, request.user) for c in archived_courses],
         })
 
+    is_student = not request.user.is_staff and not request.user.is_superuser
+    advisor_assignment = None
+    if is_student:
+        advisor_assignment = (
+            AdvisorAssignment.objects.filter(
+                student=request.user,
+                advisor__is_staff=True,
+                advisor__is_superuser=False,
+                advisor__is_active=True,
+            )
+            .select_related("advisor")
+            .first()
+        )
+
     return render(
         request,
         "course/dashboard.html",
@@ -149,6 +163,8 @@ def dashboard(request):
             "upcoming_deadlines": upcoming_deadlines,
             "create_form": CourseForm(),
             "join_form": JoinForm(),
+            "is_student": is_student,
+            "advisor_assignment": advisor_assignment,
         },
     )
 

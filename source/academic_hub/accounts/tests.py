@@ -1,15 +1,24 @@
 from types import SimpleNamespace
-
-from django.test import Client, TestCase, override_settings
+import base64
+import json
+from email.parser import BytesParser
+from email.policy import SMTP
+from urllib.parse import parse_qs, urlencode, urlparse
+from unittest.mock import patch
+
+from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.core import mail
-from django.utils import timezone
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 from datetime import timedelta
 import hashlib
-
-from .middleware import GUEST_ALLOWED_VIEWS, GUEST_SESSION_KEY, is_guest_request
-from .forms import LoginForm, RegisterForm, ResetPasswordForm
-from .models import PasswordResetToken, User
+from cryptography.fernet import Fernet
+
+from .middleware import GUEST_ALLOWED_VIEWS, GUEST_SESSION_KEY, is_guest_request
+from .forms import LoginForm, RegisterForm, ResetPasswordForm
+from .gmail import _create_draft, decrypt_refresh_token, encrypt_refresh_token
+from .models import AdvisorAssignment, GmailOAuthCredential, PasswordResetToken, User
 
 
 @override_settings(
@@ -310,3 +319,356 @@ class GuestTimerTests(TestCase):
         client.get(reverse("announcements:faq_board"))
         client.get(reverse("announcements:public_board"))
         self.assertEqual(client.session.get_expiry_date(), before)
+
+
+class AdvisorAssignmentTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.department = User.objects.create_user(
+            nisit_id="7700000001",
+            email="advisor-department@ku.th",
+            password="test-password",
+            first_name="Department",
+            last_name="Admin",
+            department="ske",
+            is_superuser=True,
+        )
+        cls.student = User.objects.create_user(
+            nisit_id="7700000002",
+            email="advisor-student@ku.th",
+            password="test-password",
+            first_name="Test",
+            last_name="Student",
+            department="ske",
+        )
+        cls.other_student = User.objects.create_user(
+            nisit_id="7700000003",
+            email="advisor-student2@ku.th",
+            password="test-password",
+            first_name="Other",
+            last_name="Student",
+            department="ske",
+        )
+        cls.lecturer = User.objects.create_user(
+            nisit_id="7700000004",
+            email="advisor-lecturer@ku.th",
+            password="test-password",
+            first_name="Lecturer",
+            last_name="One",
+            department="ske",
+            is_staff=True,
+        )
+        cls.other_lecturer = User.objects.create_user(
+            nisit_id="7700000005",
+            email="advisor-lecturer2@ku.th",
+            password="test-password",
+            first_name="Lecturer",
+            last_name="Two",
+            department="ske",
+            is_staff=True,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.department)
+        self.roles_url = reverse("accounts:roles")
+
+    def assign(self, advisor_id, student_ids=(), student_ids_text=""):
+        return self.client.post(self.roles_url, {
+            "action": "advisor",
+            "nisit_id": advisor_id,
+            "student_ids": student_ids,
+            "student_ids_text": student_ids_text,
+        })
+
+    def test_department_can_assign_students_by_selection_and_student_ids(self):
+        page = self.client.get(self.roles_url)
+        self.assertEqual(
+            [row["user"] for row in page.context["students"]],
+            [self.student, self.other_student],
+        )
+        self.assertContains(page, "Assign advised students")
+
+        self.assign(
+            self.lecturer.nisit_id,
+            student_ids=[self.student.nisit_id],
+            student_ids_text=self.other_student.nisit_id,
+        )
+        assignment = AdvisorAssignment.objects.get(student=self.student)
+        self.assertEqual(assignment.advisor, self.lecturer)
+        self.assertEqual(
+            AdvisorAssignment.objects.get(student=self.other_student).advisor,
+            self.lecturer,
+        )
+
+        self.assign(self.lecturer.nisit_id, student_ids=[self.student.nisit_id])
+        self.assertEqual(AdvisorAssignment.objects.filter(advisor=self.lecturer).count(), 1)
+        self.assertFalse(AdvisorAssignment.objects.filter(student=self.other_student).exists())
+
+        self.assign(self.other_lecturer.nisit_id, student_ids_text=self.student.nisit_id)
+        self.assertEqual(
+            AdvisorAssignment.objects.get(student=self.student).advisor,
+            self.other_lecturer,
+        )
+
+        response = self.assign(self.other_lecturer.nisit_id)
+        self.assertContains(response, "0 advised students saved")
+        self.assertFalse(AdvisorAssignment.objects.filter(student=self.student).exists())
+
+    def test_non_department_users_cannot_assign_and_non_students_are_rejected(self):
+        self.client.force_login(self.student)
+        self.assertEqual(self.client.get(self.roles_url).status_code, 403)
+
+        self.client.force_login(self.department)
+        response = self.assign(
+            self.lecturer.nisit_id,
+            student_ids=[self.other_lecturer.nisit_id],
+        )
+        self.assertContains(response, "unknown, inactive, or not student accounts")
+        self.assertFalse(AdvisorAssignment.objects.filter(student=self.student).exists())
+
+    def test_invalid_student_id_does_not_change_existing_assignments(self):
+        AdvisorAssignment.objects.create(student=self.student, advisor=self.lecturer)
+        response = self.assign(
+            self.lecturer.nisit_id,
+            student_ids=[self.other_student.nisit_id],
+            student_ids_text="9999999999",
+        )
+        self.assertContains(response, "9999999999")
+        self.assertEqual(
+            list(AdvisorAssignment.objects.filter(advisor=self.lecturer).values_list("student_id", flat=True)),
+            [self.student.nisit_id],
+        )
+
+    def test_role_changes_are_saved_together_with_one_submit(self):
+        response = self.client.post(self.roles_url, {
+            "action": "roles",
+            f"role_for_{self.student.nisit_id}": "lecturer",
+            f"role_for_{self.other_student.nisit_id}": "department",
+        })
+        self.assertContains(response, "Role changes saved for 2 accounts.")
+        self.student.refresh_from_db()
+        self.other_student.refresh_from_db()
+        self.assertTrue(self.student.is_staff)
+        self.assertTrue(self.other_student.is_superuser)
+
+    def test_bulk_role_changes_reject_invalid_submissions_without_partial_updates(self):
+        response = self.client.post(self.roles_url, {
+            "action": "roles",
+            f"role_for_{self.student.nisit_id}": "lecturer",
+            f"role_for_{self.other_student.nisit_id}": "not-a-role",
+        })
+        self.assertContains(response, "not a role we recognise")
+        self.student.refresh_from_db()
+        self.assertFalse(self.student.is_staff)
+
+    def test_roles_page_has_one_save_button_for_role_changes(self):
+        response = self.client.get(self.roles_url)
+        self.assertContains(response, "Save changes")
+        self.assertNotContains(response, ">Save<", html=False)
+        self.assertContains(response, "Assign students")
+
+    def test_assignments_are_cleared_when_a_student_or_advisor_changes_role(self):
+        self.assign(self.lecturer.nisit_id, student_ids=[self.student.nisit_id])
+        self.client.post(self.roles_url, {
+            "action": "role",
+            "nisit_id": self.student.nisit_id,
+            "role": "lecturer",
+        })
+        self.assertFalse(AdvisorAssignment.objects.filter(student=self.student).exists())
+
+        self.assign(self.lecturer.nisit_id, student_ids=[self.other_student.nisit_id])
+        self.client.post(self.roles_url, {
+            "action": "role",
+            "nisit_id": self.lecturer.nisit_id,
+            "role": "student",
+        })
+        self.assertFalse(AdvisorAssignment.objects.filter(advisor=self.lecturer).exists())
+
+    def test_student_can_have_only_one_advisor_assignment(self):
+        AdvisorAssignment.objects.create(student=self.student, advisor=self.lecturer)
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            AdvisorAssignment.objects.create(
+                student=self.student,
+                advisor=self.other_lecturer,
+            )
+
+
+@override_settings(
+    GOOGLE_OAUTH_CLIENT_ID="test-client",
+    GOOGLE_OAUTH_CLIENT_SECRET="test-secret",
+    GMAIL_TOKEN_ENCRYPTION_KEY=Fernet.generate_key().decode("ascii"),
+)
+class GmailDraftFlowTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.student = User.objects.create_user(
+            nisit_id="7700000011",
+            email="gmail-student@ku.th",
+            password="test-password",
+            first_name="Gmail",
+            last_name="Student",
+            department="ske",
+        )
+        cls.advisor = User.objects.create_user(
+            nisit_id="7700000012",
+            email="gmail-advisor@ku.th",
+            password="test-password",
+            first_name="Gmail",
+            last_name="Advisor",
+            department="ske",
+            is_staff=True,
+        )
+
+    def setUp(self):
+        self.client.force_login(self.student)
+        self.assignment = AdvisorAssignment.objects.create(
+            student=self.student,
+            advisor=self.advisor,
+        )
+
+    def test_refresh_token_is_encrypted_at_rest(self):
+        token = "google-refresh-token"
+        encrypted = encrypt_refresh_token(token)
+
+        self.assertNotIn(token, encrypted)
+        self.assertEqual(decrypt_refresh_token(encrypted), token)
+
+    def test_contact_with_existing_authorization_uses_silent_oauth(self):
+        GmailOAuthCredential.objects.create(
+            user=self.student,
+            google_email=self.student.email,
+            encrypted_refresh_token=encrypt_refresh_token("refresh-token"),
+        )
+        response = self.client.get(
+            reverse("accounts:gmail_oauth_start"),
+            HTTP_ORIGIN="null",
+        )
+        query = parse_qs(urlparse(response["Location"]).query)
+
+        self.assertEqual(urlparse(response["Location"]).netloc, "accounts.google.com")
+        self.assertEqual(query["prompt"], ["none"])
+
+    def test_first_contact_requests_gmail_compose_scope(self):
+        response = self.client.get(reverse("accounts:gmail_oauth_start"))
+        query = parse_qs(urlparse(response["Location"]).query)
+
+        self.assertEqual(urlparse(response["Location"]).netloc, "accounts.google.com")
+        self.assertIn("https://www.googleapis.com/auth/gmail.compose", query["scope"][0])
+        self.assertEqual(query["access_type"], ["offline"])
+        self.assertIn("consent", query["prompt"][0])
+
+    def test_gmail_oauth_start_is_a_get_navigation(self):
+        response = self.client.post(reverse("accounts:gmail_oauth_start"))
+        self.assertEqual(response.status_code, 405)
+
+    def test_silent_oauth_falls_back_to_consent_when_google_requires_interaction(self):
+        GmailOAuthCredential.objects.create(
+            user=self.student,
+            google_email=self.student.email,
+            encrypted_refresh_token=encrypt_refresh_token("refresh-token"),
+        )
+        self.client.get(reverse("accounts:gmail_oauth_start"))
+        state = self.client.session["gmail_oauth_state"]
+
+        response = self.client.get(
+            reverse("accounts:gmail_oauth_callback"),
+            {"state": state, "error": "interaction_required"},
+        )
+        self.assertRedirects(
+            response,
+            reverse("accounts:gmail_oauth_start"),
+            fetch_redirect_response=False,
+        )
+
+        response = self.client.get(reverse("accounts:gmail_oauth_start"))
+        query = parse_qs(urlparse(response["Location"]).query)
+        self.assertIn("consent", query["prompt"][0])
+
+    def test_callback_matches_google_identity_and_stores_encrypted_token(self):
+        state = "oauth-state"
+        session = self.client.session
+        session["gmail_oauth_state"] = state
+        session["gmail_oauth_user_id"] = self.student.pk
+        session["gmail_oauth_advisor_id"] = self.advisor.pk
+        session.save()
+
+        with (
+            patch("accounts.views.exchange_authorization_code", return_value={
+                "access_token": "access-token",
+                "refresh_token": "refresh-token",
+                "scope": "openid email profile https://www.googleapis.com/auth/gmail.compose",
+            }),
+            patch("accounts.views.get_google_account", return_value={
+                "email": self.student.email,
+                "email_verified": True,
+            }),
+            patch("accounts.views.create_advisor_draft", return_value="draft-message-123") as create_draft,
+        ):
+            response = self.client.get(
+                reverse("accounts:gmail_oauth_callback"),
+                {"state": state, "code": "authorization-code"},
+            )
+
+        self.assertEqual(
+            response["Location"],
+            "https://mail.google.com/mail/?authuser="
+            + urlencode({"authuser": self.student.email}).split("=", 1)[1]
+            + "#inbox?compose=draft-message-123",
+        )
+        credential = GmailOAuthCredential.objects.get(user=self.student)
+        self.assertEqual(credential.google_email, self.student.email)
+        self.assertNotIn("refresh-token", credential.encrypted_refresh_token)
+        self.assertEqual(
+            decrypt_refresh_token(credential.encrypted_refresh_token),
+            "refresh-token",
+        )
+        create_draft.assert_called_once_with(
+            self.student,
+            self.advisor,
+            access_token="access-token",
+        )
+
+    def test_callback_rejects_a_different_google_account(self):
+        state = "oauth-state"
+        session = self.client.session
+        session["gmail_oauth_state"] = state
+        session["gmail_oauth_user_id"] = self.student.pk
+        session["gmail_oauth_advisor_id"] = self.advisor.pk
+        session.save()
+
+        with (
+            patch("accounts.views.exchange_authorization_code", return_value={
+                "access_token": "access-token",
+                "refresh_token": "refresh-token",
+                "scope": "https://www.googleapis.com/auth/gmail.compose",
+            }),
+            patch("accounts.views.get_google_account", return_value={
+                "email": "someone-else@ku.th",
+                "email_verified": True,
+            }),
+        ):
+            response = self.client.get(
+                reverse("accounts:gmail_oauth_callback"),
+                {"state": state, "code": "authorization-code"},
+            )
+
+        self.assertRedirects(response, reverse("course:dashboard"), fetch_redirect_response=False)
+        self.assertFalse(GmailOAuthCredential.objects.filter(user=self.student).exists())
+
+    def test_draft_api_payload_uses_student_and_advisor_addresses(self):
+        with patch(
+            "accounts.gmail._request_json",
+            return_value={"id": "draft-id", "message": {"id": "draft-message-id"}},
+        ) as request:
+            message_id = _create_draft("access-token", self.student, self.advisor)
+
+        self.assertEqual(message_id, "draft-message-id")
+        request_data = request.call_args.args[0]
+        payload = json.loads(request_data.data)
+        raw = payload["message"]["raw"]
+        raw_bytes = base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4))
+        message = BytesParser(policy=SMTP).parsebytes(raw_bytes)
+        self.assertEqual(message["From"], self.student.email)
+        self.assertEqual(message["To"], self.advisor.email)
+        self.assertIn(self.student.get_full_name(), message["Subject"])
+        self.assertIn(self.student.nisit_id, message.get_content())

@@ -21,7 +21,8 @@
 <a class="skip" href="#main">Skip to content</a>
 
 <div class="bg" aria-hidden="true">
-  <div class="bg-photo" style="background-image:url('{% static "accounts/img/ku-campus.jpg" %}');"></div>
+  {% static 'accounts/img/ku-campus.jpg' as campus_img %}
+  <div class="bg-photo" style="background-image:url('{{ campus_img }}');"></div>
 </div>
 
 <header class="topbar {% block topbar_mod %}{% endblock %}">
@@ -223,6 +224,17 @@
     // backdrop and close it again — instantly, and on the first tap.
     btn.addEventListener("click", function () {
       if (sheet.open) return;
+      if (btn.dataset.advisorId) {
+        var advisorId = btn.dataset.advisorId;
+        var advisorName = btn.dataset.advisorName || "";
+        var targetInput = sheet.querySelector('input[name="nisit_id"]');
+        var targetName = sheet.querySelector("[data-advisor-target-name]");
+        if (targetInput) targetInput.value = advisorId;
+        if (targetName) targetName.textContent = advisorName;
+        sheet.querySelectorAll('input[name="student_ids"]').forEach(function (student) {
+          student.checked = student.dataset.currentAdvisor === advisorId;
+        });
+      }
       if (sheet.showModal) sheet.showModal(); else sheet.setAttribute("open", "");
       sheet.dataset.openedAt = String(Date.now());
     });
@@ -238,6 +250,18 @@
       if (e.target !== sheet) return;
       if (Date.now() - Number(sheet.dataset.openedAt || 0) < 200) return;
       sheet.close();
+    });
+  });
+
+  document.querySelectorAll("[data-advisor-student-search]").forEach(function (input) {
+    var list = document.getElementById(input.dataset.advisorStudentSearch);
+    if (!list) return;
+    input.addEventListener("input", function () {
+      var query = input.value.trim().toLowerCase();
+      list.querySelectorAll("[data-advisor-student-option]").forEach(function (option) {
+        var searchText = option.dataset.search || "";
+        option.hidden = Boolean(query) && searchText.indexOf(query) === -1;
+      });
     });
   });
 

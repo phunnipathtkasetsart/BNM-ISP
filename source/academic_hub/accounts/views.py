@@ -1,10 +1,11 @@
 import json
 import hashlib
 import logging
-import secrets
+import re
+import secrets
 from datetime import timedelta
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
+from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from django.conf import settings
@@ -18,17 +19,27 @@ from django.contrib import messages
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.db import IntegrityError, transaction
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from .forms import ForgotPasswordForm, GoogleAccountForm, LoginForm, RegisterForm, ResetPasswordForm
-from .middleware import (
+from .gmail import (
+    GMAIL_COMPOSE_SCOPE,
+    GmailAuthorizationError,
+    GmailIntegrationError,
+    create_advisor_draft,
+    decrypt_refresh_token,
+    encrypt_refresh_token,
+    exchange_authorization_code,
+    get_google_account,
+)
+from .middleware import (
     GUEST_ID_PREFIX,
     GUEST_LANDING_VIEW,
     GUEST_SESSION_KEY,
     GUEST_SESSION_SECONDS,
     is_guest_request,
 )
-from .models import PasswordResetToken, User
+from .models import AdvisorAssignment, GmailOAuthCredential, PasswordResetToken, User
 from course.models import Course
 
 
@@ -118,6 +129,145 @@ def google_callback(request):
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     return redirect(GUEST_LANDING_VIEW)
+
+
+def _advisor_contact_assignment(user):
+    if user.is_staff or user.is_superuser or not user.email.lower().endswith("@ku.th"):
+        return None
+    return (
+        AdvisorAssignment.objects.filter(
+            student=user,
+            advisor__is_staff=True,
+            advisor__is_superuser=False,
+            advisor__is_active=True,
+        )
+        .select_related("advisor")
+        .first()
+    )
+
+
+@login_required
+@require_GET
+def gmail_oauth_start(request):
+    assignment = _advisor_contact_assignment(request.user)
+    if assignment is None:
+        messages.error(request, "You do not have an assigned academic advisor.")
+        return redirect("course:dashboard")
+    credential = GmailOAuthCredential.objects.filter(user=request.user).first()
+    if credential and credential.google_email.casefold() != request.user.email.casefold():
+        credential.delete()
+        credential = None
+
+    if not settings.GOOGLE_OAUTH_CLIENT_ID or not settings.GOOGLE_OAUTH_CLIENT_SECRET:
+        messages.error(request, "Gmail contact is not configured. Please contact your department.")
+        return redirect("course:dashboard")
+    if not settings.GMAIL_TOKEN_ENCRYPTION_KEY:
+        messages.error(request, "Gmail contact is not configured. Please contact your department.")
+        return redirect("course:dashboard")
+
+    state = secrets.token_urlsafe(32)
+    request.session["gmail_oauth_state"] = state
+    request.session["gmail_oauth_user_id"] = request.user.pk
+    request.session["gmail_oauth_advisor_id"] = assignment.advisor_id
+    force_consent = request.session.pop("gmail_oauth_force_consent", False)
+    query = urlencode({
+        "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
+        "redirect_uri": settings.GOOGLE_GMAIL_OAUTH_REDIRECT_URI,
+        "response_type": "code",
+        "scope": f"openid email profile {GMAIL_COMPOSE_SCOPE}",
+        "state": state,
+        "access_type": "offline",
+        "prompt": "consent select_account" if not credential or force_consent else "none",
+    })
+    return redirect(f"https://accounts.google.com/o/oauth2/v2/auth?{query}")
+
+
+@login_required
+def gmail_oauth_callback(request):
+    expected_state = request.session.pop("gmail_oauth_state", None)
+    expected_user_id = request.session.pop("gmail_oauth_user_id", None)
+    expected_advisor_id = request.session.pop("gmail_oauth_advisor_id", None)
+    if (
+        not expected_state
+        or expected_user_id != request.user.pk
+        or not secrets.compare_digest(expected_state, request.GET.get("state", ""))
+    ):
+        messages.error(request, "Gmail authorization could not be verified. Please try again.")
+        return redirect("course:dashboard")
+    if request.GET.get("error") in {
+        "interaction_required",
+        "login_required",
+        "consent_required",
+    }:
+        request.session["gmail_oauth_force_consent"] = True
+        return redirect("accounts:gmail_oauth_start")
+    if request.GET.get("error") or not request.GET.get("code"):
+        messages.error(request, "Gmail authorization was cancelled.")
+        return redirect("course:dashboard")
+
+    assignment = _advisor_contact_assignment(request.user)
+    if assignment is None or assignment.advisor_id != expected_advisor_id:
+        messages.error(request, "Your advisor assignment changed. Please try again.")
+        return redirect("course:dashboard")
+
+    try:
+        token_data = exchange_authorization_code(request.GET["code"])
+        access_token = token_data.get("access_token")
+        granted_scopes = token_data.get("scope", "")
+        if (
+            not isinstance(access_token, str)
+            or not access_token
+            or not isinstance(granted_scopes, str)
+            or GMAIL_COMPOSE_SCOPE not in granted_scopes.split()
+        ):
+            raise GmailAuthorizationError("Google did not grant Gmail draft access.")
+        google_account = get_google_account(access_token)
+        google_email = google_account.get("email", "")
+        if (
+            google_account.get("email_verified") is not True
+            or not isinstance(google_email, str)
+            or google_email.casefold() != request.user.email.casefold()
+            or not google_email.casefold().endswith("@ku.th")
+        ):
+            messages.error(
+                request,
+                "Choose the verified KU Google account that matches your student email.",
+            )
+            return redirect("course:dashboard")
+
+        credential = GmailOAuthCredential.objects.filter(user=request.user).first()
+        refresh_token = token_data.get("refresh_token")
+        if not refresh_token:
+            if credential and credential.google_email.casefold() == google_email.casefold():
+                refresh_token = decrypt_refresh_token(credential.encrypted_refresh_token)
+            else:
+                raise GmailAuthorizationError(
+                    "Google did not provide offline access. Please authorize Gmail again."
+                )
+        if credential is None:
+            credential = GmailOAuthCredential(user=request.user)
+        credential.google_email = google_email
+        credential.encrypted_refresh_token = encrypt_refresh_token(refresh_token)
+        credential.save()
+        draft_message_id = create_advisor_draft(
+            request.user,
+            assignment.advisor,
+            access_token=access_token,
+        )
+    except GmailAuthorizationError:
+        request.session["gmail_oauth_force_consent"] = True
+        messages.error(request, "Gmail authorization expired or was incomplete. Please try again.")
+        return redirect("accounts:gmail_oauth_start")
+    except GmailIntegrationError:
+        messages.error(request, "Gmail could not create your draft. Please try again later.")
+        return redirect("course:dashboard")
+
+    return redirect(
+        "https://mail.google.com/mail/?"
+        + urlencode({"authuser": request.user.email})
+        + "#inbox?"
+        + urlencode({"compose": draft_message_id})
+    )
 
 
 def google_register(request):
@@ -413,46 +563,156 @@ def is_department_admin(user):
 def roles_view(request):
     if not is_department_admin(request.user):
         return render(request, "accounts/no_access.html", status=403)
-
+
     notice = error = None
-
+
     if request.method == "POST":
-        target_id = request.POST.get("nisit_id", "")
-        new_role = request.POST.get("role", "")
-
-        if new_role not in ROLES:
-            error = "That is not a role we recognise."
-        elif target_id == request.user.nisit_id:
-            # Without this a department admin can demote themselves and lock
-            # everyone out of the only page that can put the role back.
-            error = "You cannot change your own role. Ask another Department admin."
-        else:
-            target = User.objects.filter(nisit_id=target_id).first()
-            if target is None:
-                error = "That account no longer exists."
-            elif target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
-                error = "This lecturer cannot change roles while they still own a class."
-            else:
-                flags = ROLES[new_role]
-                target.is_staff = flags["is_staff"]
-                target.is_superuser = flags["is_superuser"]
-                target.save(update_fields=["is_staff", "is_superuser"])
-                notice = f"{target.get_full_name()} is now {flags['label']}."
-
-    people = []
-    for u in User.objects.all().order_by("nisit_id"):
-        key = role_of(u)
-        people.append({
-            "user": u,
-            "role": key,
-            "role_label": ROLES[key]["label"],
-            "is_me": u.nisit_id == request.user.nisit_id,
-            "has_owned_classes": u.is_staff and Course.objects.filter(owner=u).exists(),
-        })
-
-    return render(request, "accounts/roles.html", {
-        "people": people,
-        "roles": [{"key": k, "label": v["label"]} for k, v in ROLES.items()],
-        "notice": notice,
-        "error": error,
-    })
+        action = request.POST.get("action", "role")
+        if action == "roles":
+            role_fields = {
+                key.removeprefix("role_for_"): value
+                for key, value in request.POST.items()
+                if key.startswith("role_for_")
+            }
+            changes = []
+            for target_id, new_role in role_fields.items():
+                target = User.objects.filter(nisit_id=target_id).first()
+                if target is None:
+                    error = f"Account {target_id} no longer exists."
+                    break
+                if target_id == request.user.nisit_id:
+                    error = "You cannot change your own role. Ask another Department admin."
+                    break
+                if new_role not in ROLES:
+                    error = f"That is not a role we recognise for {target.get_full_name()}."
+                    break
+                if role_of(target) == new_role:
+                    continue
+                if target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
+                    error = "This lecturer cannot change roles while they still own a class."
+                    break
+                changes.append((target, new_role))
+
+            if not error and changes:
+                with transaction.atomic():
+                    for target, new_role in changes:
+                        flags = ROLES[new_role]
+                        if new_role != "student":
+                            AdvisorAssignment.objects.filter(student=target).delete()
+                        if new_role != "lecturer":
+                            AdvisorAssignment.objects.filter(advisor=target).delete()
+                        target.is_staff = flags["is_staff"]
+                        target.is_superuser = flags["is_superuser"]
+                        target.save(update_fields=["is_staff", "is_superuser"])
+                notice = f"Role changes saved for {len(changes)} account{'s' if len(changes) != 1 else ''}."
+            elif not error:
+                notice = "There are no role changes to save."
+        elif action == "advisor":
+            target_id = request.POST.get("nisit_id", "")
+            target = User.objects.filter(nisit_id=target_id).first()
+            if target is None:
+                error = "That account no longer exists."
+            else:
+                selected_ids = set(request.POST.getlist("student_ids"))
+                typed_ids = set(re.split(r"[\s,;]+", request.POST.get("student_ids_text", "").strip()))
+                typed_ids.discard("")
+                selected_ids.update(typed_ids)
+                if role_of(target) != "lecturer" or not target.is_active:
+                    error = "Only active Lecturer accounts can have advised students."
+                else:
+                    students = list(User.objects.filter(
+                        nisit_id__in=selected_ids,
+                        is_staff=False,
+                        is_superuser=False,
+                        is_active=True,
+                    ))
+                    students_by_id = {student.nisit_id: student for student in students}
+                    invalid_ids = sorted(selected_ids - students_by_id.keys())
+                    if invalid_ids:
+                        error = (
+                            "These IDs are unknown, inactive, or not student accounts: "
+                            + ", ".join(invalid_ids)
+                        )
+                    else:
+                        with transaction.atomic():
+                            AdvisorAssignment.objects.filter(advisor=target).exclude(
+                                student_id__in=selected_ids
+                            ).delete()
+                            for student in students:
+                                AdvisorAssignment.objects.update_or_create(
+                                    student=student,
+                                    defaults={"advisor": target},
+                                )
+                        count = len(selected_ids)
+                        notice = (
+                            f"{count} advised student{'s' if count != 1 else ''} saved for "
+                            f"{target.get_full_name()}."
+                        )
+        elif action == "role":
+            target_id = request.POST.get("nisit_id", "")
+            target = User.objects.filter(nisit_id=target_id).first()
+            if target is None:
+                error = "That account no longer exists."
+            else:
+                new_role = request.POST.get("role", "")
+                if new_role not in ROLES:
+                    error = "That is not a role we recognise."
+                elif target_id == request.user.nisit_id:
+                    error = "You cannot change your own role. Ask another Department admin."
+                elif target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
+                    error = "This lecturer cannot change roles while they still own a class."
+                else:
+                    flags = ROLES[new_role]
+                    with transaction.atomic():
+                        if new_role != "student":
+                            AdvisorAssignment.objects.filter(student=target).delete()
+                        if new_role != "lecturer":
+                            AdvisorAssignment.objects.filter(advisor=target).delete()
+                        target.is_staff = flags["is_staff"]
+                        target.is_superuser = flags["is_superuser"]
+                        target.save(update_fields=["is_staff", "is_superuser"])
+                    notice = f"{target.get_full_name()} is now {flags['label']}."
+        else:
+            error = "That action is not recognised."
+
+    assignments = AdvisorAssignment.objects.filter(
+        advisor__is_staff=True,
+        advisor__is_superuser=False,
+        advisor__is_active=True,
+    ).select_related("advisor", "student")
+    assignments_by_student = {
+        assignment.student_id: assignment.advisor for assignment in assignments
+    }
+    advisee_counts = {}
+    for assignment in assignments:
+        advisee_counts[assignment.advisor_id] = advisee_counts.get(assignment.advisor_id, 0) + 1
+    student_users = User.objects.filter(
+        is_staff=False, is_superuser=False, is_active=True
+    ).order_by("nisit_id")
+    students = [
+        {
+            "user": student,
+            "advisor": assignments_by_student.get(student.nisit_id),
+        }
+        for student in student_users
+    ]
+    people = []
+    for u in User.objects.all().order_by("nisit_id"):
+        key = role_of(u)
+        people.append({
+            "user": u,
+            "role": key,
+            "role_label": ROLES[key]["label"],
+            "is_me": u.nisit_id == request.user.nisit_id,
+            "has_owned_classes": u.is_staff and Course.objects.filter(owner=u).exists(),
+            "advisor": assignments_by_student.get(u.nisit_id),
+            "advisee_count": advisee_counts.get(u.nisit_id, 0),
+        })
+
+    return render(request, "accounts/roles.html", {
+        "people": people,
+        "roles": [{"key": k, "label": v["label"]} for k, v in ROLES.items()],
+        "students": students,
+        "notice": notice,
+        "error": error,
+    })
