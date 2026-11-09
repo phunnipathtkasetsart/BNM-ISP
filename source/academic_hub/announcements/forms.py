@@ -6,11 +6,13 @@ boundary that actually holds.
 """
 
 from django import forms
+from django.db import models
 from django.utils import timezone
 
 from .models import (
     Announcement,
     Audience,
+    ForumCategory,
     ForumQuestion,
     ForumReply,
     Tag,
@@ -132,22 +134,38 @@ class AnnouncementForm(forms.ModelForm):
 
 
 class ForumQuestionForm(forms.ModelForm):
+    visibility = forms.ChoiceField(label="Audience")
+
     class Meta:
         model = ForumQuestion
-        fields = ["title", "body", "visibility", "departments", "is_published"]
+        fields = [
+            "title",
+            "body",
+            "visibility",
+            "category",
+            "is_pinned",
+            "is_published",
+        ]
         widgets = {
             "title": forms.TextInput(attrs={"autocomplete": "off"}),
             "body": forms.Textarea(attrs={"rows": 5}),
-            "departments": forms.CheckboxSelectMultiple,
         }
         labels = {
             "title": "Question",
             "body": "Details",
-            "visibility": "Who can see this question?",
-            "departments": "Department tags",
+            "visibility": "Audience",
+            "category": "Category",
+            "is_pinned": "Pin to Most FAQ",
             "is_published": "Published",
         }
         help_texts = {
+            "category": (
+                "Choose a category for this question. Categories are available "
+                "to everyone as a forum filter."
+            ),
+            "is_pinned": (
+                "Pinned questions appear in the homepage Most FAQ box."
+            ),
             "is_published": (
                 "When checked, this question is visible to users allowed by "
                 "its audience and department. Uncheck it to hide the question "
@@ -160,39 +178,45 @@ class ForumQuestionForm(forms.ModelForm):
         super().__init__(*args, instance=instance, **kwargs)
         self.author = author
         self.role = self._role_for(author)
-        self.fields["departments"].queryset = Tag.objects.filter(
-            kind=Tag.Kind.PROGRAMME
-        ).order_by("label")
-        self.fields["departments"].label_from_instance = lambda tag: tag.label
+        self.fields["category"].queryset = ForumCategory.objects.order_by("name")
         self.fields["title"].max_length = 200
         self.fields["body"].max_length = 5000
         self.fields["body"].strip = True
 
         if self.role != "department":
             self.fields.pop("is_published")
+            self.fields.pop("is_pinned")
 
         if self.role == "student":
-            self.fields.pop("departments")
             self.fields["visibility"].choices = [
                 (ForumQuestion.Visibility.EVERYONE, "Everyone"),
                 (ForumQuestion.Visibility.DEPARTMENT, "My department only"),
             ]
-        elif self.role == "lecturer":
+        else:
             self.fields["visibility"].choices = [
                 (ForumQuestion.Visibility.EVERYONE, "Everyone"),
-                (ForumQuestion.Visibility.DEPARTMENT, "Department only"),
+                ("ske", "SKE"),
+                ("cpe", "CPE"),
             ]
-            if instance is not None:
-                self.fields.pop("title")
-                self.fields.pop("body")
-                self.fields.pop("visibility")
-                self.fields.pop("is_published", None)
-                self.fields["departments"].initial = instance.departments.all()
-                self.fields["departments"].required = (
-                    instance.visibility == ForumQuestion.Visibility.DEPARTMENT
-                )
+            self.fields["visibility"].initial = ForumQuestion.Visibility.EVERYONE
+        if (
+            instance is not None
+            and instance.visibility == ForumQuestion.Visibility.DEPARTMENT
+            and self.role in {"department", "lecturer"}
+        ):
+            tag = instance.departments.first()
+            self.fields["visibility"].initial = tag.slug if tag else "ske"
+        elif instance is not None:
+            self.fields["visibility"].initial = instance.visibility
+        if (
+            instance is not None
+            and instance.visibility == ForumQuestion.Visibility.DEPARTMENT
+            and self.role == "student"
+        ):
+            self.fields["visibility"].initial = ForumQuestion.Visibility.DEPARTMENT
 
         self._student_department = None
+        self._audience_programme = None
 
     @staticmethod
     def _role_for(author):
@@ -208,7 +232,21 @@ class ForumQuestionForm(forms.ModelForm):
             "visibility",
             self.instance.visibility if self.instance.pk else None,
         )
-        departments = cleaned_data.get("departments")
+
+        if self.role in {"department", "lecturer"}:
+            if visibility in {"ske", "cpe"}:
+                self._audience_programme = Tag.objects.filter(
+                    kind=Tag.Kind.PROGRAMME,
+                    slug__iexact=visibility,
+                ).first()
+                if self._audience_programme is None:
+                    self.add_error(
+                        "visibility",
+                        f"The {visibility.upper()} audience tag is not configured.",
+                    )
+                cleaned_data["visibility"] = ForumQuestion.Visibility.DEPARTMENT
+            else:
+                cleaned_data["visibility"] = ForumQuestion.Visibility.EVERYONE
 
         if self.role == "student" and "departments" in self.data:
             allowed_department = Tag.objects.filter(
@@ -232,10 +270,7 @@ class ForumQuestionForm(forms.ModelForm):
                     "Students may only use their own department tag.",
                 )
 
-        if (
-            visibility == ForumQuestion.Visibility.DEPARTMENT
-            and self.role == "student"
-        ):
+        if visibility == ForumQuestion.Visibility.DEPARTMENT and self.role == "student":
             department = (getattr(self.author, "department", "") or "").strip()
             self._student_department = Tag.objects.filter(
                 kind=Tag.Kind.PROGRAMME,
@@ -247,22 +282,6 @@ class ForumQuestionForm(forms.ModelForm):
                     "Your department is not configured for FAQ questions. "
                     "Please contact the Department.",
                 )
-        elif (
-            visibility == ForumQuestion.Visibility.DEPARTMENT
-            and not departments
-        ):
-            self.add_error(
-                "departments",
-                "Choose at least one department for a department-only question.",
-            )
-
-        if self.role == "lecturer" and self.instance.pk:
-            if visibility != self.instance.visibility:
-                self.add_error(
-                    None,
-                    "Lecturers may change department tags but cannot change "
-                    "a question's visibility.",
-                )
 
         return cleaned_data
 
@@ -271,6 +290,10 @@ class ForumQuestionForm(forms.ModelForm):
             "visibility",
             self.instance.visibility if self.instance.pk else None,
         )
+        if visibility == ForumQuestion.Visibility.EVERYONE:
+            return []
+        if self.role in {"department", "lecturer"}:
+            return [self._audience_programme] if self._audience_programme else []
         if self.role == "student":
             if (
                 visibility == ForumQuestion.Visibility.DEPARTMENT
@@ -278,7 +301,86 @@ class ForumQuestionForm(forms.ModelForm):
             ):
                 return [self._student_department]
             return []
-        return list(self.cleaned_data.get("departments", []))
+        return []
+
+
+class ForumCategoryForm(forms.ModelForm):
+    class Meta:
+        model = ForumCategory
+        fields = ["name"]
+        widgets = {
+            "name": forms.TextInput(
+                attrs={"autocomplete": "off", "maxlength": 80}
+            ),
+        }
+        labels = {"name": "Category name"}
+
+
+class ForumQuestionFilterForm(forms.Form):
+    class Audience(models.TextChoices):
+        SKE = "ske", "SKE"
+        CPE = "cpe", "CPE"
+
+    class AuthorRole(models.TextChoices):
+        DEPARTMENT = "department", "Department"
+        LECTURER = "lecturer", "Lecturer"
+        STUDENT = "student", "Student"
+
+    class SortOrder(models.TextChoices):
+        NEWEST = "newest", "Newest first"
+        OLDEST = "oldest", "Oldest first"
+        MOST_COMMENTS = "comments_desc", "Most comments"
+        FEWEST_COMMENTS = "comments_asc", "Fewest comments"
+
+    class DateDirection(models.TextChoices):
+        BEFORE = "before", "Before"
+        AFTER = "after", "After"
+
+    search = forms.CharField(
+        required=False,
+        max_length=200,
+        label="Search",
+        widget=forms.TextInput(
+            attrs={"type": "search", "autocomplete": "off"}
+        ),
+    )
+    audience = forms.ChoiceField(
+        required=False,
+        choices=[("", "All audiences")] + list(Audience.choices),
+    )
+    author = forms.ChoiceField(
+        required=False,
+        choices=[("", "All authors")] + list(AuthorRole.choices),
+    )
+    category = forms.ModelChoiceField(
+        required=False,
+        queryset=ForumCategory.objects.order_by("name"),
+        empty_label="All categories",
+    )
+    date_direction = forms.ChoiceField(
+        required=False,
+        choices=DateDirection.choices,
+        label="Date direction",
+    )
+    date = forms.DateField(
+        required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+        label="Posted date",
+    )
+    sort = forms.ChoiceField(
+        required=False,
+        choices=SortOrder.choices,
+        initial=SortOrder.NEWEST,
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if cleaned_data.get("date") and not cleaned_data.get("date_direction"):
+            self.add_error(
+                "date_direction",
+                "Choose whether to show questions before or after this date.",
+            )
+        return cleaned_data
 
 
 class ForumReplyForm(forms.ModelForm):

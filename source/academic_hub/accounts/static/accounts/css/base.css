@@ -45,7 +45,10 @@
 }
 
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+html{
+  -webkit-text-size-adjust:100%;
+  scrollbar-gutter:stable;
+}
 body{
   margin:0;
   font-family:var(--font-ui);

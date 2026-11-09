@@ -56,6 +56,27 @@ class Tag(models.Model):
         return f"#{self.slug}"
 
 
+class ForumCategory(models.Model):
+    name = models.CharField(max_length=80, unique=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="forum_categories",
+        db_constraint=False,
+    )
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "FAQ category"
+        verbose_name_plural = "FAQ categories"
+
+    def __str__(self):
+        return self.name
+
+
 class PublishedQuerySet(models.QuerySet):
     """Shared by both content models - they answer the same two questions."""
 
@@ -274,6 +295,14 @@ class ForumQuestion(models.Model):
         blank=True,
         related_name="forum_questions",
     )
+    category = models.ForeignKey(
+        ForumCategory,
+        blank=True,
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="questions",
+    )
+    is_pinned = models.BooleanField(default=False)
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         blank=True,
@@ -308,10 +337,21 @@ class ForumQuestion(models.Model):
                 fields=["visibility", "is_published", "archived_at", "-created_at"],
                 name="forum_question_scope_idx",
             ),
+            models.Index(
+                fields=["category", "created_at"],
+                name="forum_question_category_idx",
+            ),
         ]
 
     def __str__(self):
         return self.title
+
+    @property
+    def audience_label(self):
+        if self.visibility == self.Visibility.EVERYONE:
+            return "Everyone"
+        department = self.departments.first()
+        return department.label if department else "Department only"
 
 
 class ForumReply(models.Model):

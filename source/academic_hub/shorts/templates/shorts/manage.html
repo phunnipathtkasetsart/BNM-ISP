@@ -1,0 +1,89 @@
+{% extends "accounts/base.html" %}
+{% load static %}
+{% block title %}Edit Short — KU Student Portal{% endblock %}
+{% block page_css %}
+  <link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">
+  <link rel="stylesheet" href="{% static 'shorts/shorts.css' %}">
+{% endblock %}
+
+{% block topbar_mod %}topbar--signed-in{% endblock %}
+
+{% block topbar_left %}
+  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
+  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
+{% endblock %}
+
+{% block topbar_right %}
+  {% include "accounts/_account_menu.html" %}
+{% endblock %}
+
+{% block content %}
+{% include "shorts/_subnav.html" with current="manage" %}
+
+<div class="board shorts-board shorts-board--manage">
+  <section class="board__main panel">
+    <div class="panel__head">
+      <h1>{% if is_department %}All shorts{% else %}My shorts{% endif %}</h1>
+      <p class="panel__sub">
+        {% if is_department %}
+          Every short on the site. As the Department you can edit or delete any of them.
+        {% else %}
+          The shorts you uploaded. Edit their details, replace the clip, or delete them.
+        {% endif %}
+      </p>
+    </div>
+
+    {% for message in messages %}<p class="shorts-notice" role="status">{{ message }}</p>{% endfor %}
+
+    {% if page_obj.object_list %}
+      <ul class="shorts-list">
+        {% for short in page_obj %}
+          <li class="shorts-row">
+            {# A still from the clip (#t=0.5 shows that frame); clicking it watches the short in the feed. #}
+            <a class="shorts-row__thumb" href="{% url 'shorts:feed' %}?start={{ short.pk }}" tabindex="-1" aria-hidden="true">
+              <video src="{% url 'shorts:clip' short.pk %}#t=0.5" preload="metadata" muted playsinline></video>
+              <span class="shorts-row__play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span>
+              <span class="shorts-row__length">{{ short.length }}</span>
+            </a>
+            <div class="shorts-row__main">
+              <h2 class="shorts-row__title"><a href="{% url 'shorts:edit' short.pk %}">{{ short.title }}</a></h2>
+              {% if short.description %}<p class="shorts-row__desc">{{ short.description|truncatechars:140 }}</p>{% endif %}
+              {% with tags=short.tags.all %}
+                {% if tags %}<p class="shorts-row__tags">{% for tag in tags %}<span>#{{ tag.label }}</span>{% endfor %}</p>{% endif %}
+              {% endwith %}
+              <p class="shorts-row__meta">
+                {% if is_department %}
+                  <span>{{ short.author.get_full_name|default:"Removed account" }} ({{ short.author_label }})</span>
+                {% endif %}
+                <span>{{ short.created_at|date:"j M Y, H:i" }}</span>
+                <span>{{ short.like_count }} like{{ short.like_count|pluralize }}</span>
+                <span>{{ short.comment_count }} comment{{ short.comment_count|pluralize }}</span>
+              </p>
+            </div>
+            <div class="shorts-row__actions">
+              <a class="shorts-btn shorts-btn--small shorts-btn--quiet" href="{% url 'shorts:feed' %}?start={{ short.pk }}" aria-label="View “{{ short.title }}” in the feed">View</a>
+              <a class="shorts-btn shorts-btn--small" href="{% url 'shorts:edit' short.pk %}" aria-label="Edit “{{ short.title }}”">Edit</a>
+              <a class="shorts-btn shorts-btn--small shorts-btn--danger-quiet" href="{% url 'shorts:delete' short.pk %}" aria-label="Delete “{{ short.title }}”">Delete</a>
+            </div>
+          </li>
+        {% endfor %}
+      </ul>
+
+      {% if page_obj.has_other_pages %}
+        <nav class="shorts-pages" aria-label="Pages">
+          {% if page_obj.has_previous %}<a href="?page={{ page_obj.previous_page_number }}">&larr; Newer</a>{% else %}<span></span>{% endif %}
+          <span>Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+          {% if page_obj.has_next %}<a href="?page={{ page_obj.next_page_number }}">Older &rarr;</a>{% else %}<span></span>{% endif %}
+        </nav>
+      {% endif %}
+    {% else %}
+      <div class="feed">
+        <p class="feed__empty">
+          {% if is_department %}No shorts have been uploaded yet.{% else %}You have not uploaded any shorts yet.{% endif %}
+          <a href="{% url 'shorts:create' %}">Create Short</a>
+        </p>
+      </div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

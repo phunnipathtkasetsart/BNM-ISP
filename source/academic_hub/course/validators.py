@@ -28,11 +28,11 @@ DANGEROUS_SIGNATURES = [
 
 
 def max_upload_bytes():
-    return getattr(settings, "MAX_UPLOAD_BYTES", 50 * 1024 * 1024)
+    return getattr(settings, "MAX_UPLOAD_BYTES", 25 * 1024 * 1024)
 
 
 def validate_upload_size(file):
-    """Reject files over the configured limit (50 MB by default)."""
+    """Reject files over the configured limit (25 MB by default)."""
     limit = max_upload_bytes()
     if file.size > limit:
         raise ValidationError(

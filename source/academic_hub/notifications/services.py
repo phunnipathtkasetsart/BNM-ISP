@@ -86,6 +86,22 @@ def notify_announcement(announcement):
     return created
 
 
+def notify_forum_reply(reply):
+    question = reply.question
+    recipient = question.author
+    if recipient is None or recipient.pk == reply.author_id:
+        return None, False
+
+    return create_notification(
+        recipient=recipient,
+        kind="forum_reply",
+        event_key=f"forum-reply:{reply.pk}",
+        title="New comment on your FAQ question",
+        message=reply.author_label,
+        url=reverse("announcements:forum_question_detail", args=[question.pk]),
+    )
+
+
 def notify_course_post(post):
     return notify_course_students(
         course=post.course,

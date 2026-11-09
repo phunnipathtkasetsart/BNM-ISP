@@ -120,3 +120,44 @@ class PasswordResetToken(models.Model):
 
     def is_valid(self):
         return self.used_at is None and self.expires_at > timezone.now()
+
+
+class AdvisorAssignment(models.Model):
+    student = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="advisor_assignment",
+    )
+    advisor = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="advisee_assignments",
+    )
+
+    class Meta:
+        db_table = "academic_advisor_assignments"
+        ordering = ["student_id"]
+
+    def __str__(self):
+        return f"{self.student_id} -> {self.advisor_id}"
+
+
+class GmailOAuthCredential(models.Model):
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        db_constraint=False,
+        related_name="gmail_oauth_credential",
+    )
+    google_email = models.EmailField()
+    encrypted_refresh_token = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "gmail_oauth_credentials"
+
+    def __str__(self):
+        return f"Gmail authorization for {self.user_id}"

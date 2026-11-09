@@ -149,6 +149,34 @@
 .qa[open] .qa__q::after{transform:translateY(-20%) rotate(-135deg)}
 .qa__a{padding:0 calc(24 * var(--u)) calc(13 * var(--u)) 0;font-size:calc(13 * var(--u));color:var(--ink-soft)}
 .qa__a p{margin:0 0 calc(8 * var(--u))}
+.qa__description{
+  display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:6;line-clamp:6;
+  overflow:hidden;white-space:pre-line;overflow-wrap:anywhere;
+}
+.qa__description--expanded{
+  display:block;
+  -webkit-line-clamp:none;line-clamp:none;
+  overflow:visible;
+}
+.qa__more{
+  margin:calc(5 * var(--u)) 0 calc(8 * var(--u));padding:0;border:0;
+  background:none;color:var(--ku-green-800);font:inherit;font-weight:700;
+  font-size:calc(12 * var(--u));cursor:pointer;
+}
+.qa__more:hover{text-decoration:underline}
+.qa__more:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+.qa__open{
+  display:inline-flex;align-items:center;gap:calc(6 * var(--u));
+  margin-top:calc(4 * var(--u));
+  padding:calc(7 * var(--u)) calc(12 * var(--u));
+  border:1px solid var(--ku-green-800);border-radius:calc(6 * var(--u));
+  color:var(--ku-green-800);background:none;
+  font-size:calc(12 * var(--u));font-weight:700;text-decoration:none;
+}
+.qa__open::after{content:"→"}
+.qa__open:hover{background:var(--ku-green-800);color:#fff}
+.qa__open:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
 .qa__q:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px;border-radius:calc(4 * var(--u))}
 
 @media (max-width:900px){
@@ -189,11 +217,14 @@
 .subnav__action:hover{background:#24463C}
 .subnav__action:focus-visible{outline:2px solid #fff;outline-offset:2px}
 .subnav__action-short{display:none}
-/* Small phones: Home, Course, Calendar and the full label do not fit on
-   one row, so the button reads "+ Create", and on the smallest phones just
-   "+". Screen readers still hear the whole label. */
-@media (max-width:560px){
-  .subnav__tab{padding:10px 20px 10px 12px;font-size:13.5px}
+/* Small phones: Home, Course, Calendar, Shorts and the full label do not
+   fit on one row, so the button reads "+ Create", and on the smallest phones
+   just "+". Screen readers still hear the whole label. The tabs also tighten
+   up so four of them leave room for the button. Keep at least 14px of right
+   padding on a tab: the angled clip-path eats that much of its corner. */
+@media (max-width:640px){
+  .subnav{padding:0 10px}
+  .subnav__tab{padding:10px 16px 10px 9px;font-size:13.5px}
   .subnav__action{font-size:12.5px;padding:6px 12px}
   .subnav__action-short{display:inline}
   .subnav__action-full{
@@ -205,6 +236,8 @@
    forum reuses .subnav__action for "Create question", which has no short
    label, so shrinking it there spilled the text out of the circle. */
 @media (max-width:400px){
+  .subnav{padding:0 4px;gap:0}
+  .subnav__tab{padding:10px 15px 10px 7px;font-size:12.5px}
   .subnav .subnav__action{font-size:17px;line-height:1;width:32px;height:32px;padding:0;display:grid;place-items:center}
   .subnav .subnav__action-word{display:none}
 }
@@ -314,6 +347,8 @@
 @media (max-width:900px){
   .daterow{margin-left:18px;margin-right:18px;border-radius:calc(14 * var(--u))}
   .daterow__clear{margin-left:0}
+  .forum-filters{margin-left:18px;margin-right:18px}
+  .forum-results__count{margin-left:18px;margin-right:18px}
 }
 
 /* --- question and answer forum --- */
@@ -407,6 +442,62 @@
   display:inline-block;padding:calc(2 * var(--u)) calc(7 * var(--u));
   border-radius:999px;background:#EAF2EE;color:var(--ku-green-800);
   font-size:calc(10.5 * var(--u));font-weight:700;
+}
+.forum-audience-tag,.forum-category-tag{
+  display:inline-block;padding:calc(2 * var(--u)) calc(7 * var(--u));
+  border-radius:999px;background:#EAF2EE;color:var(--ku-green-800);
+  font-size:calc(10.5 * var(--u));font-weight:700;
+}
+.badge--pinned{background:#EAF2EE;color:var(--ku-green-800);border:1px solid var(--ku-sage)}
+.forum-filters{
+  display:flex;flex-direction:column;gap:calc(12 * var(--u));
+  margin:0 calc(28 * var(--u)) calc(18 * var(--u));
+  padding:calc(14 * var(--u));border:1px solid var(--hairline);
+  border-radius:calc(10 * var(--u));background:#F9FBFA;
+}
+.forum-filters__search{display:flex;align-items:center;gap:calc(9 * var(--u))}
+.forum-filters__search input{
+  flex:1;min-width:0;padding:calc(9 * var(--u)) calc(11 * var(--u));
+  border:1px solid var(--field-line);border-radius:var(--r-field);
+  background:#fff;color:var(--ink);font:inherit;
+}
+.forum-filters__grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(calc(150 * var(--u)),1fr));
+  gap:calc(9 * var(--u));
+}
+.forum-filters__date-row{
+  display:grid;grid-template-columns:minmax(0,calc(92 * var(--u))) minmax(0,1fr);
+  width:min(100%,calc(271 * var(--u)));
+  gap:calc(9 * var(--u));
+}
+.forum-filters__date-direction,.forum-filters__date{min-width:0}
+.forum-filters__date-row select,.forum-filters__date-row input{
+  width:100%;min-width:0;max-width:100%;height:100%;
+  padding:calc(9 * var(--u)) calc(11 * var(--u));
+  border:1px solid var(--field-line);border-radius:var(--r-field);
+  background:#fff;color:var(--ink);font:inherit;font-size:calc(13 * var(--u));
+}
+.forum-filters__date-row select{max-width:calc(92 * var(--u))}
+.forum-filters__date-row input{max-width:calc(170 * var(--u))}
+.forum-filters__date-row select:focus-visible,.forum-filters__date-row input:focus-visible{
+  outline:2px solid var(--ku-sage);outline-offset:1px;
+}
+.forum-filters__field{display:flex;flex-direction:column;gap:calc(5 * var(--u))}
+.forum-filters__field label{font-size:calc(11.5 * var(--u));font-weight:700;color:var(--ink-soft)}
+.forum-filters__field input,.forum-filters__field select{
+  width:100%;min-width:0;padding:calc(8 * var(--u));
+  border:1px solid var(--field-line);border-radius:var(--r-field);
+  background:#fff;color:var(--ink);font:inherit;font-size:calc(12 * var(--u));
+}
+.forum-filters__actions{display:flex;align-items:center;gap:calc(12 * var(--u))}
+.forum-category-create-link{
+  color:var(--ku-green-800);font-size:calc(12 * var(--u));font-weight:700;
+  text-decoration:none;
+}
+.forum-category-create-link:hover{text-decoration:underline}
+.forum-results__count{
+  margin:0 calc(28 * var(--u)) calc(8 * var(--u));
+  color:var(--ink-muted);font-size:calc(12 * var(--u));
 }
 .forum-actions{display:flex;align-items:center;flex-wrap:wrap;gap:calc(12 * var(--u));margin-top:calc(10 * var(--u))}
 .forum-actions form{margin:0}

@@ -7,22 +7,30 @@ disagree about what a reader may see.
 from django.contrib.auth.decorators import login_required
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 from django.db import transaction
-from django.db.models import F, Prefetch
+from django.db.models import Count, F, Prefetch, Q
 from django.contrib.auth.views import redirect_to_login
 from django.core.paginator import Paginator
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.dateparse import parse_date
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.middleware import is_guest_request
-from notifications.services import notify_announcement
-from .forms import AnnouncementForm, ForumQuestionForm, ForumReplyForm
+from notifications.services import notify_announcement, notify_forum_reply
+from .forms import (
+    AnnouncementForm,
+    ForumCategoryForm,
+    ForumQuestionFilterForm,
+    ForumQuestionForm,
+    ForumReplyForm,
+)
 from .models import (
     Announcement,
     Faq,
+    ForumCategory,
     ForumQuestion,
     ForumReply,
     Tag,
@@ -90,21 +98,44 @@ def public_board(request):
         archived_announcements = archived_qs.order_by("-archived_at")
 
     faqs = Faq.objects.visible_to(request.user, is_guest).prefetch_related("tags")
+    pinned_forum_questions = (
+        ForumQuestion.objects.visible_to(request.user, is_guest)
+        .filter(
+            is_pinned=True,
+            is_published=True,
+            archived_at__isnull=True,
+        )
+        .select_related("category")
+        .prefetch_related("departments")
+        .order_by("-created_at", "-pk")
+    )
 
     if active_tag:
         announcements = announcements.filter(tags__slug=active_tag)
         faqs = faqs.filter(tags__slug=active_tag)
+        pinned_forum_questions = pinned_forum_questions.filter(
+            departments__slug=active_tag
+        ).distinct()
 
     parsed_from = parse_date(date_from) if date_from else None
     parsed_to = parse_date(date_to) if date_to else None
     if parsed_from:
         announcements = announcements.filter(published_at__date__gte=parsed_from)
+        pinned_forum_questions = pinned_forum_questions.filter(
+            created_at__date__gte=parsed_from
+        )
     if parsed_to:
         announcements = announcements.filter(published_at__date__lte=parsed_to)
+        pinned_forum_questions = pinned_forum_questions.filter(
+            created_at__date__lte=parsed_to
+        )
 
     if query:
         announcements = _search(announcements, query)
         faqs = _search(faqs, query)
+        pinned_forum_questions = pinned_forum_questions.filter(
+            Q(title__icontains=query) | Q(body__icontains=query)
+        )
     else:
         announcements = announcements.pinned_first()
 
@@ -121,12 +152,14 @@ def public_board(request):
         [t.label for t in chips]
         + list(announcements.values_list("title", flat=True))
         + list(faqs.values_list("question", flat=True))
+        + list(pinned_forum_questions.values_list("title", flat=True))
     )
 
     return render(request, "announcements/public_board.html", {
         "announcements": announcements,
         "archived_announcements": archived_announcements,
         "faqs": faqs,
+        "pinned_forum_questions": pinned_forum_questions,
         "chips": chips,
         "active_tag": active_tag,
         "date_from": date_from,
@@ -135,7 +168,9 @@ def public_board(request):
         "query": query,
         "suggestions": suggestions,
         "is_searching": bool(query),
-        "result_count": len(announcements) + len(faqs),
+        "result_count": (
+            len(announcements) + len(faqs) + len(pinned_forum_questions)
+        ),
         "can_manage": can_manage,
         "is_guest": is_guest,
         "guest_expires_at": (
@@ -300,12 +335,67 @@ def _render_faq_board(
         reply_queryset = reply_queryset.filter(archived_at__isnull=True)
     questions = (
         ForumQuestion.objects.visible_to(request.user, is_guest)
-        .select_related("author")
+        .select_related("author", "category")
         .prefetch_related(
             "departments",
             Prefetch("replies", queryset=reply_queryset, to_attr="visible_replies"),
         )
     )
+    questions = questions.annotate(
+        comment_count=Count(
+            "replies",
+            filter=Q(replies__archived_at__isnull=True)
+            if role != "department"
+            else Q(),
+            distinct=True,
+        )
+    )
+
+    filter_data = request.GET.copy()
+    filter_data.setdefault(
+        "date_direction",
+        ForumQuestionFilterForm.DateDirection.BEFORE,
+    )
+    filter_form = ForumQuestionFilterForm(filter_data)
+    if filter_form.is_valid():
+        filters = filter_form.cleaned_data
+        query = filters["search"].strip()
+        if query:
+            questions = questions.filter(
+                Q(title__icontains=query) | Q(body__icontains=query)
+            )
+        if filters["audience"] in {
+            ForumQuestionFilterForm.Audience.SKE,
+            ForumQuestionFilterForm.Audience.CPE,
+        }:
+            questions = questions.filter(
+                visibility=ForumQuestion.Visibility.DEPARTMENT,
+                departments__kind=Tag.Kind.PROGRAMME,
+                departments__slug__iexact=filters["audience"],
+            ).distinct()
+        if filters["author"]:
+            questions = questions.filter(author_role__iexact=filters["author"])
+        if filters["category"]:
+            questions = questions.filter(category=filters["category"])
+        selected_date = filters.get("date")
+        date_direction = filters.get("date_direction")
+        if selected_date and date_direction == "before":
+            questions = questions.filter(created_at__date__lt=selected_date)
+        elif selected_date and date_direction == "after":
+            questions = questions.filter(created_at__date__gt=selected_date)
+
+        sort_order = filters["sort"]
+    else:
+        sort_order = ForumQuestionFilterForm.SortOrder.NEWEST
+
+    if sort_order == ForumQuestionFilterForm.SortOrder.OLDEST:
+        questions = questions.order_by("created_at", "pk")
+    elif sort_order == ForumQuestionFilterForm.SortOrder.MOST_COMMENTS:
+        questions = questions.order_by("-comment_count", "-created_at", "-pk")
+    elif sort_order == ForumQuestionFilterForm.SortOrder.FEWEST_COMMENTS:
+        questions = questions.order_by("comment_count", "-created_at", "-pk")
+    else:
+        questions = questions.order_by("-created_at", "-pk")
 
     if selected_question is not None:
         selected_question = get_object_or_404(questions, pk=selected_question.pk)
@@ -337,17 +427,20 @@ def _render_faq_board(
             kind=Tag.Kind.PROGRAMME,
             slug__iexact=(request.user.department or "").strip(),
         ).exists()
+    active_filter_params = request.GET.copy()
+    active_filter_params.pop("page", None)
 
     template = (
         "announcements/forum_question_detail.html"
         if detail_page
         else "announcements/faq_board.html"
     )
-    return render(request, template, {
+    context = {
         "is_guest": is_guest,
         "role": role,
         "threads": page_obj.object_list,
         "page_obj": page_obj,
+        "filter_form": filter_form,
         "selected_question": selected_question,
         "question_form": question_form,
         "question_edit": question_edit,
@@ -368,11 +461,28 @@ def _render_faq_board(
         ),
         "department_unavailable": department_unavailable,
         "can_create_question": not is_guest and request.user.is_active,
+        "can_manage_forum_content": (
+            not is_guest
+            and request.user.is_active
+            and role in {"department", "lecturer"}
+        ),
         "can_reply": can_reply,
+        "active_filters": active_filter_params.urlencode(),
         "guest_expires_at": (
             request.session.get_expiry_date().isoformat() if is_guest else ""
         ),
-    })
+    }
+    if (
+        request.headers.get("x-requested-with") == "XMLHttpRequest"
+        and not detail_page
+        and question_form is None
+    ):
+        return render(
+            request,
+            "announcements/_forum_question_results.html",
+            context,
+        )
+    return render(request, template, context)
 
 
 def _forum_author_label(user):
@@ -408,6 +518,40 @@ def _save_forum_question(form, request, instance=None):
 @login_required(login_url="accounts:login")
 def faq_board(request):
     return _render_faq_board(request)
+
+
+@login_required(login_url="accounts:login")
+@require_http_methods(["GET", "POST"])
+def forum_category_create(request):
+    if _forum_mutation_denied(request) or _forum_role(request.user) not in {
+        "department",
+        "lecturer",
+    }:
+        return _forum_forbidden(request)
+
+    return_to = request.POST.get("next") or request.GET.get("next", "")
+    if not url_has_allowed_host_and_scheme(
+        return_to,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return_to = reverse("announcements:forum_question_create")
+
+    form = ForumCategoryForm(request.POST if request.method == "POST" else None)
+    if request.method == "POST" and form.is_valid():
+        category = form.save(commit=False)
+        category.created_by = request.user
+        category.save()
+        return redirect(return_to)
+    return render(
+        request,
+        "announcements/forum_category_form.html",
+        {
+            "form": form,
+            "is_guest": is_guest_request(request),
+            "return_to": return_to,
+        },
+    )
 
 
 @login_required(login_url="accounts:login")
@@ -484,6 +628,18 @@ def forum_question_edit(request, pk):
 
 @login_required(login_url="accounts:login")
 @require_POST
+def forum_question_pin(request, pk):
+    if _forum_mutation_denied(request) or not request.user.is_superuser:
+        return _forum_forbidden(request)
+
+    question = get_object_or_404(ForumQuestion, pk=pk)
+    question.is_pinned = not question.is_pinned
+    question.save(update_fields=["is_pinned"])
+    return redirect("announcements:forum_question_detail", pk=question.pk)
+
+
+@login_required(login_url="accounts:login")
+@require_POST
 def forum_question_archive(request, pk):
     if _forum_mutation_denied(request):
         return _forum_forbidden(request)
@@ -542,6 +698,7 @@ def forum_reply_create(request, pk):
         reply.author_label = _forum_author_label(request.user)
         reply.author_role = _forum_role_label(request.user)
         reply.save()
+        notify_forum_reply(reply)
         return redirect("announcements:forum_question_detail", pk=question.pk)
 
     return _render_faq_board(

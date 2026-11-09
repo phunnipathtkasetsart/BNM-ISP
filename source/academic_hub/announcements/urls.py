@@ -18,9 +18,19 @@ urlpatterns = [
         name="forum_question_create",
     ),
     path(
+        "faq/categories/new/",
+        views.forum_category_create,
+        name="forum_category_create",
+    ),
+    path(
         "faq/questions/<int:pk>/edit/",
         views.forum_question_edit,
         name="forum_question_edit",
+    ),
+    path(
+        "faq/questions/<int:pk>/pin/",
+        views.forum_question_pin,
+        name="forum_question_pin",
     ),
     path(
         "faq/questions/<int:pk>/archive/",

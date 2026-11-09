@@ -18,18 +18,6 @@
       </form>
     </section>
 
-    <!-- PERMANENT DELETE CLASS (Appears only after archiving) -->
-    <section class="course-danger">
-      <div>
-        <h3>Delete class</h3>
-        <p>This permanently removes the class, its posts, materials, and enrollments. Student accounts are kept.</p>
-      </div>
-      <form method="post" action="{% url 'course:delete' course.pk %}" data-confirm="Permanently delete this class and all associated data? This cannot be undone.">
-        {% csrf_token %}
-        <button class="course-btn danger" type="submit">Delete class</button>
-      </form>
-    </section>
-
   {% else %}
     <!-- PHASE 1: ACTIVE CLASS ACTIONS -->
 
@@ -46,6 +34,17 @@
     </section>
 
   {% endif %}
+
+  <section class="course-danger">
+    <div>
+      <h3>Delete class</h3>
+      <p>This permanently removes the class, its posts, materials, and enrollments. Student accounts are kept.</p>
+    </div>
+    <form method="post" action="{% url 'course:delete' course.pk %}" data-confirm="Permanently delete this class and all associated data? This cannot be undone.">
+      {% csrf_token %}
+      <button class="course-btn danger" type="submit">Delete class</button>
+    </form>
+  </section>
 
 </div>
 {% endblock %}
