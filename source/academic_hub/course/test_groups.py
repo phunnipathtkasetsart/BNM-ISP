@@ -85,6 +85,20 @@ class GroupWorkTests(TestCase):
             403,
         )
 
+    def test_duplicate_group_work_title_keeps_values_and_shows_error(self):
+        self.make_work(title="Design")
+        self.client.force_login(self.lecturer)
+
+        response = self.client.post(
+            self.url("group_work_index", self.course.pk),
+            {"title": " design ", "max_members": "4"},
+        )
+
+        self.assertContains(response, "A group work with that title already exists.")
+        self.assertContains(response, 'value=" design "')
+        self.assertContains(response, 'value="4"')
+        self.assertEqual(GroupWork.objects.filter(course=self.course).count(), 1)
+
     def test_student_creates_one_group_per_work_and_can_join_another_work(self):
         first = self.make_work(title="First work")
         second = self.make_work(title="Second work")

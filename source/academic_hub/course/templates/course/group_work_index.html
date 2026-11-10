@@ -1,4 +1,5 @@
 {% extends "course/base.html" %}
+{% load static %}
 {% block title %}Group work — {{ course.name }}{% endblock %}
 {% block course_content %}
 <header class="group-page-head">
@@ -8,13 +9,14 @@
     <p class="group-muted">Choose a group work to view groups, invitations, and members.</p>
   </div>
   {% if can_manage %}
-    <form method="post" class="group-create-work">
+    <form method="post" class="group-create-work" data-group-work-create>
       {% csrf_token %}
       <label>Group work title
-        <input type="text" name="title" maxlength="150" required>
+        <input type="text" name="title" maxlength="150" required value="{{ title_value }}" aria-describedby="group-work-title-error">
+        <span id="group-work-title-error" class="group-title-error" data-group-work-title-error role="alert" hidden>A group work with that title already exists.</span>
       </label>
       <label>Maximum members
-        <input type="number" name="max_members" min="1" required>
+        <input type="number" name="max_members" min="1" required value="{{ max_members_value }}">
       </label>
       <button type="submit" class="group-button">Create group work</button>
     </form>
@@ -40,4 +42,5 @@
     <p class="group-empty">No group work has been created for this course yet.</p>
   {% endfor %}
 </section>
+<script src="{% static 'course/group-work.js' %}" defer></script>
 {% endblock %}

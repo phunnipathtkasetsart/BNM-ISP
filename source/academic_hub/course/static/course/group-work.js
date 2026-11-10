@@ -1,6 +1,47 @@
 (() => {
   'use strict';
 
+  const createForm = document.querySelector('[data-group-work-create]');
+  if (createForm) {
+    const titleInput = createForm.querySelector('input[name="title"]');
+    const submitButton = createForm.querySelector('button[type="submit"]');
+    const warning = createForm.querySelector('[data-group-work-title-error]');
+    const existingTitles = Array.from(document.querySelectorAll('.group-work-card h2'))
+      .map(heading => heading.textContent.trim().toLocaleLowerCase());
+
+    const checkTitle = () => {
+      const title = titleInput.value.trim().toLocaleLowerCase();
+      const duplicate = title !== '' && existingTitles.includes(title);
+      warning.hidden = !duplicate;
+      titleInput.setAttribute('aria-invalid', String(duplicate));
+      submitButton.disabled = duplicate;
+    };
+
+    titleInput.addEventListener('input', checkTitle);
+    checkTitle();
+  }
+
+  const groupCreateForm = document.querySelector('[data-group-create]');
+  if (groupCreateForm) {
+    const nameInput = groupCreateForm.querySelector('input[name="name"]');
+    const submitButton = groupCreateForm.querySelector('button[type="submit"]');
+    const warning = groupCreateForm.querySelector('[data-group-name-error]');
+    const existingNames = JSON.parse(
+      document.getElementById('existing-group-names').textContent,
+    ).map(name => name.trim().toLocaleLowerCase());
+
+    const checkGroupName = () => {
+      const name = nameInput.value.trim().toLocaleLowerCase();
+      const duplicate = name !== '' && existingNames.includes(name);
+      warning.hidden = !duplicate;
+      nameInput.setAttribute('aria-invalid', String(duplicate));
+      submitButton.disabled = duplicate;
+    };
+
+    nameInput.addEventListener('input', checkGroupName);
+    checkGroupName();
+  }
+
   const root = document.querySelector('[data-group-work-live]');
   if (!root) return;
 
