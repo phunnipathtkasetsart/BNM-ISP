@@ -71,6 +71,8 @@ def _invalid_payload_response(request, error, course, work=None):
 def group_work_index(request, pk):
     course = request.course
     can_manage = _can_manage_group_works(request)
+    title_value = ""
+    max_members_value = ""
 
     if request.method == "POST":
         if not can_manage:
@@ -79,9 +81,11 @@ def group_work_index(request, pk):
             data = payload(request)
         except ValidationError as error:
             return _invalid_payload_response(request, error, course)
-        title = data.get("title", "").strip()
+        title_value = data.get("title", "")
+        max_members_value = data.get("max_members", "")
+        title = title_value.strip()
         try:
-            max_members = int(data.get("max_members", ""))
+            max_members = int(max_members_value)
         except (TypeError, ValueError):
             max_members = 0
         if not title or len(title) > 150:
@@ -148,6 +152,8 @@ def group_work_index(request, pk):
         "group_works": works,
         "can_manage": can_manage,
         "can_join": _student_can_join(request),
+        "title_value": title_value,
+        "max_members_value": max_members_value,
     })
 
 
@@ -229,10 +235,12 @@ def group_work_detail(request, pk, work_id):
             ],
         })
 
+    existing_group_names = list(work.groups.values_list("name", flat=True))
     return render(request, "course/group_work_detail.html", {
         "course": course,
         "work": work,
         "groups": groups,
+        "existing_group_names": existing_group_names,
         "current_group": current_membership.group if current_membership else None,
         "current_membership": current_membership,
         "pending_invites": pending_invites,

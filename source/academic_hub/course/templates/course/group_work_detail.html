@@ -45,12 +45,14 @@
       <h2>Create a group</h2>
       <p class="group-muted">You will be the group head. Invite classmates by their student ID.</p>
     </div>
-    <form method="post" action="{% url 'course:group_create' course.pk work.pk %}" class="group-inline-form">
+    <form method="post" action="{% url 'course:group_create' course.pk work.pk %}" class="group-inline-form" data-group-create>
       {% csrf_token %}
       <label class="sr-only" for="new-group-name">Group name</label>
-      <input id="new-group-name" type="text" name="name" maxlength="120" placeholder="Group name" required>
+      <input id="new-group-name" type="text" name="name" maxlength="120" placeholder="Group name" required aria-describedby="group-name-error">
       <button class="group-button" type="submit">Create group</button>
+      <span id="group-name-error" class="group-name-error" data-group-name-error role="alert" hidden>That group name is already in use for this group work.</span>
     </form>
+    {{ existing_group_names|json_script:"existing-group-names" }}
   </section>
 {% endif %}
 
