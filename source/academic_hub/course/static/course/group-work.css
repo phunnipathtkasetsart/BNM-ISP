@@ -230,14 +230,14 @@
 .group-owner-tools {
   display: flex;
   align-items: flex-end;
-  justify-content: space-between;
-  gap: 20px;
+  justify-content: flex-start;  /* was space-between */
+  gap: 12px;  /* was 20 */
   margin-top: 10px;
 }
 
 .group-owner-tools .group-contact-form {
   box-sizing: border-box;
-  flex: 1 1 auto;
+  flex: 0 1 400px;  /* was 1 1 auto: stop it from growing */
   width: auto;
   max-width: 475px;
   margin: 0;
