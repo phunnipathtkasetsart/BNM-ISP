@@ -188,7 +188,8 @@
 }
 
 .group-create-work input,
-.group-inline-form input ,
+.group-inline-form input,
+.group-inline-form select,
 .group-invite-form input,
 .group-contact-form input {
   box-sizing: border-box;
@@ -205,6 +206,7 @@
 
 .group-create-work input:focus,
 .group-inline-form input:focus,
+.group-inline-form select:focus,
 .group-invite-form input:focus,
 .group-contact-form input:focus {
   border-color: #176c5d;
@@ -377,6 +379,67 @@
   min-width: 0;
 }
 
+.group-inline-form select {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 132px;
+}
+
+.group-lock-icon {
+  position: relative;
+  display: inline-block;
+  width: 12px;
+  height: 9px;
+  margin-left: 3px;
+  border: 1.5px solid currentColor;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+
+.group-lock-icon::before {
+  position: absolute;
+  top: -7px;
+  left: 2px;
+  width: 5px;
+  height: 6px;
+  border: 1.5px solid currentColor;
+  border-bottom: 0;
+  border-radius: 5px 5px 0 0;
+  content: "";
+}
+
+.group-card-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 96px;
+}
+
+.group-card-actions form {
+  margin: 0;
+}
+
+.group-card-actions .group-button:disabled {
+  border-color: #9aaca4;
+  background: #e8efeb;
+  color: #647970;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.group-requests {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #edf2ef;
+}
+
+.group-requests h3 {
+  margin: 0;
+  color: #385d50;
+  font-size: 13px;
+}
+
 .group-invite-list,
 .group-member-list {
   margin: 14px 0 0;
@@ -540,6 +603,14 @@
     align-items: stretch;
     flex-direction: column;
     width: min(100%, 420px);
+  }
+
+  .group-inline-form select {
+    width: 100%;
+  }
+
+  .group-card-actions {
+    justify-content: flex-start;
   }
 
   .group-inline-actions {

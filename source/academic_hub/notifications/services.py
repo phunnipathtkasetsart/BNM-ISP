@@ -164,6 +164,75 @@ def notify_group_invitation(invitation):
     )
 
 
+def notify_group_invitation_response(invitation):
+    return create_notification(
+        recipient=invitation.group.head,
+        kind="group_invitation_response",
+        event_key=f"group-invitation-response:{invitation.pk}:{invitation.status}",
+        title="Group invitation response",
+        message=f"{invitation.invitee.get_full_name()} {invitation.status} your invitation.",
+        url=reverse("course:group_work", args=[
+            invitation.group_work.course_id, invitation.group_work_id,
+        ]),
+    )
+
+
+def notify_group_join_request(join_request):
+    return create_notification(
+        recipient=join_request.group.head,
+        kind="group_join_request",
+        event_key=f"group-join-request:{join_request.pk}",
+        title="Group join request",
+        message=(
+            f"{join_request.requester.get_full_name()} requested to join "
+            f"{join_request.group.name}."
+        ),
+        url=reverse("course:group_work", args=[
+            join_request.group_work.course_id, join_request.group_work_id,
+        ]),
+    )
+
+
+def notify_group_join_request_response(join_request):
+    decision = "accepted" if join_request.status == "accepted" else "ignored"
+    return create_notification(
+        recipient=join_request.requester,
+        kind="group_join_request_response",
+        event_key=f"group-join-request-response:{join_request.pk}:{join_request.status}",
+        title=f"Group join request {decision}",
+        message=f"Your request to join {join_request.group.name} was {decision}.",
+        url=reverse("course:group_work", args=[
+            join_request.group_work.course_id, join_request.group_work_id,
+        ]),
+    )
+
+
+def notify_public_group_join(group, student, membership):
+    return create_notification(
+        recipient=group.head,
+        kind="group_member_joined",
+        event_key=f"group-member-joined:{membership.pk}",
+        title="New group member",
+        message=f"{student.get_full_name()} joined {group.name}.",
+        url=reverse("course:group_work", args=[
+            group.group_work.course_id, group.group_work_id,
+        ]),
+    )
+
+
+def notify_group_member_kicked(group, student, membership):
+    return create_notification(
+        recipient=student,
+        kind="group_member_removed",
+        event_key=f"group-member-removed:{membership.pk}",
+        title="Removed from group",
+        message=f"You were removed from {group.name}.",
+        url=reverse("course:group_work", args=[
+            group.group_work.course_id, group.group_work_id,
+        ]),
+    )
+
+
 def refresh_time_sensitive_notifications(user, *, now=None):
     now = now or timezone.now()
     local_date = timezone.localdate(now)

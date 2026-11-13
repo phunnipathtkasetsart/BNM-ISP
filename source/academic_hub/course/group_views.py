@@ -9,12 +9,20 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import User
 from notifications.models import Notification
-from notifications.services import create_notification, notify_group_invitation
+from notifications.services import (
+    notify_group_invitation,
+    notify_group_invitation_response,
+    notify_group_join_request,
+    notify_group_join_request_response,
+    notify_group_member_kicked,
+    notify_public_group_join,
+)
 
 from .models import (
     CourseTA,
     Enrollment,
     GroupInvitation,
+    GroupJoinRequest,
     GroupMembership,
     GroupWork,
     StudentGroup,
@@ -54,6 +62,69 @@ def _student_can_join(request):
 
 def _work_url(course_id, work_id):
     return reverse("course:group_work", args=[course_id, work_id])
+
+
+def _group_counts(group, work):
+    member_count = len(group.memberships.all())
+    pending_invites = [
+        invite for invite in group.invitations.all()
+        if invite.status == GroupInvitation.Status.PENDING
+    ]
+    pending_requests = [
+        join_request for join_request in group.join_requests.all()
+        if join_request.status == GroupJoinRequest.Status.PENDING
+    ]
+    pending_invite_count = len(pending_invites)
+    pending_request_count = len(pending_requests)
+    reserved_student_ids = {
+        invite.invitee_id for invite in pending_invites
+    } | {
+        join_request.requester_id for join_request in pending_requests
+    }
+    remaining_slots = max(
+        0, work.max_members - member_count - len(reserved_student_ids)
+    )
+    return {
+        "member_count": member_count,
+        "pending_invite_count": pending_invite_count,
+        "pending_request_count": pending_request_count,
+        "pending_reservation_count": len(reserved_student_ids),
+        "remaining_slots": remaining_slots,
+    }
+
+
+def _cancel_competing_join_paths(work, student, *, now=None):
+    now = now or timezone.now()
+    invitations = list(GroupInvitation.objects.filter(
+        group_work=work,
+        invitee=student,
+        status=GroupInvitation.Status.PENDING,
+    ).values_list("pk", flat=True))
+    requests = list(GroupJoinRequest.objects.filter(
+        group_work=work,
+        requester=student,
+        status=GroupJoinRequest.Status.PENDING,
+    ).values_list("pk", flat=True))
+
+    if invitations:
+        GroupInvitation.objects.filter(pk__in=invitations).update(
+            status=GroupInvitation.Status.CANCELLED,
+            responded_at=now,
+        )
+        Notification.objects.filter(
+            recipient=student,
+            event_key__in=[f"group-invitation:{invitation_id}" for invitation_id in invitations],
+            read_at__isnull=True,
+        ).update(read_at=now)
+    if requests:
+        GroupJoinRequest.objects.filter(pk__in=requests).update(
+            status=GroupJoinRequest.Status.CANCELLED,
+            responded_at=now,
+        )
+        Notification.objects.filter(
+            event_key__in=[f"group-join-request:{request_id}" for request_id in requests],
+            read_at__isnull=True,
+        ).update(read_at=now)
 
 
 def _invalid_payload_response(request, error, course, work=None):
@@ -166,28 +237,70 @@ def group_work_detail(request, pk, work_id):
     current_membership = GroupMembership.objects.filter(
         group_work=work, student=request.user
     ).select_related("group", "group__head").first()
-    pending_invites = GroupInvitation.objects.filter(
+    pending_invites = list(GroupInvitation.objects.filter(
         group_work=work,
         invitee=request.user,
         status=GroupInvitation.Status.PENDING,
-    ).select_related("group", "group__head")
-    has_pending_invites = pending_invites.exists()
+    ).select_related("group", "group__head"))
+    can_join = _student_can_join(request) and current_membership is None
 
     groups = work.groups.select_related("head").prefetch_related(
-        "memberships__student", "invitations"
+        "memberships__student", "invitations", "join_requests__requester"
     )
-    if not can_manage and not request.is_dept_override:
-        groups = groups.filter(pk=current_membership.group_id) if current_membership else groups.none()
     groups = list(groups)
     for group in groups:
-        group.member_count = len(group.memberships.all())
-        group.pending_invite_count = sum(
-            invitation.status == GroupInvitation.Status.PENDING
-            for invitation in group.invitations.all()
+        counts = _group_counts(group, work)
+        group.member_count = counts["member_count"]
+        group.pending_invite_count = counts["pending_invite_count"]
+        group.pending_request_count = counts["pending_request_count"]
+        group.pending_reservation_count = counts["pending_reservation_count"]
+        group.remaining_slots = counts["remaining_slots"]
+        group.is_full = group.member_count >= work.max_members
+        group.is_reserved = not group.is_full and group.remaining_slots == 0
+        group.is_current_group = bool(
+            current_membership and current_membership.group_id == group.pk
         )
-        group.remaining_slots = max(
-            0, work.max_members - group.member_count - group.pending_invite_count
+        group.can_view_members = bool(
+            can_manage
+            or request.is_dept_override
+            or group.is_current_group
         )
+        group.has_pending_request = any(
+            join_request.requester_id == request.user.pk
+            and join_request.status == GroupJoinRequest.Status.PENDING
+            for join_request in group.join_requests.all()
+        )
+        group.has_pending_invitation = any(
+            invite.invitee_id == request.user.pk
+            and invite.status == GroupInvitation.Status.PENDING
+            for invite in group.invitations.all()
+        )
+        group.pending_requests = [
+            join_request
+            for join_request in group.join_requests.all()
+            if join_request.status == GroupJoinRequest.Status.PENDING
+        ] if group.head_id == request.user.pk else []
+        owns_reserved_slot = group.has_pending_invitation
+        group.can_join_public = bool(
+            can_join
+            and group.is_public
+            and not group.is_full
+            and (group.remaining_slots > 0 or owns_reserved_slot)
+        )
+        group.can_request_private = bool(
+            can_join
+            and not group.is_public
+            and not group.is_full
+            and group.remaining_slots > 0
+            and not group.has_pending_request
+            and not group.has_pending_invitation
+        )
+    groups.sort(key=lambda group: (
+        not group.is_current_group,
+        group.member_count,
+        group.created_at,
+        group.pk,
+    ))
 
     if _is_api(request):
         return JsonResponse({
@@ -208,16 +321,17 @@ def group_work_detail(request, pk, work_id):
                 {
                     "id": group.pk,
                     "name": group.name,
+                    "is_public": group.is_public,
                     "third_party_contact": (
                         group.third_party_contact
-                        if current_membership and current_membership.group_id == group.pk
+                        if group.is_current_group
                         else None
                     ),
-                    "head": {
+                    "head": ({
                         "id": group.head_id,
                         "name": group.head.get_full_name(),
                         "student_id": group.head.nisit_id,
-                    },
+                    } if group.can_view_members else None),
                     "members": [
                         {
                             "id": member.student_id,
@@ -226,10 +340,34 @@ def group_work_detail(request, pk, work_id):
                             "is_head": member.student_id == group.head_id,
                         }
                         for member in group.memberships.all()
-                    ],
+                    ] if group.can_view_members else [],
                     "member_count": group.member_count,
-                    "pending_invite_count": group.pending_invite_count,
+                    "pending_invite_count": (
+                        group.pending_invite_count if group.can_view_members else None
+                    ),
+                    "pending_request_count": (
+                        group.pending_request_count if group.can_view_members else None
+                    ),
+                    "pending_reservation_count": (
+                        group.pending_reservation_count if group.can_view_members else None
+                    ),
                     "remaining_slots": group.remaining_slots,
+                    "is_full": group.is_full,
+                    "is_reserved": group.is_reserved,
+                    "is_member": group.is_current_group,
+                    "viewer_has_group": current_membership is not None,
+                    "has_pending_request": group.has_pending_request,
+                    "has_pending_invitation": group.has_pending_invitation,
+                    "can_join": group.can_join_public,
+                    "can_request": group.can_request_private,
+                    "join_requests": [
+                        {
+                            "id": join_request.pk,
+                            "requester_id": join_request.requester_id,
+                            "requester_name": join_request.requester.get_full_name(),
+                        }
+                        for join_request in group.pending_requests
+                    ],
                 }
                 for group in groups
             ],
@@ -245,11 +383,7 @@ def group_work_detail(request, pk, work_id):
         "current_membership": current_membership,
         "pending_invites": pending_invites,
         "can_manage": can_manage,
-        "can_join": (
-            _student_can_join(request)
-            and current_membership is None
-            and not has_pending_invites
-        ),
+        "can_join": can_join,
         "is_department": request.is_dept_override,
     })
 
@@ -267,6 +401,14 @@ def group_create(request, pk, work_id):
     except ValidationError as error:
         return _invalid_payload_response(request, error, course, work)
     name = data.get("name", "").strip()
+    public_value = data.get("is_public", "false").strip().lower()
+    if public_value not in {"true", "false"}:
+        error = "Choose whether the group is public or private."
+        if _is_api(request):
+            return JsonResponse({"error": error}, status=400)
+        messages.error(request, error)
+        return redirect(_work_url(course.pk, work.pk))
+    is_public = public_value == "true"
     if not name or len(name) > 120:
         if _is_api(request):
             return JsonResponse({"error": "Enter a group name no longer than 120 characters."}, status=400)
@@ -281,21 +423,16 @@ def group_create(request, pk, work_id):
                     return JsonResponse({"error": "You already belong to a group for this work."}, status=409)
                 messages.error(request, "You already belong to a group for this group work.")
                 return redirect(_work_url(course.pk, work.pk))
-            if GroupInvitation.objects.filter(
-                group_work=work,
-                invitee=request.user,
-                status=GroupInvitation.Status.PENDING,
-            ).exists():
-                if _is_api(request):
-                    return JsonResponse({"error": "Accept or decline your pending invitation first."}, status=409)
-                messages.error(request, "Accept or decline your pending invitation before creating a group.")
-                return redirect(_work_url(course.pk, work.pk))
             group = StudentGroup.objects.create(
-                group_work=work, name=name, head=request.user
+                group_work=work,
+                name=name,
+                head=request.user,
+                is_public=is_public,
             )
             GroupMembership.objects.create(
                 group_work=work, group=group, student=request.user
             )
+            _cancel_competing_join_paths(work, request.user)
     except IntegrityError:
         if _is_api(request):
             return JsonResponse({"error": "That group name is already in use for this group work."}, status=409)
@@ -307,10 +444,142 @@ def group_create(request, pk, work_id):
             "id": group.pk,
             "name": group.name,
             "head_id": group.head_id,
+            "is_public": group.is_public,
             "member_count": 1,
             "max_members": work.max_members,
         }, status=201)
     messages.success(request, "Your group has been created.")
+    return redirect(_work_url(course.pk, work.pk))
+
+
+@course_access()
+@require_POST
+def group_public_join(request, pk, work_id, group_id):
+    course = request.course
+    work = get_object_or_404(GroupWork, pk=work_id, course=course)
+    group = get_object_or_404(StudentGroup, pk=group_id, group_work=work)
+    if not _student_can_join(request):
+        return _forbidden(request)
+    if not group.is_public:
+        if _is_api(request):
+            return JsonResponse({"error": "Only public groups can be joined directly."}, status=409)
+        messages.error(request, "Private groups require a join request.")
+        return redirect(_work_url(course.pk, work.pk))
+
+    try:
+        with transaction.atomic():
+            work = GroupWork.objects.select_for_update().get(pk=work.pk)
+            group = StudentGroup.objects.select_for_update().get(pk=group.pk)
+            if GroupMembership.objects.filter(group_work=work, student=request.user).exists():
+                if _is_api(request):
+                    return JsonResponse({"error": "You already belong to a group for this work."}, status=409)
+                messages.error(request, "You already belong to a group for this group work.")
+                return redirect(_work_url(course.pk, work.pk))
+
+            counts = _group_counts(group, work)
+            owns_reserved_slot = GroupInvitation.objects.filter(
+                group=group,
+                invitee=request.user,
+                status=GroupInvitation.Status.PENDING,
+            ).exists()
+            if counts["member_count"] >= work.max_members or (
+                counts["remaining_slots"] == 0 and not owns_reserved_slot
+            ):
+                if _is_api(request):
+                    return JsonResponse({"error": "That group is full or all remaining seats are reserved."}, status=409)
+                messages.error(request, "That group is full or all remaining seats are reserved.")
+                return redirect(_work_url(course.pk, work.pk))
+
+            membership = GroupMembership.objects.create(
+                group_work=work,
+                group=group,
+                student=request.user,
+            )
+            _cancel_competing_join_paths(work, request.user)
+            notify_public_group_join(group, request.user, membership)
+    except IntegrityError:
+        if _is_api(request):
+            return JsonResponse({"error": "The group changed while you joined. Please review it and try again."}, status=409)
+        messages.error(request, "The group changed while you joined. Please review it and try again.")
+        return redirect(_work_url(course.pk, work.pk))
+
+    if _is_api(request):
+        return JsonResponse({
+            "group_id": group.pk,
+            "membership_id": membership.pk,
+            "member_count": counts["member_count"] + 1,
+            "max_members": work.max_members,
+        }, status=201)
+    messages.success(request, f"You joined {group.name}.")
+    return redirect(_work_url(course.pk, work.pk))
+
+
+@course_access()
+@require_POST
+def group_join_request_create(request, pk, work_id, group_id):
+    course = request.course
+    work = get_object_or_404(GroupWork, pk=work_id, course=course)
+    group = get_object_or_404(StudentGroup, pk=group_id, group_work=work)
+    if not _student_can_join(request):
+        return _forbidden(request)
+    if group.is_public:
+        if _is_api(request):
+            return JsonResponse({"error": "Public groups can be joined directly."}, status=409)
+        messages.error(request, "Public groups can be joined directly.")
+        return redirect(_work_url(course.pk, work.pk))
+
+    try:
+        with transaction.atomic():
+            work = GroupWork.objects.select_for_update().get(pk=work.pk)
+            group = StudentGroup.objects.select_for_update().get(pk=group.pk)
+            if GroupMembership.objects.filter(group_work=work, student=request.user).exists():
+                if _is_api(request):
+                    return JsonResponse({"error": "You already belong to a group for this work."}, status=409)
+                messages.error(request, "You already belong to a group for this group work.")
+                return redirect(_work_url(course.pk, work.pk))
+            if GroupInvitation.objects.filter(
+                group=group,
+                invitee=request.user,
+                status=GroupInvitation.Status.PENDING,
+            ).exists():
+                if _is_api(request):
+                    return JsonResponse({"error": "You already have an invitation to this group."}, status=409)
+                messages.error(request, "You already have an invitation to this group.")
+                return redirect(_work_url(course.pk, work.pk))
+            if GroupJoinRequest.objects.filter(
+                group=group,
+                requester=request.user,
+                status=GroupJoinRequest.Status.PENDING,
+            ).exists():
+                if _is_api(request):
+                    return JsonResponse({"error": "You already requested to join this group."}, status=409)
+                messages.error(request, "You already requested to join this group.")
+                return redirect(_work_url(course.pk, work.pk))
+            counts = _group_counts(group, work)
+            if counts["member_count"] >= work.max_members or counts["remaining_slots"] == 0:
+                if _is_api(request):
+                    return JsonResponse({"error": "That group is full or all remaining seats are reserved."}, status=409)
+                messages.error(request, "That group is full or all remaining seats are reserved.")
+                return redirect(_work_url(course.pk, work.pk))
+            join_request = GroupJoinRequest.objects.create(
+                group_work=work,
+                group=group,
+                requester=request.user,
+            )
+            notify_group_join_request(join_request)
+    except IntegrityError:
+        if _is_api(request):
+            return JsonResponse({"error": "That request could not be created. Please review the group and try again."}, status=409)
+        messages.error(request, "That request could not be created. Please review the group and try again.")
+        return redirect(_work_url(course.pk, work.pk))
+
+    if _is_api(request):
+        return JsonResponse({
+            "id": join_request.pk,
+            "group_id": group.pk,
+            "status": join_request.status,
+        }, status=201)
+    messages.success(request, f"Your request to join {group.name} was sent.")
     return redirect(_work_url(course.pk, work.pk))
 
 
@@ -359,16 +628,23 @@ def group_invite(request, pk, work_id, group_id):
                 messages.error(request, "That student already belongs to a group for this work.")
                 return redirect(_work_url(course.pk, work.pk))
             if GroupInvitation.objects.filter(
-                group_work=work, invitee=invitee, status=GroupInvitation.Status.PENDING
+                group=group, invitee=invitee, status=GroupInvitation.Status.PENDING
             ).exists():
                 if _is_api(request):
                     return JsonResponse({"error": "That student already has a pending invitation."}, status=409)
                 messages.error(request, "That student already has a pending invitation.")
                 return redirect(_work_url(course.pk, work.pk))
-            pending_count = GroupInvitation.objects.filter(
-                group=group, status=GroupInvitation.Status.PENDING
-            ).count()
-            if group.memberships.count() + pending_count >= work.max_members:
+            if GroupJoinRequest.objects.filter(
+                group=group,
+                requester=invitee,
+                status=GroupJoinRequest.Status.PENDING,
+            ).exists():
+                if _is_api(request):
+                    return JsonResponse({"error": "That student has already requested to join this group."}, status=409)
+                messages.error(request, "That student has already requested to join this group.")
+                return redirect(_work_url(course.pk, work.pk))
+            counts = _group_counts(group, work)
+            if counts["member_count"] >= work.max_members or counts["remaining_slots"] == 0:
                 if _is_api(request):
                     return JsonResponse({"error": "Your group has reached its maximum size."}, status=409)
                 messages.error(request, "Your group has reached its maximum size.")
@@ -394,6 +670,74 @@ def group_invite(request, pk, work_id, group_id):
             "group_id": invitation.group_id,
         }, status=201)
     messages.success(request, f"Invitation sent to {invitee.get_full_name()}.")
+    return redirect(_work_url(course.pk, work.pk))
+
+
+@course_access()
+@require_POST
+def group_join_request_action(request, pk, work_id, request_id, action):
+    course = request.course
+    work = get_object_or_404(GroupWork, pk=work_id, course=course)
+    if action not in {"accept", "ignore"}:
+        raise Http404
+
+    try:
+        with transaction.atomic():
+            work = GroupWork.objects.select_for_update().get(pk=work.pk)
+            join_request = get_object_or_404(
+                GroupJoinRequest.objects.select_for_update().select_related(
+                    "group", "group__head", "requester"
+                ),
+                pk=request_id,
+                group_work=work,
+                group__head=request.user,
+                status=GroupJoinRequest.Status.PENDING,
+            )
+            group = StudentGroup.objects.select_for_update().get(pk=join_request.group_id)
+            if action == "accept":
+                if GroupMembership.objects.filter(
+                    group_work=work, student=join_request.requester
+                ).exists():
+                    if _is_api(request):
+                        return JsonResponse({"error": "That student already belongs to a group for this work."}, status=409)
+                    messages.error(request, "That student already belongs to a group for this group work.")
+                    return redirect(_work_url(course.pk, work.pk))
+                if group.memberships.count() >= work.max_members:
+                    if _is_api(request):
+                        return JsonResponse({"error": "That group has reached its maximum size."}, status=409)
+                    messages.error(request, "That group has reached its maximum size.")
+                    return redirect(_work_url(course.pk, work.pk))
+                GroupMembership.objects.create(
+                    group_work=work,
+                    group=group,
+                    student=join_request.requester,
+                )
+                join_request.status = GroupJoinRequest.Status.ACCEPTED
+                messages.success(request, f"{join_request.requester.get_full_name()} joined {group.name}.")
+            else:
+                join_request.status = GroupJoinRequest.Status.IGNORED
+                messages.success(request, "Join request ignored.")
+            join_request.responded_at = timezone.now()
+            join_request.save(update_fields=["status", "responded_at"])
+            Notification.objects.filter(
+                recipient=group.head,
+                event_key=f"group-join-request:{join_request.pk}",
+                read_at__isnull=True,
+            ).update(read_at=timezone.now())
+            notify_group_join_request_response(join_request)
+            if action == "accept":
+                _cancel_competing_join_paths(work, join_request.requester)
+    except IntegrityError:
+        if _is_api(request):
+            return JsonResponse({"error": "The group changed while you responded. Please review it and try again."}, status=409)
+        messages.error(request, "The group changed while you responded. Please review it and try again.")
+
+    if _is_api(request):
+        return JsonResponse({
+            "id": join_request.pk,
+            "status": join_request.status,
+            "group_id": join_request.group_id,
+        })
     return redirect(_work_url(course.pk, work.pk))
 
 
@@ -485,14 +829,9 @@ def group_invitation_action(request, pk, work_id, invitation_id, action):
                 event_key=f"group-invitation:{invitation.pk}",
                 read_at__isnull=True,
             ).update(read_at=timezone.now())
-            create_notification(
-                recipient=invitation.group.head,
-                kind="group_invitation_response",
-                event_key=f"group-invitation-response:{invitation.pk}:{invitation.status}",
-                title="Group invitation response",
-                message=f"{request.user.get_full_name()} {invitation.status} your invitation.",
-                url=_work_url(course.pk, work.pk),
-            )
+            notify_group_invitation_response(invitation)
+            if action == "accept":
+                _cancel_competing_join_paths(work, request.user)
     except IntegrityError:
         if _is_api(request):
             return JsonResponse({
@@ -575,7 +914,9 @@ def group_member_action(request, pk, work_id, group_id, action):
                 return JsonResponse({"error": "The group head cannot remove themselves."}, status=409)
             messages.error(request, "The group head cannot remove themselves.")
         else:
-            membership.delete()
+            with transaction.atomic():
+                membership.delete()
+                notify_group_member_kicked(group, target, membership)
             if _is_api(request):
                 return JsonResponse({"removed": True, "student_id": target.pk})
             messages.success(request, "Group member removed.")

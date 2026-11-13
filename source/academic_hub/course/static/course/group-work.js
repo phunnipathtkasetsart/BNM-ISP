@@ -63,7 +63,34 @@
         }
         const slots = root.querySelector(`[data-group-slots="${group.id}"]`);
         if (slots) {
-          slots.textContent = `Available invite slots: ${group.remaining_slots}`;
+          const reserved = group.pending_reservation_count
+            ? ` (${group.pending_reservation_count} reserved)`
+            : '';
+          slots.textContent = `Available slots: ${group.remaining_slots}${reserved}`;
+        }
+        const actionButton = root.querySelector(
+          `[data-group-actions="${group.id}"] [data-group-action-button]`,
+        );
+        if (actionButton) {
+          if (group.has_pending_request) {
+            actionButton.textContent = 'Requested';
+            actionButton.disabled = true;
+          } else if (group.has_pending_invitation && !group.is_public) {
+            actionButton.textContent = 'Invited';
+            actionButton.disabled = true;
+          } else if (group.is_full) {
+            actionButton.textContent = 'FULL';
+            actionButton.disabled = true;
+          } else if (group.viewer_has_group) {
+            actionButton.textContent = 'Already in a group';
+            actionButton.disabled = true;
+          } else if (group.can_join || group.can_request) {
+            actionButton.textContent = actionButton.dataset.actionLabel;
+            actionButton.disabled = false;
+          } else if (group.is_reserved) {
+            actionButton.textContent = 'Reserved';
+            actionButton.disabled = true;
+          }
         }
       });
       const status = root.querySelector('[data-group-live-error]');
