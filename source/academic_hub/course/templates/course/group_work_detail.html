@@ -64,7 +64,27 @@
 <section class="group-groups" aria-label="Groups">
   {% for group in groups %}
     {% with member_count=group.member_count %}
-      <article class="group-card" data-group-card="{{ group.pk }}">
+      {% if can_manage or is_department %}
+        <details class="group-card group-card--accordion" data-group-card="{{ group.pk }}">
+          <summary class="group-card__summary">
+            <div class="group-card__summary-info">
+              <span class="group-card__summary-name" role="heading" aria-level="2">{{ group.name }}</span>
+              <span class="group-muted group-card__summary-head">Head: {{ group.head.get_full_name }} <span class="group-id">({{ group.head.nisit_id }})</span></span>
+            </div>
+            <span class="group-eyebrow group-card__summary-type">
+              <span class="sr-only">{% if group.is_public %}Public group{% else %}Private group, locked{% endif %}. </span>
+              <span data-group-capacity="{{ group.pk }}">{{ member_count }}/{{ work.max_members }}</span>
+              {% if not group.is_public %}<span class="group-lock-icon" aria-hidden="true"></span>{% endif %}
+            </span>
+          </summary>
+          <div class="group-card__accordion-content">
+            {% if group.pending_reservation_count %}
+              <p class="group-muted" data-group-slots="{{ group.pk }}">Available slots: {{ group.remaining_slots }} ({{ group.pending_reservation_count }} reserved)</p>
+            {% else %}
+              <p class="group-muted" data-group-slots="{{ group.pk }}">Available slots: {{ group.remaining_slots }}</p>
+            {% endif %}
+      {% else %}
+        <article class="group-card" data-group-card="{{ group.pk }}">
         <header class="group-card__head">
           <div>
             <p class="group-eyebrow">
@@ -84,14 +104,26 @@
               </p>
             {% endif %}
             {% if group.is_current_group and group.head_id == request.user.pk %}
-              <form method="post" action="{% url 'course:group_contact_update' course.pk work.pk group.pk %}" class="group-contact-form">
-                {% csrf_token %}
-                <label class="sr-only" for="third-party-contact-{{ group.pk }}">Add third-party contact</label>
-                <input id="third-party-contact-{{ group.pk }}" name="third_party_contact" maxlength="500" placeholder="Enter contact details visible to your group" value="{{ group.third_party_contact }}">
-                <button class="group-button group-button--quiet" type="submit">
-                  {% if group.third_party_contact %}Update contact{% else %}Save contact{% endif %}
-                </button>
-              </form>
+              <div class="group-owner-tools">
+                <form method="post" action="{% url 'course:group_contact_update' course.pk work.pk group.pk %}" class="group-contact-form">
+                  {% csrf_token %}
+                  <label class="sr-only" for="third-party-contact-{{ group.pk }}">Add third-party contact</label>
+                  <input id="third-party-contact-{{ group.pk }}" name="third_party_contact" maxlength="500" placeholder="Enter contact details visible to your group" value="{{ group.third_party_contact }}">
+                  <button class="group-button group-button--quiet" type="submit">
+                    {% if group.third_party_contact %}Update contact{% else %}Save contact{% endif %}
+                  </button>
+                </form>
+                {% if group.remaining_slots > 0 %}
+                  <form method="post" action="{% url 'course:group_invite' course.pk work.pk group.pk %}" class="group-invite-form">
+                    {% csrf_token %}
+                    <label for="invite-{{ group.pk }}">Invite a classmate</label>
+                    <div>
+                      <input id="invite-{{ group.pk }}" type="text" name="nisit_id" inputmode="numeric" maxlength="10" placeholder="Student ID" required>
+                      <button class="group-button" type="submit">Invite</button>
+                    </div>
+                  </form>
+                {% endif %}
+              </div>
             {% endif %}
             {% if group.can_view_members %}
               {% if group.pending_reservation_count %}
@@ -126,6 +158,7 @@
             {% endif %}
           </div>
         </header>
+      {% endif %}
 
         {% if group.can_view_members %}
           <ul class="group-member-list" id="members-{{ group.pk }}">
@@ -179,16 +212,7 @@
               </ul>
             </section>
           {% endif %}
-          {% if group.remaining_slots > 0 %}
-            <form method="post" action="{% url 'course:group_invite' course.pk work.pk group.pk %}" class="group-invite-form">
-              {% csrf_token %}
-              <label for="invite-{{ group.pk }}">Invite a classmate</label>
-              <div>
-                <input id="invite-{{ group.pk }}" type="text" name="nisit_id" inputmode="numeric" maxlength="10" placeholder="Student ID" required>
-                <button class="group-button" type="submit">Invite</button>
-              </div>
-            </form>
-          {% else %}
+          {% if group.remaining_slots <= 0 %}
             <p class="group-muted group-capacity-note">All group slots are filled or reserved.</p>
           {% endif %}
           <form method="post" action="{% url 'course:group_member_action' course.pk work.pk group.pk 'disband' %}" class="group-danger-action">
@@ -201,7 +225,12 @@
             <button class="group-text-button group-text-button--danger" type="submit">Leave group</button>
           </form>
         {% endif %}
-      </article>
+      {% if can_manage or is_department %}
+          </div>
+        </details>
+      {% else %}
+        </article>
+      {% endif %}
     {% endwith %}
   {% empty %}
     {% if can_manage or is_department %}

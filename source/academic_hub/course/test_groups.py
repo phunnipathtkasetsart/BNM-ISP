@@ -654,6 +654,9 @@ class GroupWorkTests(TestCase):
     def test_department_and_lecturer_can_view_all_group_members(self):
         work = self.make_work()
         self.make_group(work=work)
+        self.make_group(
+            work=work, head=self.invitee, name="Public team", is_public=True
+        )
         details_url = self.url("group_work", self.course.pk, work.pk)
 
         for staff_user in (self.lecturer, self.ta, self.department):
@@ -661,6 +664,31 @@ class GroupWorkTests(TestCase):
             response = self.client.get(details_url)
             self.assertEqual(response.status_code, 200)
             self.assertContains(response, self.student.nisit_id)
+            self.assertNotContains(response, "PRIVATE GROUP")
+            self.assertNotContains(response, "PUBLIC GROUP")
+            self.assertContains(
+                response,
+                '<span class="group-lock-icon" aria-hidden="true"></span>',
+                html=False,
+            )
+            self.assertContains(
+                response,
+                '<details class="group-card group-card--accordion"',
+                html=False,
+            )
+            self.assertNotContains(
+                response,
+                '<details class="group-card group-card--accordion" open',
+                html=False,
+            )
+
+        self.client.force_login(self.student)
+        response = self.client.get(details_url)
+        self.assertNotContains(
+            response,
+            '<details class="group-card group-card--accordion"',
+            html=False,
+        )
 
     def test_chat_routes_and_group_chat_controls_are_removed(self):
         work = self.make_work()
