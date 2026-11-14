@@ -1,0 +1,256 @@
+REFACTORING REPORT: course app
+==============================
+Branch : refactor_courses
+Base   : 42fbbdb (main, after PR #41 "group-add-features")
+Commits: 2b53c55  step 1, views.py
+         3089f81  step 2, group_views.py
+         0361b57  step 3, tests.py / test_groups.py
+         924574f  bug fixes after refactoring (see section 9)
+
+Goal: raise the Maintainability Index (MI) of the three rank-C files without
+changing external behaviour. Refactoring means restructuring code without
+changing what it does (Lec #11). URLs, route names, templates, status codes
+and JSON responses are unchanged.
+
+
+1. WHY THESE FILES (metrics, Lec #12)
+-------------------------------------
+Radon MI before refactoring:
+  views.py          0.00  C   (1,329 lines)
+  group_views.py    0.00  C   (931 lines)
+  tests.py          0.00  C   (2,098 lines)
+  (all other files in the app were already rank A)
+
+Code churn (number of commits touching the file on main):
+  views.py 32, tests.py 19, test_groups.py 5, group_views.py 4
+  views.py combines the lowest MI with the highest churn, so it is the main
+  HOTSPOT and was refactored first. Churn rises during refactoring (the
+  "positive" kind: active refactoring) and should drop on these files
+  afterwards.
+
+
+2. CODE SMELLS FOUND (Lec #11, "Common Code Smells")
+----------------------------------------------------
+- Large class / long file : views.py held 6 features in one file;
+                            group_views.py held 12 endpoints plus all rules
+- Long methods            : group_work_detail CC 36 (E), group_invite CC 25,
+                            edit_post CC 24, group_member_action CC 23
+- Complex conditionals    : long if/elif chains for group and member actions
+- Duplicated code         : the same blocks repeated many times (see clones)
+
+
+3. PRINCIPLES APPLIED
+---------------------
+Single Responsibility Principle (SRP, SOLID "S")
+  - views.py split into one module per feature: courses, roster, posts,
+    materials, qa.
+  - Business rules moved out of HTTP views into services:
+      group_services.py : create group, public join, join requests,
+                          invitations, seat reservation, kick/transfer,
+                          cancelling competing invites/requests
+      qa.py             : Q&A permission rules and serializers
+  - Views now only read the request and build the response.
+
+Dependency Inversion Principle (DIP, SOLID "D")
+  - group_views.py used to import payload() from views.py (one view module
+    depending on another). Both now depend on a shared module, responses.py.
+  - Views depend on service functions and on exceptions (GroupRuleError,
+    GroupForbidden, QAError), not on how each rule is implemented.
+
+Open/Closed Principle (OCP, SOLID "O")
+  - group_member_action uses a dispatch table (SELF_ACTIONS / HEAD_ACTIONS)
+    instead of an if/elif chain. A new action is added by adding an entry,
+    without editing the existing branches.
+
+DRY (Don't Repeat Yourself) and removing code clones (Lec #12, Code Clones)
+  - Exact clone: the "if API return JSON, else flash a message and redirect"
+    branch appeared 86 times (34 in views.py, 52 in group_views.py). It is
+    now respond() / fail() in responses.py, plus one rule_errors decorator
+    for group views. The copies is_api / _is_api were merged into one.
+  - Near-miss clones:
+      topic selection (3 copies)              -> resolve_topic()
+      attachment-to-material loop (2 copies)  -> attach_uploads()
+      post owner check (4 copies)             -> can_modify_post()
+      lock + fetch + archived check (9 Q&A
+      endpoints)                              -> locked_question/locked_answer()
+      "already in a group" / "no free seat" /
+      lock work+group (5 group endpoints)     -> _require_no_group(),
+                                                 _no_free_seat(), _lock()
+      accept invitation / accept join request -> _accept_into()
+      "not staff and not superuser" check     -> is_student_user()
+  - Semantic clones: the Q&A permission rules were written twice, once for the
+    JSON can_* flags and again inside each endpoint. Both now use the same
+    functions in qa.py.
+  - Tests: sign_in/url/upload were copied into each test class. They are now
+    one CourseClientMixin in tests/helpers.py.
+
+KISS (Keep It Simple) / simplify conditionals
+  - Long views split into small helpers, e.g. group_work_detail (CC 36) ->
+    describe_group, _viewer_status, _join_options, described_groups,
+    group_data; edit_post -> save_post_edit, render_post_editor.
+  - Errors are raised as exceptions and turned into a response in one place,
+    replacing a return-error check after every step.
+
+Readability / documentation (code quality dimensions 1 and 10)
+  - Module and function docstrings explain WHY, e.g. why a pending invitation
+    counts as a free seat for its invitee.
+  - Type hints on the new shared helpers (PEP 484).
+  - Unused imports removed, e.g. "from django.http import request", which
+    shadowed the request parameter.
+
+Testability (code quality dimension 5)
+  - Rules in group_services.py / qa.py are plain functions that can be tested
+    without going through HTTP.
+
+
+4. REFACTORING TYPES USED (Lec #11, "Types of Refactoring")
+-----------------------------------------------------------
+Extract Method / Extract Class, Remove Duplicated Code, Simplify Conditionals,
+Consolidate Duplicate Conditional Fragments, Rename for clarity.
+
+
+5. REFACTORING PROCESS FOLLOWED (Lec #11)
+-----------------------------------------
+1) Identify problem areas : Radon MI/CC and git churn
+2) Ensure proper testing  : baseline run of the existing suite
+3) Refactor in small steps: three separate commits (views, groups, tests)
+4) Run tests after each   : same result after every step
+5) Review                 : Radon MI and CC measured again
+
+
+6. WHAT CHANGED (files)
+-----------------------
+Step 1, views.py (2b53c55)
+  views.py              -> views/courses.py, roster.py, posts.py,
+                           materials.py, qa.py (+ views/__init__.py)
+  new responses.py      : request parsing + shared HTML/JSON responses
+  new qa.py             : Q&A input parsing, permission rules, serializers
+  services.py           : + resolve_topic(), attach_uploads()
+  permissions.py        : + is_student_user(), can_modify_post()
+
+Step 2, group_views.py (3089f81)
+  group_views.py        -> views/groups.py
+  new group_services.py : group business rules (incl. PR #41 features)
+  urls.py               : imports group views from the views package
+                          (URLs and route names unchanged)
+
+Step 3, tests
+  tests.py              -> tests/test_models.py, test_courses.py,
+                           test_content_views.py, test_content_edge.py,
+                           test_qa.py
+  test_groups.py        -> tests/test_groups.py
+  new tests/helpers.py  : CourseClientMixin (sign_in, url, upload)
+  Test bodies unchanged; still 138 tests.
+
+
+7. RESULTS
+----------
+Maintainability Index (Radon, rank A > 19)
+  File                          Before      After
+  views.py -> views/*           0.00 C      29.2 - 58.5 A
+  responses.py (new)            -           61.2 A
+  qa.py (new)                   -           38.3 A
+  group_views.py -> groups.py   0.00 C      31.1 A
+  group_services.py (new)       -           31.9 A
+  tests.py -> tests/*           0.00 C      19.4 - 40.6 A
+  test_groups.py                23.9 A      23.9 A (moved only)
+
+Cyclomatic Complexity of the former hotspots
+  group_work_detail          E (36) -> B (7)
+  group_invite               D (25) -> A (3)
+  edit_post                  D (24) -> B (8)
+  group_member_action        D (23) -> A (2)
+  group_work_index           C (19) -> A (3)
+  group_join_request_create  C (16) -> A (1)
+  create_post                C (15) -> B (6)
+  qa_question_list           C (15) -> A (4)
+  detail_context             C (14) -> B (8)
+  group_create               C (13) -> A (1)
+  group_public_join          C (13) -> A (1)
+  group_invitation_action    C (12) -> A (3)
+  group_join_request_action  C (11) -> A (3)
+  No function in the refactored code is rank C or worse. The only rank-C
+  function left in the app is CsvRosterForm.clean_csv_file (C 16) in
+  forms.py, which was not part of this refactoring.
+
+Tests (same before and after)
+  course app : 138 tests
+  project    : 385 tests, 2 failures that also fail on the base commit
+               - course   test_duplicate_create_edit_and_normalization
+               - announcements test_forum_filters_search_audience_category_
+                 dates_and_comment_sort
+
+
+8. BEHAVIOUR NOTES
+------------------
+- One small change: after accepting/declining an invitation or accepting/
+  ignoring a join request, the success message is now shown only after the
+  action succeeds, and only on HTML pages. Before, it was added first, so a
+  failed action showed both a success and an error message.
+- Kept on purpose (not fixed during refactoring): edit_post notified only the
+  last material when several files were added to Materials. It was left for
+  a separate bug-fix commit and is now fixed (section 9).
+
+
+9. BUG FIXES AFTER REFACTORING (924574f)
+----------------------------------------
+Done as a separate commit, so the refactoring commits stay behaviour-
+preserving. Every fix comes with tests.
+
+UI fixes (templates only)
+  - Edit class page: "Delete class" showed for active classes. It now
+    appears only after the class is archived (next to "Restore class").
+    Cause: the Delete section sat outside the {% if course.archived_at %}
+    block in edit.html.
+  - Settings tab: an empty bordered box appeared under "Assign TA" when the
+    class had students but no TA. The TA list now renders only once a TA
+    exists; otherwise a plain "No TAs assigned yet." line is shown.
+
+Editing announcement files (forms.py, views/posts.py, _post_card.html,
+course.js)
+  - Before: the edit form took one file only, any upload replaced ALL old
+    files, and the X on one file removed all or none of them.
+  - Now: each file's X removes only that file (sent as
+    remove_attachment_ids, limited to this post's own attachments); several
+    files can be added in one save and are added to the files kept.
+  - Limit of 10 files / 25 MB now counts kept + new files.
+  - Every new Material is announced (was: only the last one).
+  - API compatible: remove_attachment=true still removes every file.
+
+File guardrails on edit (course-tabs.js, _post_card.html, views/posts.py)
+  - The server already rejected .exe/.bat/disguised executables on edit,
+    but the edit form had no file-type filter or client-side check, and a
+    rejected edit showed its error inside the New announcement form.
+  - Now the edit form uses the same checks as create: accept filter,
+    extension whitelist/blacklist, 25 MB / 10-file checks, Save blocked on
+    error. A rejected edit shows "Failed to update announcement." with the
+    reason at the top of the page.
+
+Deadline notification on edit (views/posts.py)
+  - Changing a deadline while editing never sent a notification: the old
+    deadline was read after form.is_valid(), which had already copied the
+    new deadline onto the post. It is now read before validation.
+
+Principles (Lec #11 / #12)
+  - DRY: the edit form reuses the create form's validation script instead of
+    a second copy of the rules.
+  - Security (quality dimension 9): input validation on both client and
+    server; attachment ids are checked against the post being edited.
+  - SRP: which attachments to remove and the file limits live in the form
+    (removed_attachments, _check_file_limits); the view only saves.
+  - Readability / complexity: the limit check was split after it first
+    scored CC C (11); the new form methods are now A or B.
+
+Results after the fixes
+  forms.py                      26.6 A
+  views/posts.py                48.9 A   (edit_post CC 8 -> 7)
+  views/courses.py              38.5 A
+  tests/test_content_views.py   23.6 A
+  tests/test_courses.py         20.0 A
+  Tests: course app 145 (138 + 7 new), project 392, with the same 2 failures
+         that also fail on the base commit (listed in section 7).
+
+
+How to re-measure (from the course folder):
+  python -m radon mi -s .\forms.py .\permissions.py .\services.py .\signals.py .\validators.py .\responses.py .\qa.py .\group_services.py .\views .\tests
+  python -m radon cc -s -n C .\views .\responses.py .\qa.py .\group_services.py

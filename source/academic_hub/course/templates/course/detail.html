@@ -410,27 +410,29 @@
           </form>
         </div>
 
-        <!-- CURRENT ASSIGNED TAs LIST -->
-        <div class="cc-card">
-          <ul class="cc-files">
-            {% for e in enrollments %}
-              {% if e.student_id in ta_ids %}
-                <li class="cc-file">
-                  <div class="cc-file__main">
-                    <span class="cc-file__name">{{ e.student.get_full_name }} <span class="cc-role cc-role--ta">TA</span></span>
-                    <span class="cc-file__meta">{{ e.student_id }}</span>
-                  </div>
-                  <form method="post" action="{% url 'course:ta_remove' course.pk e.student_id %}" data-confirm="Remove {{ e.student.get_full_name }} as TA?">
-                    {% csrf_token %}
-                    <button type="submit" class="course-btn secondary">Remove TA</button>
-                  </form>
-                </li>
-              {% endif %}
-            {% empty %}
-              <li class="cc-empty">No TAs assigned yet.</li>
-            {% endfor %}
-          </ul>
-        </div>
+        <!-- CURRENT ASSIGNED TAs LIST: the card only appears once a TA exists -->
+        {% if ta_ids %}
+          <div class="cc-card">
+            <ul class="cc-files">
+              {% for e in enrollments %}
+                {% if e.student_id in ta_ids %}
+                  <li class="cc-file">
+                    <div class="cc-file__main">
+                      <span class="cc-file__name">{{ e.student.get_full_name }} <span class="cc-role cc-role--ta">TA</span></span>
+                      <span class="cc-file__meta">{{ e.student_id }}</span>
+                    </div>
+                    <form method="post" action="{% url 'course:ta_remove' course.pk e.student_id %}" data-confirm="Remove {{ e.student.get_full_name }} as TA?">
+                      {% csrf_token %}
+                      <button type="submit" class="course-btn secondary">Remove TA</button>
+                    </form>
+                  </li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+          </div>
+        {% else %}
+          <p class="cc-hint">No TAs assigned yet.</p>
+        {% endif %}
       </div>
     </section>
   {% endif %}
