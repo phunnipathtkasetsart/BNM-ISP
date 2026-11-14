@@ -13,21 +13,31 @@ from django.db import models
 
 from .storage import shorts_storage
 
+# Every stored clip lives under this prefix. A name without it has not been
+# uploaded yet (it is still the uploader's own file name).
+CLIP_PREFIX = "clips/"
 
-def clip_upload_path(instance, filename):
+
+def clip_upload_path(_instance: "Short", filename: str) -> str:
     """A random object name, so nothing the uploader typed reaches storage."""
     extension = os.path.splitext(filename)[1].lower()[:10]
-    return f"clips/{uuid.uuid4().hex}{extension}"
+    return f"{CLIP_PREFIX}{uuid.uuid4().hex}{extension}"
 
 
 class Short(models.Model):
+    """One uploaded study clip and the details shown with it."""
+
     title = models.CharField(max_length=150)
     description = models.TextField(blank=True, default="", max_length=2000)
     # The same tags announcements use. A typed tag that matches an existing
     # one (e.g. "ske") reuses it; anything new is created as a Topic tag.
-    tags = models.ManyToManyField("announcements.Tag", blank=True, related_name="shorts")
+    tags = models.ManyToManyField(
+        "announcements.Tag", blank=True, related_name="shorts"
+    )
 
-    clip = models.FileField(upload_to=clip_upload_path, storage=shorts_storage, max_length=255)
+    clip = models.FileField(
+        upload_to=clip_upload_path, storage=shorts_storage, max_length=255
+    )
     original_name = models.CharField(max_length=255, blank=True, default="")
     size = models.PositiveBigIntegerField(default=0)
     duration_seconds = models.FloatField()
@@ -51,14 +61,16 @@ class Short(models.Model):
     class Meta:
         ordering = ["-created_at", "-pk"]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.title
 
 
 class ShortLike(models.Model):
-    """One user liking one short. A second like is the same row, not a new one."""
+    """One user liking one short. Liking twice is still one row."""
 
-    short = models.ForeignKey(Short, on_delete=models.CASCADE, related_name="likes")
+    short = models.ForeignKey(
+        Short, on_delete=models.CASCADE, related_name="likes"
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -69,17 +81,30 @@ class ShortLike(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["short", "user"], name="unique_short_like"),
+            models.UniqueConstraint(
+                fields=["short", "user"], name="unique_short_like"
+            ),
         ]
+
+    def __str__(self) -> str:
+        return f"{self.user_id} likes {self.short_id}"
 
 
 class ShortComment(models.Model):
-    short = models.ForeignKey(Short, on_delete=models.CASCADE, related_name="comments")
-    # Set on replies: the comment the thread hangs from. Threads are one level
-    # deep, as on Reels: replying to a reply joins the same thread, so parent
-    # is always a top-level comment. Deleting it takes its replies with it.
+    """A comment on a short, or a reply to one (one level deep)."""
+
+    short = models.ForeignKey(
+        Short, on_delete=models.CASCADE, related_name="comments"
+    )
+    # Set on replies: the comment the thread hangs from. Threads are one
+    # level deep, as on Reels: replying to a reply joins the same thread, so
+    # parent is always a top-level comment. Deleting it takes its replies.
     parent = models.ForeignKey(
-        "self", null=True, blank=True, on_delete=models.CASCADE, related_name="replies",
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="replies",
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -99,9 +124,14 @@ class ShortComment(models.Model):
     class Meta:
         ordering = ["-created_at", "-pk"]
         indexes = [
-            models.Index(fields=["short", "-created_at"], name="short_comment_list_idx"),
-            models.Index(fields=["parent", "created_at"], name="short_reply_list_idx"),
+            models.Index(
+                fields=["short", "-created_at"],
+                name="short_comment_list_idx",
+            ),
+            models.Index(
+                fields=["parent", "created_at"], name="short_reply_list_idx"
+            ),
         ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Comment on {self.short_id}"
