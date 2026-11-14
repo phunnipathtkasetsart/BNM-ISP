@@ -4,7 +4,8 @@ Branch : refactor_courses
 Base   : 42fbbdb (main, after PR #41 "group-add-features")
 Commits: 2b53c55  step 1, views.py
          3089f81  step 2, group_views.py
-         (step 3) tests.py / test_groups.py
+         0361b57  step 3, tests.py / test_groups.py
+         924574f  bug fixes after refactoring (see section 9)
 
 Goal: raise the Maintainability Index (MI) of the three rank-C files without
 changing external behaviour. Refactoring means restructuring code without
@@ -168,7 +169,9 @@ Cyclomatic Complexity of the former hotspots
   group_public_join          C (13) -> A (1)
   group_invitation_action    C (12) -> A (3)
   group_join_request_action  C (11) -> A (3)
-  No function in the course app is rank C or worse.
+  No function in the refactored code is rank C or worse. The only rank-C
+  function left in the app is CsvRosterForm.clean_csv_file (C 16) in
+  forms.py, which was not part of this refactoring.
 
 Tests (same before and after)
   course app : 138 tests
@@ -184,9 +187,68 @@ Tests (same before and after)
   ignoring a join request, the success message is now shown only after the
   action succeeds, and only on HTML pages. Before, it was added first, so a
   failed action showed both a success and an error message.
-- Kept on purpose (not fixed during refactoring): edit_post notifies only the
-  last material when several files are added to Materials. Marked with a
-  comment in views/posts.py and left for a separate bug-fix commit.
+- Kept on purpose (not fixed during refactoring): edit_post notified only the
+  last material when several files were added to Materials. It was left for
+  a separate bug-fix commit and is now fixed (section 9).
+
+
+9. BUG FIXES AFTER REFACTORING (924574f)
+----------------------------------------
+Done as a separate commit, so the refactoring commits stay behaviour-
+preserving. Every fix comes with tests.
+
+UI fixes (templates only)
+  - Edit class page: "Delete class" showed for active classes. It now
+    appears only after the class is archived (next to "Restore class").
+    Cause: the Delete section sat outside the {% if course.archived_at %}
+    block in edit.html.
+  - Settings tab: an empty bordered box appeared under "Assign TA" when the
+    class had students but no TA. The TA list now renders only once a TA
+    exists; otherwise a plain "No TAs assigned yet." line is shown.
+
+Editing announcement files (forms.py, views/posts.py, _post_card.html,
+course.js)
+  - Before: the edit form took one file only, any upload replaced ALL old
+    files, and the X on one file removed all or none of them.
+  - Now: each file's X removes only that file (sent as
+    remove_attachment_ids, limited to this post's own attachments); several
+    files can be added in one save and are added to the files kept.
+  - Limit of 10 files / 25 MB now counts kept + new files.
+  - Every new Material is announced (was: only the last one).
+  - API compatible: remove_attachment=true still removes every file.
+
+File guardrails on edit (course-tabs.js, _post_card.html, views/posts.py)
+  - The server already rejected .exe/.bat/disguised executables on edit,
+    but the edit form had no file-type filter or client-side check, and a
+    rejected edit showed its error inside the New announcement form.
+  - Now the edit form uses the same checks as create: accept filter,
+    extension whitelist/blacklist, 25 MB / 10-file checks, Save blocked on
+    error. A rejected edit shows "Failed to update announcement." with the
+    reason at the top of the page.
+
+Deadline notification on edit (views/posts.py)
+  - Changing a deadline while editing never sent a notification: the old
+    deadline was read after form.is_valid(), which had already copied the
+    new deadline onto the post. It is now read before validation.
+
+Principles (Lec #11 / #12)
+  - DRY: the edit form reuses the create form's validation script instead of
+    a second copy of the rules.
+  - Security (quality dimension 9): input validation on both client and
+    server; attachment ids are checked against the post being edited.
+  - SRP: which attachments to remove and the file limits live in the form
+    (removed_attachments, _check_file_limits); the view only saves.
+  - Readability / complexity: the limit check was split after it first
+    scored CC C (11); the new form methods are now A or B.
+
+Results after the fixes
+  forms.py                      26.6 A
+  views/posts.py                48.9 A   (edit_post CC 8 -> 7)
+  views/courses.py              38.5 A
+  tests/test_content_views.py   23.6 A
+  tests/test_courses.py         20.0 A
+  Tests: course app 145 (138 + 7 new), project 392, with the same 2 failures
+         that also fail on the base commit (listed in section 7).
 
 
 How to re-measure (from the course folder):
