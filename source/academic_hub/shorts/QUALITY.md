@@ -25,7 +25,7 @@ git log --stat -- shorts                               # churn
 ```
 
 CI runs the same steps on every pull request that touches `shorts/`
-(`.github/workflows/shorts-quality.yml`).
+(`.github/workflows/code-quality.yml`, the `shorts` job).
 
 ## Results (2026-11-14)
 
@@ -152,7 +152,7 @@ Track new bugs and debt as GitHub issues labelled `shorts` plus `bug` or
 
 - Keep pull requests small: one change, merged the same day or the next.
 - At least one teammate reviews each PR before merging.
-- In the repository settings, make **Shorts quality** a required check on
+- In the repository settings, make the **Code quality / shorts** check required on
   `main`, so a PR can't merge while it fails.
 
 Two tests in **other** apps already fail on `main` and are not caused by
