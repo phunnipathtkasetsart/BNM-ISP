@@ -8,7 +8,7 @@ from django.urls import reverse
 from django.utils import timezone
 from notifications.models import Notification
 
-from .models import (
+from ..models import (
     CourseTA,
     Enrollment,
     GroupInvitation,
@@ -17,7 +17,7 @@ from .models import (
     GroupWork,
     StudentGroup,
 )
-from .services import create_course
+from ..services import create_course
 
 
 class GroupWorkTests(TestCase):
