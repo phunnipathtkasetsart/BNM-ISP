@@ -37,6 +37,15 @@ def invalid_post_form(request, form):
     return render(request, "course/detail.html", detail_context(request, post_form=form), status=400)
 
 
+def invalid_edit_form(request, form):
+    """Report a rejected edit with its reasons, without filling the New announcement form."""
+    if is_api(request):
+        return form_errors_json(form)
+    reasons = " ".join(error for errors in form.errors.values() for error in errors)
+    messages.error(request, f"Failed to update announcement. {reasons}")
+    return render(request, "course/detail.html", detail_context(request), status=400)
+
+
 @course_access(manage_content=True)
 @require_POST
 def create_post(request, pk):
@@ -63,15 +72,15 @@ def create_post(request, pk):
 
 
 def save_post_edit(request, form, post):
-    """Save an edited post and replace its attachments if asked. Returns new materials."""
+    """Save an edited post: drop the files marked for removal, add the new uploads.
+
+    Files the user did not remove are kept. Returns the Materials created.
+    """
     with transaction.atomic():
         post = form.save()
-        remove = form.cleaned_data.get("remove_attachment") or request.POST.get("remove_attachment") == "true"
+        for attachment in form.removed_attachments():
+            attachment.delete()  # signals.py removes the stored file after commit
         uploads = form.cleaned_data.get("attachment") or []
-        # Removing attachments or uploading replacements clears the old files.
-        if remove or uploads:
-            for attachment in post.attachments.all():
-                attachment.delete()
         topic = material_topic(request, form) if uploads else None
         return post, attach_uploads(post, uploads, topic, request.user)
 
@@ -96,18 +105,16 @@ def edit_post(request, pk, post_id):
     if request.method == "GET":
         return render_post_editor(request, post)
 
+    # Read before validation: is_valid() copies the submitted deadline onto the post.
+    previous_deadline = post.deadline
     form = CoursePostForm(request.POST, request.FILES, instance=post, course=request.course)
     if not form.is_valid():
-        if not is_api(request):
-            messages.error(request, "Failed to update announcement. Please check your input.")
-        return invalid_post_form(request, form)
+        return invalid_edit_form(request, form)
 
-    previous_deadline = post.deadline
     post, materials = save_post_edit(request, form, post)
     if post.deadline and post.deadline != previous_deadline:
         notify_deadline(post)
-    # Only the last new material is announced (existing behaviour, see review notes).
-    for material in materials[-1:]:
+    for material in materials:
         notify_course_material(material)
     return respond(request, {"id": post.pk, "title": post.title},
                    "Announcement updated successfully.", detail_url(pk))

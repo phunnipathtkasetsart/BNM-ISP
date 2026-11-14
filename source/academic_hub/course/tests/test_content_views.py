@@ -1,6 +1,8 @@
 import shutil
 import tempfile
 from datetime import timedelta
+from unittest.mock import patch
+
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.utils import timezone
@@ -219,36 +221,130 @@ class ContentViewTests(CourseClientMixin, TestCase):
         self.assertContains(page, "Welcome")
         self.assertContains(page, self.url("download_attachment", self.course.pk, att.pk))
 
-    def test_43_edit_post_replace_and_remove_attachment(self):
-        """Test replacing and removing announcement attachments during edit."""
+    def attachment_names(self, post):
+        return sorted(post.attachments.values_list("original_name", flat=True))
+
+    def test_43_edit_post_adds_replaces_and_removes_attachments(self):
+        """Uploads are added; a file is replaced by removing it and uploading another."""
         post = self.make_post(file=self.upload("original.pdf", b"old content"))
         old_att = post.attachments.get()
         storage, old_name = old_att.file.storage, old_att.file.name
-
         self.sign_in(self.teacher)
 
-        # Replace attachment with a new file
+        # Uploading keeps the existing file and adds the new one.
         with self.captureOnCommitCallbacks(execute=True):
-            resp = self.send("edit_post", self.course.pk, post.pk,
-                             title="Post Updated", body="Body",
-                             attachment=self.upload("replacement.pdf", b"new content"))
+            resp = self.send("edit_post", self.course.pk, post.pk, title="Post Updated", body="Body",
+                             attachment=self.upload("added.pdf", b"new content"))
         self.assertEqual(resp.status_code, 302)
         post.refresh_from_db()
         self.assertEqual(post.title, "Post Updated")
-        self.assertFalse(storage.exists(old_name))
-        new_att = post.attachments.get()
-        self.assertEqual(new_att.original_name, "replacement.pdf")
+        self.assertEqual(self.attachment_names(post), ["added.pdf", "original.pdf"])
+        self.assertTrue(storage.exists(old_name))
 
-        # Remove attachment without uploading a new one
-        new_storage, new_name = new_att.file.storage, new_att.file.name
+        # Replace: remove the old file by id and upload its replacement in one save.
         with self.captureOnCommitCallbacks(execute=True):
-            resp = self.send("edit_post", self.course.pk, post.pk,
-                             title="Post No File", body="Body",
+            resp = self.send("edit_post", self.course.pk, post.pk, title="Post Updated", body="Body",
+                             remove_attachment_ids=[old_att.pk],
+                             attachment=self.upload("replacement.pdf", b"newer content"))
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(self.attachment_names(post), ["added.pdf", "replacement.pdf"])
+        self.assertFalse(storage.exists(old_name))
+
+        # remove_attachment=true still removes every file.
+        names = [(a.file.storage, a.file.name) for a in post.attachments.all()]
+        with self.captureOnCommitCallbacks(execute=True):
+            resp = self.send("edit_post", self.course.pk, post.pk, title="Post No File", body="Body",
                              remove_attachment="true")
         self.assertEqual(resp.status_code, 302)
-        post.refresh_from_db()
         self.assertFalse(post.attachments.exists())
-        self.assertFalse(new_storage.exists(new_name))
+        for file_storage, name in names:
+            self.assertFalse(file_storage.exists(name))
+
+    def test_43_edit_post_removes_only_selected_files_and_adds_many(self):
+        post = self.make_post()
+        keep, drop_one, drop_two = (
+            PostAttachment.objects.create(post=post, file=self.upload(f"{name}.pdf"))
+            for name in ("keep", "drop1", "drop2")
+        )
+        self.sign_in(self.teacher)
+        resp = self.send("edit_post", self.course.pk, post.pk, title="Post", body="Body",
+                         remove_attachment_ids=[drop_one.pk, drop_two.pk],
+                         attachment=[self.upload("new1.pdf"), self.upload("new2.pdf")])
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(self.attachment_names(post), ["keep.pdf", "new1.pdf", "new2.pdf"])
+
+    def test_43_edit_post_rejects_other_posts_attachment_ids(self):
+        other = self.make_post(title="Other", file=self.upload("other.pdf"))
+        post = self.make_post(file=self.upload("mine.pdf"))
+        self.sign_in(self.teacher)
+        resp = self.send("edit_post", self.course.pk, post.pk, title="Post", body="Body",
+                         remove_attachment_ids=[other.attachments.get().pk])
+        self.assertEqual(resp.status_code, 400)
+        self.assertTrue(other.attachments.exists())
+        self.assertTrue(post.attachments.exists())
+
+    def test_43_edit_post_limit_counts_kept_and_new_files(self):
+        # One existing file + two new ones = 3, over a limit of 2.
+        post = self.make_post(file=self.upload("one.pdf"))
+        self.sign_in(self.teacher)
+        with patch("course.forms.MAX_POST_FILES", 2):
+            resp = self.send("edit_post", self.course.pk, post.pk, title="Post", body="Body",
+                             attachment=[self.upload("two.pdf"), self.upload("three.pdf")])
+            self.assertEqual(resp.status_code, 400)
+            self.assertEqual(self.attachment_names(post), ["one.pdf"])
+            # Removing the old file makes room for both new ones.
+            resp = self.send("edit_post", self.course.pk, post.pk, title="Post", body="Body",
+                             remove_attachment_ids=[post.attachments.get().pk],
+                             attachment=[self.upload("two.pdf"), self.upload("three.pdf")])
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(self.attachment_names(post), ["three.pdf", "two.pdf"])
+
+    def test_43_edit_post_blocks_dangerous_files_like_create(self):
+        post = self.make_post(title="Guarded")
+        self.sign_in(self.teacher)
+        for name, data in [("evil.exe", b"MZ data"), ("run.bat", b"echo"), ("fake.pdf", b"MZ data")]:
+            with self.subTest(name=name):
+                resp = self.send("edit_post", self.course.pk, post.pk, title="Changed", body="Body",
+                                 attachment=self.upload(name, data))
+                self.assertEqual(resp.status_code, 400)
+                post.refresh_from_db()
+                self.assertEqual(post.title, "Guarded")
+                self.assertFalse(post.attachments.exists())
+                # The reason is shown, and the New announcement form is not filled with the edit.
+                self.assertContains(resp, "Failed to update announcement.", status_code=400)
+                self.assertFalse(resp.context["post_form"].is_bound)
+
+    def test_43_edit_form_has_the_same_file_guardrails_as_create(self):
+        self.make_post(title="Has editor")
+        self.sign_in(self.teacher)
+        html = self.client.get(self.url("detail", self.course.pk)).content.decode()
+        edit_form = html[html.index("data-post-editform"):]
+        edit_form = edit_form[:edit_form.index("</form>")]
+        self.assertIn("data-cc-compose", edit_form)
+        self.assertIn("data-file-error", edit_form)
+        self.assertIn('accept=".pdf,', edit_form)
+        self.assertIn("multiple", edit_form)
+
+    def test_43_edit_post_notifies_only_when_deadline_changes(self):
+        post = self.make_post(title="Deadline post")
+        self.sign_in(self.teacher)
+        cases = [("2026-12-01T10:00", 1), ("2026-12-01T10:00", 0), ("2026-12-02T09:30", 1), ("", 0)]
+        for deadline, expected_calls in cases:
+            with self.subTest(deadline=deadline), patch("course.views.posts.notify_deadline") as notify:
+                resp = self.send("edit_post", self.course.pk, post.pk,
+                                 title="Deadline post", body="Body", deadline=deadline)
+                self.assertEqual(resp.status_code, 302)
+                self.assertEqual(notify.call_count, expected_calls)
+
+    def test_43_edit_post_announces_every_new_material(self):
+        post = self.make_post(title="Edit with Materials")
+        self.sign_in(self.teacher)
+        with patch("course.views.posts.notify_course_material") as notify:
+            resp = self.send("edit_post", self.course.pk, post.pk, title="Edit with Materials", body="Body",
+                             attachment=[self.upload("a.pdf"), self.upload("b.pdf")],
+                             add_to_materials="on", topic="__new", new_topic="Week 1")
+        self.assertEqual(resp.status_code, 302)
+        self.assertEqual(notify.call_count, 2)
 
     def test_43_edit_post_with_add_to_materials(self):
         """Test adding replaced attachment to materials during edit_post."""

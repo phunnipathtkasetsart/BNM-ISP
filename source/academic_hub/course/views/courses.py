@@ -12,7 +12,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 
 from accounts.models import AdvisorAssignment
 
-from ..forms import CourseForm, CoursePostForm, JoinForm, MaterialUploadForm
+from ..forms import ALLOWED_ACCEPT_ATTR, CourseForm, CoursePostForm, JoinForm, MaterialUploadForm
 from ..models import Course, CoursePost, CourseTA, Enrollment
 from ..permissions import can_teach, course_access, is_student_user, visible_courses
 from ..responses import bind_form, detail_url, form_error, is_api, respond
@@ -216,6 +216,7 @@ def detail_context(request, post_form=None, material_form=None):
         "can_delete_any": request.is_owner or request.is_dept_override,
         "can_filter_questions": manage,
         "can_ask_question": can_ask_question(request),
+        "file_accept": ALLOWED_ACCEPT_ATTR,  # file picker filter on the post edit forms
         "is_department": request.is_dept_override,
         "enrollments": course.enrollments.select_related("student") if request.can_manage_roster else [],
         "ta_ids": ta_user_ids,

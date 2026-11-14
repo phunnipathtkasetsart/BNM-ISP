@@ -5,6 +5,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError, transaction
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.utils import timezone
 
 from ..models import (
     Course,
@@ -134,7 +135,13 @@ class CourseTests(CourseClientMixin, TestCase):
         self.assertContains(detail, self.url("members_page", self.course.pk))
         self.assertNotContains(detail, "Student IDs:")
         self.assertNotContains(detail, "Delete class")
+        # Delete is offered only after the class has been archived.
+        self.assertNotContains(self.client.get(self.url("edit", self.course.pk)), "Delete class")
+        self.course.archived_at = timezone.now()
+        self.course.save(update_fields=["archived_at"])
         self.assertContains(self.client.get(self.url("edit", self.course.pk)), "Delete class")
+        self.course.archived_at = None
+        self.course.save(update_fields=["archived_at"])
         page = self.client.get(self.url("members_page", self.course.pk))
         self.assertContains(page, "Manage members")
         self.assertContains(page, "Student IDs:")
