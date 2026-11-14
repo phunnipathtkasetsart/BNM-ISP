@@ -316,6 +316,7 @@ class GroupWork(models.Model):
 class StudentGroup(models.Model):
     group_work = models.ForeignKey(GroupWork, on_delete=models.CASCADE, related_name="groups")
     name = models.CharField(max_length=120)
+    is_public = models.BooleanField(default=False)
     head = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -396,8 +397,44 @@ class GroupInvitation(models.Model):
         ordering = ["-created_at", "-pk"]
         constraints = [
             models.UniqueConstraint(
-                fields=["group_work", "invitee"],
+                    fields=["group", "invitee"],
                 condition=models.Q(status="pending"),
-                name="unique_pending_group_work_invite",
+                    name="unique_pending_group_invite",
             ),
         ]
+
+
+class GroupJoinRequest(models.Model):
+        class Status(models.TextChoices):
+            PENDING = "pending", "Pending"
+            ACCEPTED = "accepted", "Accepted"
+            IGNORED = "ignored", "Ignored"
+            CANCELLED = "cancelled", "Cancelled"
+
+        group_work = models.ForeignKey(
+            GroupWork, on_delete=models.CASCADE, related_name="join_requests"
+        )
+        group = models.ForeignKey(
+            StudentGroup, on_delete=models.CASCADE, related_name="join_requests"
+        )
+        requester = models.ForeignKey(
+            settings.AUTH_USER_MODEL,
+            on_delete=models.CASCADE,
+            db_constraint=False,
+            related_name="course_group_join_requests",
+        )
+        status = models.CharField(
+            max_length=12, choices=Status.choices, default=Status.PENDING
+        )
+        created_at = models.DateTimeField(auto_now_add=True)
+        responded_at = models.DateTimeField(null=True, blank=True)
+
+        class Meta:
+            ordering = ["created_at", "pk"]
+            constraints = [
+                models.UniqueConstraint(
+                    fields=["group", "requester"],
+                    condition=models.Q(status="pending"),
+                    name="unique_pending_group_request",
+                ),
+            ]
