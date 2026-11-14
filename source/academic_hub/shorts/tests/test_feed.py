@@ -5,9 +5,7 @@ from typing import Any
 from django.urls import reverse
 
 from shorts.models import Short
-from shorts.tests.helpers import (
-    ShortsTestCase,
-)
+from shorts.tests.helpers import ShortsTestCase, make_user
 
 
 class FeedTests(ShortsTestCase):
@@ -23,7 +21,8 @@ class FeedTests(ShortsTestCase):
         old = self.make_short("Older", tags=["recursion"])
         new = self.make_short("Newer", tags=["big-o", "ske"])
         self.make_short("Hidden", archived=True)
-        self.client.force_login(self.student)
+        # A CPE student: no short fits them, so the feed is newest first.
+        self.client.force_login(make_user(6, "Cpe", department="cpe"))
         response = self.client.get(reverse("shorts:feed"))
         self.assertContains(response, 'id="reel-template"')
         items = response.context["feed"]["items"]

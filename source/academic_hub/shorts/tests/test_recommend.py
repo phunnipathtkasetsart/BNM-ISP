@@ -16,6 +16,8 @@ from shorts.recommend import (
     interests_for,
     like_score,
     liked,
+    programme_score,
+    programme_tags,
     related_tags,
     weight,
     weighted_order,
@@ -85,12 +87,41 @@ class ScoreTests(SimpleTestCase):
         # A liked short does not push itself up.
         self.assertEqual(like_score(7, ["python"], self.interests), 0)
 
-    def test_weight_runs_from_1_to_13(self) -> None:
+    def test_programme_points(self) -> None:
+        ske = Interests(programme_tags=frozenset({"ske"}))
+        self.assertEqual(programme_score(["ske", "python"], ske), 2)
+        self.assertEqual(programme_score(["cpe"], ske), 0)
+        self.assertFalse(ske.is_empty)
+
+    def test_weight_runs_from_1_to_17(self) -> None:
         self.assertEqual(weight(1, ["art"], self.interests), 1)
         both = weight(1, ["recursion", "python", "sorting"], self.interests)
         self.assertEqual(both, 13)
+        everything = Interests(
+            course_words=frozenset({"recursion"}),
+            related_tags=frozenset({"python"}),
+            liked_tags={"python": 3},
+            programme_tags=frozenset({"ske"}),
+        )
+        tags = ["recursion", "python", "ske"]
+        self.assertEqual(weight(1, tags, everything), 17)
         self.assertTrue(Interests().is_empty)
         self.assertFalse(self.interests.is_empty)
+
+
+class ProgrammeTagTests(SimpleTestCase):
+    """The tags that name a viewer's programme."""
+
+    def test_code_and_full_name(self) -> None:
+        self.assertEqual(
+            programme_tags(Account(department="ske")),
+            {"ske", "software-knowledge-engineering"},
+        )
+        self.assertEqual(
+            programme_tags(Account(department="cpe")),
+            {"cpe", "computer-engineering"},
+        )
+        self.assertEqual(programme_tags(Account(department="")), set())
 
 
 class WeightedOrderTests(SimpleTestCase):
@@ -172,6 +203,16 @@ class FeedOrderTests(ShortsTestCase):
         order = feed_order(self.student, seed=1)
         self.assertEqual(order[0], newest.pk)
         self.assertEqual(order, feed_order(self.student, seed=2))
+
+    def test_own_programme_comes_first_more_often(self) -> None:
+        ske_short = self.make_short("For SKE", tags=["ske"])  # +2 -> 5
+        # Weight 5 among nine weight-1 shorts: 5 / 14 ≈ 36% vs 10%.
+        share = self.first_share(ske_short, self.student)
+        self.assertAlmostEqual(share, 5 / 14, delta=0.07)
+        # A CPE student gets no boost from #ske: nothing fits, newest first.
+        cpe_student = make_user(7, "Cpe", department="cpe")
+        self.assertEqual(feed_order(cpe_student, seed=1)[0], ske_short.pk)
+        self.assertEqual(self.first_share(ske_short, cpe_student), 1.0)
 
     def test_course_tags_come_first_more_often(self) -> None:
         course = Course.objects.create(name="Calculus", owner=self.lecturer)

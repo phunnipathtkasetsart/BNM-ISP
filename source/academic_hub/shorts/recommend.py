@@ -1,6 +1,6 @@
 """The order of the Shorts feed: clips that fit the viewer come first.
 
-Two things make a short fit someone:
+Three things make a short fit someone:
 
 * Their courses. The words of each course's name and topic titles are
   compared with the short's tags (+2 for each tag the course names itself,
@@ -8,9 +8,12 @@ Two things make a short fit someone:
 * Their likes. Each tag on the short adds how many of the viewer's liked
   shorts carry it. A liked short is not boosted by its own like, so it is
   the other shorts like it that rise.
+* Their programme. A short tagged with the viewer's programme (#ske or
+  #cpe, their account's department) gets PROGRAMME_POINTS.
 
-Each score is capped at MAX_SCORE and the weight is
-1 + 2 x (course score + like score): 1 for no match, 13 at most.
+The course and like scores are each capped at MAX_SCORE, and the weight is
+1 + 2 x (course + like + programme): 1 for no match, 17 at most. When no
+short in the feed fits the viewer at all, the feed stays newest first.
 
 The order is a weighted random draw without replacement: each place goes
 to one of the remaining shorts with a chance in proportion to its weight.
@@ -35,6 +38,7 @@ from .models import Short, ShortLike
 MAX_SCORE = 3
 OWN_WORD_POINTS = 2
 RELATED_POINTS = 1
+PROGRAMME_POINTS = 2
 
 # Words that say nothing about the subject of a course.
 STOPWORDS = frozenset(
@@ -116,11 +120,17 @@ class Interests:
     related_tags: frozenset[str] = frozenset()
     liked_tags: Mapping[str, int] = field(default_factory=dict)
     liked_shorts: frozenset[int] = frozenset()
+    programme_tags: frozenset[str] = frozenset()
 
     @property
     def is_empty(self) -> bool:
-        """No courses and no likes: nothing to rank by."""
-        return not (self.course_words or self.related_tags or self.liked_tags)
+        """No courses, likes or programme: nothing to rank by."""
+        return not (
+            self.course_words
+            or self.related_tags
+            or self.liked_tags
+            or self.programme_tags
+        )
 
 
 # --- what the viewer's courses are about -----------------------------------
@@ -192,6 +202,13 @@ def liked(user: Account) -> tuple[Counter[str], frozenset[int]]:
     return counts, frozenset(shorts)
 
 
+def programme_tags(user: Account) -> frozenset[str]:
+    """Tags naming the user's programme: "ske" and its full name's slug."""
+    code = user.department or ""
+    label = dict(Account.Department.choices).get(code, "")
+    return frozenset(tag for tag in (code, tag_slug(label)) if tag)
+
+
 def interests_for(user: Account) -> Interests:
     """Everything the ranking needs to know about one viewer."""
     words = words_of(course_texts(user))
@@ -201,6 +218,7 @@ def interests_for(user: Account) -> Interests:
         related_tags=related_tags(words),
         liked_tags=liked_tags,
         liked_shorts=liked_shorts,
+        programme_tags=programme_tags(user),
     )
 
 
@@ -228,11 +246,20 @@ def like_score(
     return min(points, MAX_SCORE)
 
 
+def programme_score(tags: Iterable[str], interests: Interests) -> int:
+    """PROGRAMME_POINTS if the short is tagged with the viewer's programme."""
+    if interests.programme_tags.isdisjoint(tags):
+        return 0
+    return PROGRAMME_POINTS
+
+
 def weight(short_id: int, tags: Iterable[str], interests: Interests) -> int:
-    """1 for a short that fits nothing, up to 13 for one that fits both."""
+    """1 for a short that fits nothing, up to 17 for one that fits all."""
     tags = list(tags)
-    score = course_score(tags, interests) + like_score(
-        short_id, tags, interests
+    score = (
+        course_score(tags, interests)
+        + like_score(short_id, tags, interests)
+        + programme_score(tags, interests)
     )
     return 1 + 2 * score
 
@@ -269,12 +296,12 @@ def tags_by_short() -> dict[int, list[str]]:
 def feed_order(user: Account, seed: int) -> list[int]:
     """Ids of all live shorts in the order this round shows them.
 
-    With no courses and no likes there is nothing to rank by, and the feed
-    stays newest first.
+    When nothing in the feed fits the viewer (every weight is 1), there
+    is nothing to rank by and the feed stays newest first.
     """
     shorts = tags_by_short()
     interests = interests_for(user)
-    if interests.is_empty:
-        return list(shorts)
     weights = {pk: weight(pk, tags, interests) for pk, tags in shorts.items()}
+    if interests.is_empty or set(weights.values()) <= {1}:
+        return list(shorts)
     return weighted_order(weights, seed)

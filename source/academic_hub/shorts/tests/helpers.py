@@ -49,7 +49,9 @@ def clip(
     )
 
 
-def make_user(number: int, name: str, **roles: bool) -> Account:
+def make_user(
+    number: int, name: str, department: str = "ske", **roles: bool
+) -> Account:
     """A test account; roles are is_staff / is_superuser."""
     user: Account = Account.objects.create_user(
         nisit_id=f"661054020{number}",
@@ -57,7 +59,7 @@ def make_user(number: int, name: str, **roles: bool) -> Account:
         password="x",
         first_name="Short",
         last_name=name,
-        department="ske",
+        department=department,
         **roles,
     )
     return user

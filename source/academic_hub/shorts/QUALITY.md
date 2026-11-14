@@ -37,7 +37,7 @@ CI runs the same steps on every pull request that touches `shorts/`
 | radon cc, worst function | C (14) `create_comment`, C (12) `load_seed` | B (9) `save_short` |
 | radon cc, average (source) | A (3.42) | A (2.72) |
 | radon mi, lowest file | B (10.3) `tests.py` | A (43.9) `tests/test_edge_cases.py` |
-| Tests | 84 | 128 (112 after the refactor, 16 for feed ranking) |
+| Tests | 84 | 131 (112 after the refactor, 19 for feed ranking) |
 | Coverage | 90 % lines | 100 % lines and branches |
 | bandit | not run | 0 issues |
 
@@ -100,11 +100,15 @@ Clips that fit the viewer come up earlier; nothing is hidden.
   The Department oversees every course, so only its likes count.
 - **Like score.** Each tag adds how many of the viewer's liked shorts
   carry it. A liked short is not boosted by its own like. At most 3.
-- **Order.** Weight = 1 + 2 x (course + like), so 1 to 13. Each round is
-  a seeded weighted draw without replacement: every short appears once,
-  heavier ones tend to come first. The seed travels with each batch
-  (`?round=`), so paging never repeats or skips; offset 0 starts a new
-  round. With no courses and no likes the feed stays newest first.
+- **Programme score.** +2 when the short is tagged with the viewer's
+  programme: #ske or #cpe (from their account's department), or the
+  programme's full name, e.g. #software-knowledge-engineering.
+- **Order.** Weight = 1 + 2 x (course + like + programme), so 1 to 17.
+  Each round is a seeded weighted draw without replacement: every short
+  appears once, heavier ones tend to come first. The seed travels with
+  each batch (`?round=`), so paging never repeats or skips; offset 0
+  starts a new round. When no short fits the viewer at all, the feed
+  stays newest first.
 - **Checked:** with one weight-5 short among nine weight-1 shorts, it
   opened 34% of 2,000 rounds (5 / 14 ≈ 36% expected). In a browser, 2 #python
   shorts among 20 averaged 1.5 of the first 8 places for an ISP student
