@@ -9,6 +9,18 @@ from .courses import (
     join,
     restore_course_view,
 )
+from .groups import (
+    group_contact_update,
+    group_create,
+    group_invitation_action,
+    group_invite,
+    group_join_request_action,
+    group_join_request_create,
+    group_member_action,
+    group_public_join,
+    group_work_detail,
+    group_work_index,
+)
 from .materials import (
     archive_material_view,
     delete_material,
@@ -47,6 +59,3 @@ from .roster import (
     ta_assign,
     ta_remove,
 )
-
-# group_views.py still imports payload from here; it moves to responses in the next step.
-from ..responses import payload
