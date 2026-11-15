@@ -1,3 +1,5 @@
+"""URLs under /calendar/: the month page and the day-note forms."""
+
 from django.urls import path
 
 from . import views

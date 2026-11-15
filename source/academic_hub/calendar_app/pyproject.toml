@@ -1,0 +1,66 @@
+# Code-quality settings for the calendar app only. Each tool finds this file
+# when it is run on calendar_app/ (see calendar_app/QUALITY.md for the commands).
+
+[tool.black]
+line-length = 79
+extend-exclude = "migrations/"
+
+[tool.isort]
+profile = "black"
+line_length = 79
+known_first_party = ["accounts", "announcements", "calendar_app", "course"]
+extend_skip = ["migrations"]
+
+[tool.mypy]
+python_version = "3.12"
+plugins = ["mypy_django_plugin.main"]
+strict = true
+mypy_path = "$MYPY_CONFIG_FILE_DIR/.."
+explicit_package_bases = true
+exclude = ["migrations/"]
+untyped_calls_exclude = ["accounts", "announcements", "course"]
+
+[[tool.mypy.overrides]]
+module = ["storages.*"]
+ignore_missing_imports = true
+
+# Other apps are imported (User, Course, Announcement) but are not part of this check.
+[[tool.mypy.overrides]]
+module = [
+    "accounts.*",
+    "announcements.*",
+    "shorts.*",
+    "course.*",
+    "notifications.*",
+    "academic_hub.*",
+]
+ignore_errors = true
+
+[tool.django-stubs]
+django_settings_module = "academic_hub.settings"
+
+[tool.pylint.main]
+load-plugins = ["pylint_django"]
+django-settings-module = "academic_hub.settings"
+ignore = ["migrations"]
+
+[tool.pylint.basic]
+# Test names already say what they check; helpers starting with _ are
+# private. Everything else needs a docstring.
+no-docstring-rgx = "^(_|test_|setUp|tearDown)"
+
+[tool.pylint.format]
+max-line-length = 79
+
+[tool.coverage.run]
+source = ["calendar_app"]
+omit = [
+    "calendar_app/migrations/*",
+    "calendar_app/tests.py",
+    "calendar_app/tests/*",
+]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 95

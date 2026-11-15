@@ -1,0 +1,3 @@
+# Code-quality tools for the calendar app (see calendar_app/QUALITY.md):
+# the same tools and versions as the Shorts app uses.
+-r ../shorts/requirements-dev.txt

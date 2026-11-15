@@ -11,16 +11,29 @@ straight to MinIO, which handles ranges natively.
 
 import os
 import re
+from collections.abc import Iterator
+from typing import IO
 
-from django.http import Http404, HttpResponse, StreamingHttpResponse
+from django.http import (
+    Http404,
+    HttpRequest,
+    HttpResponse,
+    StreamingHttpResponse,
+)
+from django.http.response import HttpResponseBase
 
-from .services import CONTENT_TYPES
+from .models import Short
+from .services import content_type_for
 
 CHUNK_BYTES = 64 * 1024
 RANGE_HEADER = re.compile(r"^bytes=(\d*)-(\d*)$")
 
 
-def _read(handle, start, length):
+class UnsatisfiableRange(ValueError):
+    """The requested range starts past the end of the file."""
+
+
+def _read(handle: IO[bytes], start: int, length: int) -> Iterator[bytes]:
     try:
         handle.seek(start)
         remaining = length
@@ -34,41 +47,54 @@ def _read(handle, start, length):
         handle.close()
 
 
-def ranged_clip_response(request, short):
+def parse_range(header: str, size: int) -> tuple[int, int] | None:
+    """The (start, end) bytes a Range header asks for, inclusive.
+
+    None means "send the whole file": no header, or one this does not
+    understand (e.g. several ranges at once), which the HTTP spec allows.
+    Raises UnsatisfiableRange when the range is outside the file.
+    """
+    match = RANGE_HEADER.match(header.strip())
+    if not match or not (match[1] or match[2]):
+        return None
+    if match[1]:
+        start = int(match[1])
+        end = min(int(match[2]), size - 1) if match[2] else size - 1
+    else:  # "bytes=-500" means the last 500 bytes
+        start, end = max(size - int(match[2]), 0), size - 1
+    if start >= size or start > end:
+        raise UnsatisfiableRange
+    return start, end
+
+
+def ranged_clip_response(
+    request: HttpRequest, short: Short
+) -> HttpResponseBase:
+    """The clip's bytes, or the part of them the Range header asks for."""
     storage, name = short.clip.storage, short.clip.name
     try:
         size = storage.size(name)
         handle = storage.open(name, "rb")
-    except (FileNotFoundError, OSError):
-        raise Http404("Clip file unavailable.")
+    except OSError as error:  # FileNotFoundError is an OSError
+        raise Http404("Clip file unavailable.") from error
 
-    start, end, status = 0, size - 1, 200
-    # A header this does not understand (e.g. several ranges at once) is
-    # ignored and the whole file is sent, which the HTTP spec allows.
-    match = RANGE_HEADER.match(request.headers.get("Range", "").strip())
-    if match and (match[1] or match[2]):
-        if match[1]:
-            start = int(match[1])
-            end = min(int(match[2]), size - 1) if match[2] else size - 1
-        else:  # "bytes=-500" means the last 500 bytes
-            start = max(size - int(match[2]), 0)
-        if start >= size or start > end:
-            handle.close()
-            response = HttpResponse(status=416)
-            response["Content-Range"] = f"bytes */{size}"
-            return response
-        status = 206
+    try:
+        wanted = parse_range(request.headers.get("Range", ""), size)
+    except UnsatisfiableRange:
+        handle.close()
+        refused = HttpResponse(status=416)
+        refused["Content-Range"] = f"bytes */{size}"
+        return refused
 
-    length = end - start + 1
-    extension = os.path.splitext(name)[1].lower()
+    start, end = wanted or (0, size - 1)
     response = StreamingHttpResponse(
-        _read(handle, start, length),
-        status=status,
-        content_type=CONTENT_TYPES.get(extension, "video/mp4"),
+        _read(handle, start, end - start + 1),
+        status=206 if wanted else 200,
+        content_type=content_type_for(os.path.basename(name)),
     )
-    response["Content-Length"] = str(length)
+    response["Content-Length"] = str(end - start + 1)
     response["Accept-Ranges"] = "bytes"
     response["Cache-Control"] = "private, max-age=3600"
-    if status == 206:
+    if wanted:
         response["Content-Range"] = f"bytes {start}-{end}/{size}"
     return response

@@ -6,8 +6,10 @@
    loaded, so a long feed does not download every video at once.
 
    The feed never ends: a few clips before the last one, the next batch is
-   fetched from the server, and after the very last clip it starts over
-   from the newest.
+   fetched from the server, and after the very last clip a new round
+   starts. The server orders each round for the viewer (clips that fit
+   their courses and likes tend to come first); every batch of a round
+   carries the round's seed, so the order holds while paging.
 
    Clips start muted because browsers refuse to autoplay video with sound.
    The sound button applies to every clip and is remembered for the visit.
@@ -35,6 +37,7 @@
   var slides = [];      // {el, video, userPaused}
   var active = -1;
   var nextOffset = page.next;
+  var round = page.round;   // seed of the order the server is paging through
   var loading = false;
   var LOAD_AHEAD = 3;   // fetch more when this close to the last clip
 
@@ -672,16 +675,18 @@
     if (loading || active < slides.length - LOAD_AHEAD) return;
     loading = true;
     viewport.setAttribute("aria-busy", "true");
-    // After the last batch (next is null), start over from the newest clip.
+    // After the last batch (next is null), offset 0 asks for a new round.
     var offset = nextOffset === null ? 0 : nextOffset;
+    var query = "?offset=" + offset + (offset ? "&round=" + round : "");
     var grew = false;
-    fetch(root.dataset.api + "?offset=" + offset, {
+    fetch(root.dataset.api + query, {
       credentials: "same-origin",
       headers: { "Accept": "application/json" }
     })
       .then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); })
       .then(function (data) {
         nextOffset = data.next;
+        round = data.round;
         if (data.items && data.items.length) {
           add(data.items);
           grew = true;
