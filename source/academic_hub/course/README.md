@@ -41,17 +41,28 @@ section until an owner edits them; no section is guessed during migration.
 ## Group work
 
 Lecturers and course TAs can create separate group works and set a maximum group
-size. Students may create one group per work; the creator is its head. Heads can
-invite enrolled students by Nisit ID, remove members, transfer headship, or
-disband the group and set the group's shared **Add third-party contact** details.
-The contact appears under available invite slots for the group, and only the
-head can edit it. Invitees can accept or decline, and non-head members can leave.
-Group size has no minimum; the maximum includes the head and is checked again
-when an invitation is accepted.
+size. Students may create one group per work and choose private or public; the
+creator is its head. All enrolled students can see every group's name, visibility,
+and member count. Only group members and course staff can see member details;
+third-party contact details are visible only to members of that group, never to
+course staff or Department. Heads can invite enrolled students by Nisit ID,
+remove members, transfer headship, or disband the group and set the group's
+shared **Add third-party contact** details. Only the head can edit the contact.
+Invitees can accept or decline, and non-head members can leave.
 
-Course staff and Department can view every group, member, and head. Group
-membership and invitations are scoped to a group work, so a student may join a
-different group for another work in the same course.
+Students can directly join a public group with room or request to join a private
+group. Private-group heads can accept or ignore each request. Multiple pending
+invitations and requests to different groups are allowed and reserve capacity.
+Once a student joins or creates a group, all their other pending invitations and
+requests for that work are cancelled. Group size has no minimum; the maximum
+includes the head and is enforced for joins, requests, invitations, and
+acceptances. A full group cannot be joined; pending reservations may make a
+not-yet-full group temporarily unavailable.
+
+The group list is shared across roles. A student's own group appears first,
+then all remaining groups are ordered by member count ascending and creation
+time ascending (FIFO ties). Full groups appear last. Course staff and
+Department can view every group and its roster.
 
 Open **Group work** from a course page. The work selector shows the maximum
 size, group details show member IDs and the head, and the invitation card offers
@@ -65,9 +76,18 @@ page; the list polls every minute and supports marking one or all as read.
 Notification records use a shared event key so repeated polling does not create
 duplicates.
 
-In-app notifications are generated for group invitations and responses,
-published announcements visible to the recipient, course posts and newly shared
-materials, roster additions, and eligible Q&A activity. Students are notified
+In-app group notifications go only to the person who needs to know: an invitee
+when invited, the inviting head when an invitation is accepted or declined, the
+head when a private join request arrives, the requester when the head accepts
+or ignores, the head when someone joins a public group, and the removed student
+when kicked. These notices are not broadcast to other group members. Other
+group events such as leaving, head transfer, or disbanding do not send
+notifications. Competing invitation notices are marked read when those
+invitations are cancelled after a student joins another group.
+
+Other in-app notifications are generated for published announcements visible
+to the recipient, course posts and newly shared materials, roster additions,
+and eligible Q&A activity. Students are notified
 when a course or published announcement deadline is posted or changed, and once
 when it enters the 24-hour window. Personal calendar notes remain private; a
 note with reminders enabled is shown to its owner on the note date. No email or
@@ -103,8 +123,11 @@ submissions. All paths require a logged-in course user and CSRF protection.
 |---|---|---|
 | GET, POST | `/course/api/<id>/group-works/` | List works; lecturers/TAs create with `title` and `max_members` |
 | GET | `/course/api/<id>/group-works/<work_id>/` | Work details, visible groups, members, invitations, and live capacity |
-| POST | `/course/api/<id>/group-works/<work_id>/groups/` | Student creates a group with `name` |
+| POST | `/course/api/<id>/group-works/<work_id>/groups/` | Student creates a group with `name` and optional `"is_public":"true"` (default private) |
 | POST | `/course/api/<id>/group-works/<work_id>/groups/<group_id>/invite/` | Head invites an enrolled student with `nisit_id` |
+| POST | `/course/api/<id>/group-works/<work_id>/groups/<group_id>/join/` | Student directly joins an available public group |
+| POST | `/course/api/<id>/group-works/<work_id>/groups/<group_id>/request/` | Student requests to join an available private group |
+| POST | `/course/api/<id>/group-works/<work_id>/join-requests/<request_id>/<accept\|ignore>/` | Private-group head responds to a join request |
 | POST | `/course/api/<id>/group-works/<work_id>/groups/<group_id>/contact/` | Group head sets or clears `third_party_contact` (up to 500 characters); only group members can read it |
 | POST | `/course/api/<id>/group-works/<work_id>/invitations/<invitation_id>/<accept\|decline>/` | Invitee responds to an invitation |
 | POST | `/course/api/<id>/group-works/<work_id>/groups/<group_id>/<kick\|transfer\|leave\|disband>/` | Group member or head action; kick/transfer takes `student_id` |

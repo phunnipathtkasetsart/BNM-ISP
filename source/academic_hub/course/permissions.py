@@ -13,6 +13,16 @@ def can_teach(user):
     return user.is_authenticated and user.is_active and (user.is_staff or user.is_superuser)
 
 
+def is_student_user(user):
+    """Students are accounts that are neither staff nor Department (superuser)."""
+    return not (user.is_staff or user.is_superuser)
+
+
+def can_modify_post(request, post):
+    """The course owner and Department may change any post; others only their own."""
+    return request.is_owner or request.is_dept_override or post.author_id == request.user.pk
+
+
 
 def visible_courses(user):
     """Owned, enrolled, or ALL courses for Superusers/Department admins."""

@@ -288,6 +288,12 @@
       button.textContent = button.dataset.submitLabel || 'Posting…';
       setTimeout(() => { button.disabled = true; }, 0);
     });
+
+    // Cancel on the edit form calls form.reset(): drop files picked but not saved.
+    form.addEventListener('reset', () => {
+      accumulatedFiles = new DataTransfer();
+      validateAndSync();
+    });
   });
 
   // 3. "Create new topic" name box visibility toggle (matches standard Django name="topic")

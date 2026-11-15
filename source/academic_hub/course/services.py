@@ -12,6 +12,7 @@ from .models import (
     CourseTA,
     Enrollment,
     Material,
+    PostAttachment,
     Topic,
     generate_class_code,
 )
@@ -91,6 +92,45 @@ def get_or_create_topic(course, title):
             return Topic.objects.create(course=course, title=title)
     except IntegrityError:
         return _topic_match(course, title)
+
+
+def resolve_topic(course, choice, new_topic=""):
+    """Return the chosen topic, creating it for the "new topic" option.
+
+    ``choice`` is the topic select value: a topic pk, the form's NEW_TOPIC
+    marker, or empty for no topic. An unknown pk raises Http404.
+    """
+    from django.shortcuts import get_object_or_404
+
+    from .forms import MaterialUploadForm
+
+    if choice == MaterialUploadForm.NEW_TOPIC:
+        return get_or_create_topic(course, new_topic or "")
+    if choice:
+        return get_object_or_404(course.topics, pk=choice)
+    return None
+
+
+def attach_uploads(post, uploads, topic, user):
+    """Attach each upload to ``post``; with a topic, also file it under Materials.
+
+    Returns the Material rows created (empty when ``topic`` is None).
+    """
+    materials = []
+    for upload in uploads:
+        attachment = PostAttachment.objects.create(post=post, file=upload)
+        if topic is None:
+            continue
+        materials.append(Material.objects.create(
+            course=post.course,
+            topic=topic,
+            created_by=user,
+            title=attachment.original_name[:150],
+            file=attachment.file.name,
+            original_name=attachment.original_name,
+            size=attachment.size,
+        ))
+    return materials
 
 
 def add_materials(course, topic, files, user):

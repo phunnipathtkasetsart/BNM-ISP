@@ -104,20 +104,14 @@ document.addEventListener('DOMContentLoaded', () => {
       // Reset HTML form fields
       form.reset();
 
-      // Restore attachment chip if an attachment originally existed
-      const attContainer = form.querySelector('[data-attachment-container]');
-      const removeInput = form.querySelector('[data-remove-attachment-input]');
-      const picker = form.querySelector('[data-file-picker]');
+      // Bring back every attachment the user marked for removal
+      form.querySelectorAll('[data-attachment-container]').forEach((container) => {
+        container.style.display = '';
+        const input = container.querySelector('[data-remove-attachment-input]');
+        if (input) input.disabled = true;
+      });
+
       const nameSpan = form.querySelector('[data-file-names]');
-
-      if (attContainer) {
-        attContainer.style.display = '';
-        if (removeInput) removeInput.value = 'false';
-        if (picker) picker.hidden = true;
-      } else if (picker) {
-        picker.hidden = false;
-      }
-
       if (nameSpan) {
         nameSpan.textContent = 'No file chosen';
         nameSpan.style.color = '#60776c';
@@ -130,19 +124,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return;
   }
 
-    // Discard attachment (X button)
+    // Mark one attachment for removal (X button); it is deleted on Save
     const removeAttBtn = e.target.closest('[data-remove-attachment-btn]');
     if (removeAttBtn) {
       const container = removeAttBtn.closest('[data-attachment-container]');
-      const form = removeAttBtn.closest('form');
       if (container) {
         const input = container.querySelector('[data-remove-attachment-input]');
-        if (input) input.value = 'true';
+        if (input) input.disabled = false;  // now submitted as remove_attachment_ids
         container.style.display = 'none';
-      }
-      if (form) {
-        const picker = form.querySelector('[data-file-picker]');
-        if (picker) picker.hidden = false;
       }
       return;
     }

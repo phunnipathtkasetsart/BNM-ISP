@@ -4,9 +4,11 @@ import re
 
 from django import forms
 from django.contrib.auth import get_user_model
-from .models import CoursePost
+from .models import CoursePost, PostAttachment
 from .validators import validate_upload_size, validate_file_security
 ALLOWED_ACCEPT_ATTR = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mp3,.zip,.rar"
+MAX_POST_FILES = 10
+MAX_POST_BYTES = 25 * 1024 * 1024  # 25 MB in total per post
 
 class CourseForm(forms.Form):
     section = forms.RegexField(
@@ -143,8 +145,12 @@ class CoursePostForm(forms.ModelForm):
     )
     remove_attachment = forms.BooleanField(
         required=False,
-        label="Remove current attachment",
+        label="Remove all current attachments",
         widget=forms.CheckboxInput(attrs={"style": "width:auto;display:inline-block;margin-right:8px"}),
+    )
+    # Ids of this post's attachments to delete; choices are set per post in __init__.
+    remove_attachment_ids = forms.MultipleChoiceField(
+        required=False, widget=forms.MultipleHiddenInput,
     )
     add_to_materials = forms.BooleanField(
         required=False, label="Add attachment to Materials",
@@ -166,9 +172,45 @@ class CoursePostForm(forms.ModelForm):
             + (topic_choices(course) if course else [])
             + [(MaterialUploadForm.NEW_TOPIC, "+ Create new topic…")]
         )
+        # Only this post's own attachments may be removed through the form.
+        self.fields["remove_attachment_ids"].choices = [
+            (str(pk), str(pk)) for pk in self.current_attachments().values_list("pk", flat=True)
+        ]
+
+    def current_attachments(self):
+        if self.instance.pk is None:
+            return PostAttachment.objects.none()
+        return self.instance.attachments.all()
+
+    def removed_attachments(self):
+        """Attachments this edit deletes: all of them, or only the ones ticked off."""
+        if self.cleaned_data.get("remove_attachment"):
+            return self.current_attachments()
+        return self.current_attachments().filter(pk__in=self.cleaned_data.get("remove_attachment_ids") or [])
+
+    def _kept_attachments(self, data):
+        if data.get("remove_attachment"):
+            return []
+        removed = set(data.get("remove_attachment_ids") or [])
+        return [a for a in self.current_attachments() if str(a.pk) not in removed]
+
+    def _check_file_limits(self, data):
+        """Files kept from before plus new uploads must stay within the post limits."""
+        kept = self._kept_attachments(data)
+        new = data.get("attachment") or []
+        if len(kept) + len(new) > MAX_POST_FILES:
+            self.add_error("attachment", f"A post can have at most {MAX_POST_FILES} files.")
+        total = sum(a.actual_size for a in kept) + sum(f.size for f in new)
+        if total > MAX_POST_BYTES:
+            self.add_error("attachment", (
+                f"Total size of the post's files ({total / (1024 * 1024):.1f} MB) "
+                f"exceeds the {MAX_POST_BYTES // (1024 * 1024)} MB limit."
+            ))
 
     def clean(self):
         data = super().clean()
+        if "attachment" in data:  # skip when the upload itself was rejected
+            self._check_file_limits(data)
         if data.get("add_to_materials"):
             if not data.get("attachment"):
                 self.add_error("add_to_materials", "Attach a file to add it to Materials.")
@@ -181,11 +223,11 @@ class CoursePostForm(forms.ModelForm):
     
     def clean_attachment(self):
         files = self.cleaned_data.get("attachment") or []
-        if len(files) > 10:
+        if len(files) > MAX_POST_FILES:
             raise forms.ValidationError("You can attach at most 10 files at a time.")
-            
+
         total_size = sum(f.size for f in files)
-        limit = 25 * 1024 * 1024  # 25 MB Total
+        limit = MAX_POST_BYTES
         if total_size > limit:
             raise forms.ValidationError(
                 f"Total size of attached files ({total_size / (1024 * 1024):.1f} MB) exceeds the 25 MB limit."
