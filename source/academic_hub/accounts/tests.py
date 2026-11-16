@@ -2,6 +2,7 @@ from types import SimpleNamespace
 import base64
 import json
 from email.parser import BytesParser
+from io import BytesIO
 from email.policy import SMTP
 from urllib.parse import parse_qs, urlencode, urlparse
 from unittest.mock import patch
@@ -484,6 +485,131 @@ class AdvisorAssignmentTests(TestCase):
         })
         self.assertFalse(AdvisorAssignment.objects.filter(advisor=self.lecturer).exists())
 
+    def change_role(self, target, role, department, action):
+        if action == "roles":
+            data = {
+                "action": action,
+                f"role_for_{target.nisit_id}": role,
+                f"programme_for_{target.nisit_id}": department,
+            }
+        else:
+            data = {"action": action, "nisit_id": target.nisit_id, "role": role, "department": department}
+        return self.client.post(self.roles_url, data)
+
+    def test_role_change_to_student_saves_selected_programme(self):
+        for action, programme in (("roles", "cpe"), ("role", "ske")):
+            with self.subTest(action=action):
+                self.lecturer.is_staff = True
+                self.lecturer.save(update_fields=["is_staff"])
+                self.assign(self.lecturer.nisit_id, student_ids=[self.student.nisit_id])
+                response = self.change_role(self.lecturer, "student", programme, action)
+                self.assertIsNone(response.context["error"])
+                self.lecturer.refresh_from_db()
+                self.assertFalse(self.lecturer.is_staff)
+                self.assertFalse(self.lecturer.is_superuser)
+                self.assertEqual(self.lecturer.department, programme)
+                self.assertFalse(AdvisorAssignment.objects.filter(advisor=self.lecturer).exists())
+
+    def test_student_programme_can_change_without_losing_advisor(self):
+        self.assign(self.lecturer.nisit_id, student_ids=[self.student.nisit_id])
+        for action, programme in (("roles", "cpe"), ("role", "ske")):
+            with self.subTest(action=action):
+                response = self.change_role(self.student, "student", programme, action)
+                self.assertIsNone(response.context["error"])
+                self.student.refresh_from_db()
+                self.assertEqual(self.student.department, programme)
+                self.assertFalse(self.student.is_staff)
+                self.assertFalse(self.student.is_superuser)
+                self.assertEqual(AdvisorAssignment.objects.get(student=self.student).advisor, self.lecturer)
+
+    def test_invalid_programme_rejects_all_changes_and_preserves_selections(self):
+        for programme in ("", "unknown"):
+            with self.subTest(programme=programme):
+                response = self.client.post(self.roles_url, {
+                    "action": "roles",
+                    f"role_for_{self.student.nisit_id}": "student",
+                    f"programme_for_{self.student.nisit_id}": "cpe",
+                    f"role_for_{self.lecturer.nisit_id}": "student",
+                    f"programme_for_{self.lecturer.nisit_id}": programme,
+                })
+                self.assertContains(response, "Choose CPE or SKE")
+                self.student.refresh_from_db()
+                self.lecturer.refresh_from_db()
+                self.assertEqual(self.student.department, "ske")
+                self.assertTrue(self.lecturer.is_staff)
+                selections = {row["user"].pk: row for row in response.context["people"]}
+                self.assertEqual(selections[self.student.pk]["programme"], "cpe")
+                self.assertEqual(selections[self.lecturer.pk]["selected_role"], "student")
+        response = self.change_role(self.lecturer, "student", "invalid", "role")
+        self.assertContains(response, "Choose CPE or SKE")
+        self.lecturer.refresh_from_db()
+        self.assertTrue(self.lecturer.is_staff)
+
+    def test_programme_edits_require_department_admin_and_cannot_demote_self(self):
+        for action in ("roles", "role"):
+            for user in (self.student, self.lecturer):
+                with self.subTest(action=action, user=user.pk):
+                    self.client.force_login(user)
+                    self.assertEqual(self.change_role(self.student, "student", "cpe", action).status_code, 403)
+            self.client.force_login(self.department)
+            response = self.change_role(self.department, "student", "cpe", action)
+            self.assertContains(response, "You cannot change your own role")
+        self.student.refresh_from_db()
+        self.department.refresh_from_db()
+        self.assertEqual(self.student.department, "ske")
+        self.assertTrue(self.department.is_superuser)
+
+    def test_programme_selection_cannot_bypass_owned_class_restriction(self):
+        from course.models import Course
+        Course.objects.create(owner=self.lecturer, name="Role test")
+        for action in ("roles", "role"):
+            with self.subTest(action=action):
+                response = self.change_role(self.lecturer, "student", "cpe", action)
+                self.assertContains(response, "cannot change roles while they still own a class")
+                self.lecturer.refresh_from_db()
+                self.assertTrue(self.lecturer.is_staff)
+                self.assertEqual(self.lecturer.department, "ske")
+
+    def test_non_student_role_keeps_programme(self):
+        for action in ("roles", "role"):
+            with self.subTest(action=action):
+                self.lecturer.department = "SKE"
+                self.lecturer.save(update_fields=["department"])
+                response = self.change_role(self.lecturer, "department", "cpe", action)
+                self.assertIsNone(response.context["error"])
+                self.lecturer.refresh_from_db()
+                self.assertEqual(self.lecturer.department, "SKE")
+
+    def test_existing_programme_is_preselected_case_insensitively(self):
+        self.student.department = "SKE"
+        self.student.save(update_fields=["department"])
+        response = self.client.get(self.roles_url)
+        self.assertContains(response, '<option value="ske" selected>SKE</option>', html=True)
+        self.assertContains(response, f'name="programme_for_{self.student.pk}"')
+        self.assertNotContains(response, f'name="programme_for_{self.department.pk}"')
+        response = self.change_role(self.student, "student", "ske", "roles")
+        self.assertContains(response, "There are no role changes to save")
+
+    def test_unchanged_blank_programme_does_not_block_other_accounts(self):
+        self.other_student.department = ""
+        self.other_student.save(update_fields=["department"])
+        response = self.client.post(self.roles_url, {
+            "action": "roles",
+            f"role_for_{self.other_student.pk}": "student",
+            f"programme_for_{self.other_student.pk}": "",
+            f"role_for_{self.student.pk}": "student",
+            f"programme_for_{self.student.pk}": "cpe",
+        })
+        self.assertIsNone(response.context["error"])
+        self.student.refresh_from_db()
+        self.other_student.refresh_from_db()
+        self.assertEqual(self.student.department, "cpe")
+        self.assertEqual(self.other_student.department, "")
+        response = self.change_role(self.other_student, "student", "ske", "roles")
+        self.assertIsNone(response.context["error"])
+        self.other_student.refresh_from_db()
+        self.assertEqual(self.other_student.department, "ske")
+
     def test_student_can_have_only_one_advisor_assignment(self):
         AdvisorAssignment.objects.create(student=self.student, advisor=self.lecturer)
         with self.assertRaises(IntegrityError), transaction.atomic():
@@ -593,16 +719,16 @@ class GmailDraftFlowTests(TestCase):
         session.save()
 
         with (
-            patch("accounts.views.exchange_authorization_code", return_value={
+            patch("accounts.views.gmail.exchange_authorization_code", return_value={
                 "access_token": "access-token",
                 "refresh_token": "refresh-token",
                 "scope": "openid email profile https://www.googleapis.com/auth/gmail.compose",
             }),
-            patch("accounts.views.get_google_account", return_value={
+            patch("accounts.views.gmail.get_google_account", return_value={
                 "email": self.student.email,
                 "email_verified": True,
             }),
-            patch("accounts.views.create_advisor_draft", return_value="draft-message-123") as create_draft,
+            patch("accounts.views.gmail.create_advisor_draft", return_value="draft-message-123") as create_draft,
         ):
             response = self.client.get(
                 reverse("accounts:gmail_oauth_callback"),
@@ -637,12 +763,12 @@ class GmailDraftFlowTests(TestCase):
         session.save()
 
         with (
-            patch("accounts.views.exchange_authorization_code", return_value={
+            patch("accounts.views.gmail.exchange_authorization_code", return_value={
                 "access_token": "access-token",
                 "refresh_token": "refresh-token",
                 "scope": "https://www.googleapis.com/auth/gmail.compose",
             }),
-            patch("accounts.views.get_google_account", return_value={
+            patch("accounts.views.gmail.get_google_account", return_value={
                 "email": "someone-else@ku.th",
                 "email_verified": True,
             }),
@@ -672,3 +798,69 @@ class GmailDraftFlowTests(TestCase):
         self.assertEqual(message["To"], self.advisor.email)
         self.assertIn(self.student.get_full_name(), message["Subject"])
         self.assertIn(self.student.nisit_id, message.get_content())
+
+
+@override_settings(
+    GOOGLE_OAUTH_CLIENT_ID="test-client",
+    GOOGLE_OAUTH_CLIENT_SECRET="test-secret",
+)
+class GoogleSignInTests(TestCase):
+    def callback(self, email):
+        session = self.client.session
+        session["google_oauth_state"] = "test-state"
+        session.save()
+        replies = [
+            {"access_token": "test-token"},
+            {"email": email, "email_verified": True, "given_name": "Google", "family_name": "Student"},
+        ]
+        with patch("accounts.views.google.urlopen", side_effect=[
+            BytesIO(json.dumps(reply).encode()) for reply in replies
+        ]):
+            return self.client.get(reverse("accounts:google_callback"), {
+                "state": "test-state", "code": "test-code",
+            })
+
+    def test_start_stores_state_for_google_redirect(self):
+        response = self.client.get(reverse("accounts:google_login"))
+        query = parse_qs(urlparse(response["Location"]).query)
+        self.assertEqual(query["state"], [self.client.session["google_oauth_state"]])
+        self.assertEqual(query["client_id"], ["test-client"])
+
+    def test_invalid_state_does_not_contact_google(self):
+        session = self.client.session
+        session["google_oauth_state"] = "expected-state"
+        session.save()
+        with patch("accounts.views.google.urlopen") as request:
+            response = self.client.get(reverse("accounts:google_callback"), {
+                "state": "wrong-state", "code": "test-code",
+            })
+        request.assert_not_called()
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_existing_account_keeps_role_and_programme(self):
+        user = User.objects.create_user(
+            nisit_id="7800000001", email="google-existing@ku.th",
+            first_name="Existing", last_name="Admin", department="cpe", is_superuser=True,
+        )
+        response = self.callback(user.email)
+        self.assertRedirects(response, reverse("announcements:public_board"), fetch_redirect_response=False)
+        self.assertEqual(self.client.session["_auth_user_id"], user.pk)
+        user.refresh_from_db()
+        self.assertTrue(user.is_superuser)
+        self.assertEqual(user.department, "cpe")
+
+    def test_new_account_registers_with_selected_programme(self):
+        response = self.callback("google-new@ku.th")
+        self.assertRedirects(response, reverse("accounts:google_register"))
+        self.assertFalse(User.objects.filter(email="google-new@ku.th").exists())
+        response = self.client.post(reverse("accounts:google_register"), {
+            "nisit_id": "7800000002", "department": "cpe",
+        })
+        self.assertRedirects(response, reverse("announcements:public_board"), fetch_redirect_response=False)
+        user = User.objects.get(email="google-new@ku.th")
+        self.assertEqual(user.department, "cpe")
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
+        self.assertFalse(user.has_usable_password())
+        self.assertEqual(self.client.session["_auth_user_id"], user.pk)
