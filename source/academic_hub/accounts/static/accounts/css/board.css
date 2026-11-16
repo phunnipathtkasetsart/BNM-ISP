@@ -508,6 +508,8 @@
 .forum-action-button:hover{color:var(--danger);text-decoration:underline}
 .forum-action-button:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
 .post--archived,.forum-reply--archived{background:#F3F4F3}
+/* Archived announcements on the board sit back a little. */
+.archived-card-body .post--archived{opacity:.85}
 .forum-pagination{
   display:flex;justify-content:center;align-items:center;gap:calc(16 * var(--u));
   margin:0 calc(28 * var(--u)) calc(22 * var(--u));

@@ -1,0 +1,21 @@
+{% comment %}
+The four section tabs, shared by every page that shows the tab bar, so a new
+tab is added in one place. The page supplies the <nav class="subnav"> around
+it and any buttons that sit to the right of the tabs.
+
+  active       "home", "course", "calendar" or "shorts": the tab drawn open.
+  home_url     optional: where Home points (the FAQ forum points it at itself).
+  mark_current optional, default on: pass False when another link on the page
+               already carries aria-current="page".
+  is_guest     from the view: guests see Course, Calendar and Shorts greyed out.
+{% endcomment %}
+<a class="subnav__tab{% if active == 'home' %} subnav__tab--on{% endif %}" href="{% if home_url %}{{ home_url }}{% else %}{% url 'announcements:public_board' %}{% endif %}"{% if active == 'home' %}{% if mark_current != False %} aria-current="page"{% endif %}{% endif %}>Home</a>
+{% if is_guest %}
+  <span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see your courses">Course</span>
+  <span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to see the calendar">Calendar</span>
+  <span class="subnav__tab subnav__tab--off" aria-disabled="true" title="Sign in to watch shorts">Shorts</span>
+{% else %}
+  <a class="subnav__tab{% if active == 'course' %} subnav__tab--on{% endif %}" href="{% url 'course:dashboard' %}"{% if active == 'course' %}{% if mark_current != False %} aria-current="page"{% endif %}{% endif %}>Course</a>
+  <a class="subnav__tab{% if active == 'calendar' %} subnav__tab--on{% endif %}" href="{% url 'calendar:month' %}"{% if active == 'calendar' %}{% if mark_current != False %} aria-current="page"{% endif %}{% endif %}>Calendar</a>
+  <a class="subnav__tab{% if active == 'shorts' %} subnav__tab--on{% endif %}" href="{% url 'shorts:feed' %}"{% if active == 'shorts' %}{% if mark_current != False %} aria-current="page"{% endif %}{% endif %}>Shorts</a>
+{% endif %}

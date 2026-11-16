@@ -1,4 +1,4 @@
-{% extends "accounts/base.html" %}
+{% extends "accounts/base_app.html" %}
 {% load static %}
 {% block title %}No access — KU Student Portal{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/auth.css' %}">{% endblock %}
@@ -6,17 +6,6 @@
 {% comment %} Shown when a signed-in user reaches a page their role does not
    cover. Says plainly what is required and where to go instead, rather than
    bouncing them somewhere with no explanation. {% endcomment %}
-
-{% block topbar_mod %}topbar--signed-in{% endblock %}
-
-{% block topbar_left %}
-  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
-  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
-{% endblock %}
-
-{% block topbar_right %}
-  {% include "accounts/_account_menu.html" %}
-{% endblock %}
 
 {% block content %}
 <section class="card">

@@ -182,7 +182,9 @@ class PasswordResetTests(TestCase):
 
     def test_invalid_email_is_rejected(self):
         response = self.request_reset("not-an-email")
-        self.assertContains(response, "Use your KU address")
+        # The server's own message. "Use your KU address" only ever matched the
+        # page's inline script, which now lives in accounts/js/base.js.
+        self.assertContains(response, "Enter a valid email address")
         self.assertEqual(len(mail.outbox), 0)
 
     def test_token_is_hashed_and_expires(self):

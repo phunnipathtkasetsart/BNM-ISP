@@ -1,0 +1,268 @@
+/* Behaviour shared by every page: the guest countdown, date pickers, the
+   account menu, password reveal, inline form validation, the password
+   strength meter, the "Having Problems?" sheet, the advisor student search,
+   the sign-in FAQ accordion and the busy state on submit.
+
+   Loaded by accounts/base.html at the end of <body>, without defer, so it
+   runs at the same moment the inline script it replaced did. */
+(function () {
+  "use strict";
+  var calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- guest session countdown ----------
+     Reads the expiry the server rendered and ticks it down. Purely
+     informational: the session is enforced server-side either way, so a
+     browser with JavaScript off simply sees no clock. */
+  document.querySelectorAll(".guestclock").forEach(function (el) {
+    var ends = Date.parse(el.dataset.expires || "");
+    if (isNaN(ends)) { el.remove(); return; }
+    function tick() {
+      var left = Math.max(0, Math.floor((ends - Date.now()) / 1000));
+      var m = Math.floor(left / 60), sec = left % 60;
+      el.textContent = m + ":" + (sec < 10 ? "0" : "") + sec + " left";
+      el.classList.toggle("guestclock--low", left <= 300);
+      if (left === 0) { el.textContent = "session ended"; clearInterval(id); }
+    }
+    tick();
+    var id = setInterval(tick, 1000);
+  });
+
+  /* ---------- date pickers open from anywhere in the field ----------
+     A datetime-local input only opens its picker when the little calendar
+     glyph is hit, which is a small target and not where anyone aims.
+     showPicker() opens it from a click anywhere in the box. Guarded because
+     it throws if the browser does not support it, and because it must be
+     called from a real user gesture. */
+  document.querySelectorAll('input[type="datetime-local"], input[type="date"]').forEach(function (input) {
+    input.addEventListener("click", function () {
+      if (typeof input.showPicker !== "function") return;
+      try { input.showPicker(); } catch (e) { /* not allowed here; typing still works */ }
+    });
+  });
+
+  /* ---------- account menu ----------
+     <details> opens and closes by itself, from a tap, a click or the
+     keyboard. This adds only what it lacks: Escape closes it and puts focus
+     back on the pill, and so does a click anywhere outside it. */
+  document.querySelectorAll(".acctmenu").forEach(function (menu) {
+    document.addEventListener("click", function (e) {
+      if (menu.open && !menu.contains(e.target)) menu.open = false;
+    });
+    menu.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape" || !menu.open) return;
+      menu.open = false;
+      menu.querySelector("summary").focus();
+    });
+  });
+
+  /* ---------- password reveal ---------- */
+  document.querySelectorAll(".reveal").forEach(function (btn) {
+    var input = document.getElementById(btn.dataset.for);
+    if (!input) return;
+    btn.addEventListener("click", function () {
+      var hidden = input.type === "password";
+      input.type = hidden ? "text" : "password";
+      btn.textContent = hidden ? "Hide" : "Show";
+      btn.setAttribute("aria-label", hidden ? "Hide password" : "Show password");
+      btn.setAttribute("aria-pressed", hidden ? "true" : "false");
+      input.focus({ preventScroll: true });
+    });
+  });
+
+  /* ---------- inline validation ----------
+     Rules live in data-rule on the field wrapper. Nothing here replaces
+     the server-side checks in forms.py; it just answers sooner. */
+  var RULES = {
+    nisit: function (v) {
+      if (!v) return "Please enter your Nisit ID.";
+      if (/\D/.test(v)) return "Nisit ID is numbers only.";
+      if (v.length !== 10) return "Nisit ID must be exactly 10 digits (you have " + v.length + ").";
+      return "";
+    },
+    /* Sign-in only. Any ID that exists is valid here, and staff ones are not
+       ten digits ("A0001", "L0001"), so the sole rule is that you typed
+       something. Whether it is right is authentication's job to answer. */
+    loginid: function (v) { return v ? "" : "Please enter your Nisit ID."; },
+    /* Letters plus the joiners real names use — space, hyphen, apostrophe.
+       \p{L} with the /u flag is any Unicode letter, so Thai names pass as
+       readily as Latin ones; only digits and symbols are turned away. */
+    name: function (v) {
+      if (!v) return "This field is required.";
+      if (/\d/.test(v)) return "Names cannot contain numbers.";
+      if (!/^\p{L}+(?:[ '\-]\p{L}+)*$/u.test(v)) return "Names cannot contain symbols like @ or _.";
+      return "";
+    },
+    required: function (v) { return v ? "" : "This field is required."; },
+    kuemail: function (v) {
+      if (!v) return "Please enter your KU email.";
+      if (v.indexOf("@") === -1) return "That is not an email address.";
+      if (!/^[^\s@]+@ku\.th$/i.test(v)) return "Use your KU address — it must end with @ku.th.";
+      return "";
+    },
+    password8: function (v) {
+      if (!v) return "Please choose a password.";
+      if (v.length < 8) return "Password must be at least 8 characters.";
+      return "";
+    },
+    passwordmatch: function (v, field) {
+      var other = document.getElementById(field.dataset.match);
+      if (!v) return "Please confirm your password.";
+      return other && v === other.value ? "" : "Passwords do not match.";
+    }
+  };
+
+  function check(field, live) {
+    var rule = RULES[field.dataset.rule];
+    var input = field.querySelector("input");
+    if (!rule || !input) return true;
+    var problem = rule(input.value.trim(), field);
+    var msg = field.querySelector(".msg");
+    // while typing, only ever clear an error — never raise a new one
+    if (live && !field.classList.contains("is-invalid")) return !problem;
+    field.classList.toggle("is-invalid", !!problem);
+    field.classList.toggle("is-valid", !problem && input.value.trim() !== "");
+    if (msg) msg.textContent = problem;
+    input.setAttribute("aria-invalid", problem ? "true" : "false");
+    return !problem;
+  }
+
+  /* ---------- Nisit ID: digits only, 10 of them ----------
+     Filtering on input means letters and pasted junk never land in the box at
+     all, rather than being accepted and complained about afterwards. The caret
+     is put back where the user had it, counted in digits, so editing the middle
+     of the number still behaves. Registered before the validation listeners
+     below so they always read an already-cleaned value. */
+  document.querySelectorAll('.field[data-rule="nisit"] input').forEach(function (input) {
+    input.addEventListener("input", function () {
+      var before = input.value.slice(0, input.selectionStart || 0);
+      var digitsBefore = before.replace(/\D/g, "").length;
+      var cleaned = input.value.replace(/\D/g, "").slice(0, 10);
+      if (cleaned === input.value) return;
+      input.value = cleaned;
+      var caret = Math.min(digitsBefore, cleaned.length);
+      try { input.setSelectionRange(caret, caret); } catch (e) { /* not selectable */ }
+    });
+  });
+
+  document.querySelectorAll(".field[data-rule]").forEach(function (field) {
+    var input = field.querySelector("input");
+    if (!input) return;
+    var msg = field.querySelector(".msg");
+    if (msg && !msg.id) {
+      msg.id = input.id + "-msg";
+      input.setAttribute("aria-describedby", msg.id);
+      msg.setAttribute("role", "alert");
+    }
+    input.addEventListener("input", function () {
+      field.dataset.touched = "1";
+      check(field, true);
+    });
+    input.addEventListener("blur", function () {
+      // an untouched, still-empty field has nothing to complain about yet
+      if (!field.dataset.touched && !input.value) return;
+      check(field, false);
+    });
+  });
+
+  /* ---------- password strength ---------- */
+  document.querySelectorAll(".meter").forEach(function (meter) {
+    var input = document.getElementById(meter.dataset.for);
+    if (!input) return;
+    input.addEventListener("input", function () {
+      var v = input.value, score = 0;
+      if (v.length >= 8) score++;
+      if (v.length >= 12) score++;
+      if (/[A-Z]/.test(v) && /[a-z]/.test(v)) score++;
+      if (/\d/.test(v) && /[^A-Za-z0-9]/.test(v)) score++;
+      meter.dataset.score = v ? String(Math.min(score, 4)) : "0";
+    });
+  });
+
+  /* ---------- the "Having Problems?" sheet ----------
+     A native <dialog>, so Escape and focus trapping are free. */
+  document.querySelectorAll("[data-open-sheet]").forEach(function (btn) {
+    var sheet = document.getElementById(btn.dataset.openSheet);
+    if (!sheet) return;
+    // Open on click, not pointerdown: the dialog covers the pointer once it
+    // is up, so the click that completes the press would land on the
+    // backdrop and close it again — instantly, and on the first tap.
+    btn.addEventListener("click", function () {
+      if (sheet.open) return;
+      if (btn.dataset.advisorId) {
+        var advisorId = btn.dataset.advisorId;
+        var advisorName = btn.dataset.advisorName || "";
+        var targetInput = sheet.querySelector('input[name="nisit_id"]');
+        var targetName = sheet.querySelector("[data-advisor-target-name]");
+        if (targetInput) targetInput.value = advisorId;
+        if (targetName) targetName.textContent = advisorName;
+        sheet.querySelectorAll('input[name="student_ids"]').forEach(function (student) {
+          student.checked = student.dataset.currentAdvisor === advisorId;
+        });
+      }
+      if (sheet.showModal) sheet.showModal(); else sheet.setAttribute("open", "");
+      sheet.dataset.openedAt = String(Date.now());
+    });
+  });
+  document.querySelectorAll("dialog.sheet").forEach(function (sheet) {
+    sheet.querySelectorAll("[data-close-sheet]").forEach(function (x) {
+      x.addEventListener("click", function () { sheet.close(); });
+    });
+    // clicking the backdrop (i.e. outside the panel) closes it too, but not
+    // within a moment of opening — that would just be the opening click
+    // finishing on top of the freshly-shown backdrop
+    sheet.addEventListener("click", function (e) {
+      if (e.target !== sheet) return;
+      if (Date.now() - Number(sheet.dataset.openedAt || 0) < 200) return;
+      sheet.close();
+    });
+  });
+
+  document.querySelectorAll("[data-advisor-student-search]").forEach(function (input) {
+    var list = document.getElementById(input.dataset.advisorStudentSearch);
+    if (!list) return;
+    input.addEventListener("input", function () {
+      var query = input.value.trim().toLowerCase();
+      list.querySelectorAll("[data-advisor-student-option]").forEach(function (option) {
+        var searchText = option.dataset.search || "";
+        option.hidden = Boolean(query) && searchText.indexOf(query) === -1;
+      });
+    });
+  });
+
+  /* ---------- FAQ: one answer opens at a time ---------- */
+  document.querySelectorAll(".faq__q").forEach(function (q) {
+    q.addEventListener("click", function () {
+      var open = q.getAttribute("aria-expanded") === "true";
+      q.closest(".faq").querySelectorAll(".faq__q").forEach(function (other) {
+        other.setAttribute("aria-expanded", "false");
+      });
+      q.setAttribute("aria-expanded", open ? "false" : "true");
+    });
+  });
+
+  /* ---------- submit: validate, then show a busy state ---------- */
+  document.querySelectorAll("form[data-validate]").forEach(function (form) {
+    form.addEventListener("submit", function (e) {
+      var ok = true;
+      form.querySelectorAll(".field[data-rule]").forEach(function (field) {
+        if (!check(field, false)) ok = false;
+      });
+      if (!ok) {
+        e.preventDefault();
+        var bad = form.querySelector(".field.is-invalid input");
+        if (bad) bad.focus();
+        return;
+      }
+      var btn = form.querySelector('button[type="submit"]');
+      if (btn && !calm) {
+        btn.classList.add("is-busy");
+        btn.disabled = true;
+        // re-enable if the browser restores the page from bfcache
+        window.addEventListener("pageshow", function () {
+          btn.classList.remove("is-busy");
+          btn.disabled = false;
+        });
+      }
+    });
+  });
+})();

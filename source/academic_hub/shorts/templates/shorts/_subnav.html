@@ -4,10 +4,11 @@ board has "Create Announcement": Create Short, then Edit Short.
 current: "create" or "manage" marks the page being shown.
 {% endcomment %}
 <nav class="subnav" aria-label="Sections">
-  <a class="subnav__tab" href="{% url 'announcements:public_board' %}">Home</a>
-  <a class="subnav__tab" href="{% url 'course:dashboard' %}">Course</a>
-  <a class="subnav__tab" href="{% url 'calendar:month' %}">Calendar</a>
-  <a class="subnav__tab subnav__tab--on" href="{% url 'shorts:feed' %}"{% if not current %} aria-current="page"{% endif %}>Shorts</a>
+  {% if current %}
+    {% include "accounts/_subnav_tabs.html" with active="shorts" mark_current=False %}
+  {% else %}
+    {% include "accounts/_subnav_tabs.html" with active="shorts" %}
+  {% endif %}
 
   {% if can_create %}
     <span class="subnav__actions">
