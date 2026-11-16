@@ -2,6 +2,7 @@ from types import SimpleNamespace
 import base64
 import json
 from email.parser import BytesParser
+from io import BytesIO
 from email.policy import SMTP
 from urllib.parse import parse_qs, urlencode, urlparse
 from unittest.mock import patch
@@ -718,16 +719,16 @@ class GmailDraftFlowTests(TestCase):
         session.save()
 
         with (
-            patch("accounts.views.exchange_authorization_code", return_value={
+            patch("accounts.views.gmail.exchange_authorization_code", return_value={
                 "access_token": "access-token",
                 "refresh_token": "refresh-token",
                 "scope": "openid email profile https://www.googleapis.com/auth/gmail.compose",
             }),
-            patch("accounts.views.get_google_account", return_value={
+            patch("accounts.views.gmail.get_google_account", return_value={
                 "email": self.student.email,
                 "email_verified": True,
             }),
-            patch("accounts.views.create_advisor_draft", return_value="draft-message-123") as create_draft,
+            patch("accounts.views.gmail.create_advisor_draft", return_value="draft-message-123") as create_draft,
         ):
             response = self.client.get(
                 reverse("accounts:gmail_oauth_callback"),
@@ -762,12 +763,12 @@ class GmailDraftFlowTests(TestCase):
         session.save()
 
         with (
-            patch("accounts.views.exchange_authorization_code", return_value={
+            patch("accounts.views.gmail.exchange_authorization_code", return_value={
                 "access_token": "access-token",
                 "refresh_token": "refresh-token",
                 "scope": "https://www.googleapis.com/auth/gmail.compose",
             }),
-            patch("accounts.views.get_google_account", return_value={
+            patch("accounts.views.gmail.get_google_account", return_value={
                 "email": "someone-else@ku.th",
                 "email_verified": True,
             }),
@@ -797,3 +798,69 @@ class GmailDraftFlowTests(TestCase):
         self.assertEqual(message["To"], self.advisor.email)
         self.assertIn(self.student.get_full_name(), message["Subject"])
         self.assertIn(self.student.nisit_id, message.get_content())
+
+
+@override_settings(
+    GOOGLE_OAUTH_CLIENT_ID="test-client",
+    GOOGLE_OAUTH_CLIENT_SECRET="test-secret",
+)
+class GoogleSignInTests(TestCase):
+    def callback(self, email):
+        session = self.client.session
+        session["google_oauth_state"] = "test-state"
+        session.save()
+        replies = [
+            {"access_token": "test-token"},
+            {"email": email, "email_verified": True, "given_name": "Google", "family_name": "Student"},
+        ]
+        with patch("accounts.views.google.urlopen", side_effect=[
+            BytesIO(json.dumps(reply).encode()) for reply in replies
+        ]):
+            return self.client.get(reverse("accounts:google_callback"), {
+                "state": "test-state", "code": "test-code",
+            })
+
+    def test_start_stores_state_for_google_redirect(self):
+        response = self.client.get(reverse("accounts:google_login"))
+        query = parse_qs(urlparse(response["Location"]).query)
+        self.assertEqual(query["state"], [self.client.session["google_oauth_state"]])
+        self.assertEqual(query["client_id"], ["test-client"])
+
+    def test_invalid_state_does_not_contact_google(self):
+        session = self.client.session
+        session["google_oauth_state"] = "expected-state"
+        session.save()
+        with patch("accounts.views.google.urlopen") as request:
+            response = self.client.get(reverse("accounts:google_callback"), {
+                "state": "wrong-state", "code": "test-code",
+            })
+        request.assert_not_called()
+        self.assertRedirects(response, reverse("accounts:login"))
+        self.assertNotIn("_auth_user_id", self.client.session)
+
+    def test_existing_account_keeps_role_and_programme(self):
+        user = User.objects.create_user(
+            nisit_id="7800000001", email="google-existing@ku.th",
+            first_name="Existing", last_name="Admin", department="cpe", is_superuser=True,
+        )
+        response = self.callback(user.email)
+        self.assertRedirects(response, reverse("announcements:public_board"), fetch_redirect_response=False)
+        self.assertEqual(self.client.session["_auth_user_id"], user.pk)
+        user.refresh_from_db()
+        self.assertTrue(user.is_superuser)
+        self.assertEqual(user.department, "cpe")
+
+    def test_new_account_registers_with_selected_programme(self):
+        response = self.callback("google-new@ku.th")
+        self.assertRedirects(response, reverse("accounts:google_register"))
+        self.assertFalse(User.objects.filter(email="google-new@ku.th").exists())
+        response = self.client.post(reverse("accounts:google_register"), {
+            "nisit_id": "7800000002", "department": "cpe",
+        })
+        self.assertRedirects(response, reverse("announcements:public_board"), fetch_redirect_response=False)
+        user = User.objects.get(email="google-new@ku.th")
+        self.assertEqual(user.department, "cpe")
+        self.assertFalse(user.is_staff)
+        self.assertFalse(user.is_superuser)
+        self.assertFalse(user.has_usable_password())
+        self.assertEqual(self.client.session["_auth_user_id"], user.pk)
