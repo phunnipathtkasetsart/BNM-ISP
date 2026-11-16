@@ -8,7 +8,7 @@
    turning the department away. {% endcomment %}
 
 {% block content %}
-<section class="panel">
+<section class="panel panel--roles">
   <div class="panel__head">
       <a class="backlink" href="{% url 'announcements:public_board' %}">&larr; Back to Home</a>
     <h1>Manage roles</h1>
@@ -33,11 +33,6 @@
 
         <span class="rolerow__role">
           <span class="pill pill--{{ p.role }}">{{ p.role_label }}</span>
-          {% if p.role == "lecturer" and p.has_owned_classes and not p.is_me %}
-            <span class="role-info" tabindex="0"
-                  aria-label="Cannot change role while this lecturer owns a class"
-                  data-tooltip="Cannot change role while this lecturer owns a class">i</span>
-          {% endif %}
         </span>
 
         {% if p.is_me %}
@@ -45,6 +40,9 @@
              admin demoting themselves would lock everyone out of this page. {% endcomment %}
           <span class="rolerow__self">This is you</span>
         {% elif not p.has_owned_classes %}
+            {# What this row showed when the page loaded; see roles_view. #}
+            <input type="hidden" name="was_role_for_{{ p.user.nisit_id }}" value="{{ p.role }}">
+            <input type="hidden" name="was_programme_for_{{ p.user.nisit_id }}" value="{{ p.user.department|lower|cut:' ' }}">
             <label class="sr-only" for="role-{{ p.user.nisit_id }}">
               Role for {{ p.user.get_full_name|default:p.user.nisit_id }}
             </label>
@@ -65,6 +63,24 @@
                 {% endfor %}
               </select>
             </label>
+        {% else %}
+          {% comment %} A lecturer who still owns a class cannot change role. The
+             picker is shown like every other row, but locked, with the reason
+             on the padlock. A disabled field is not submitted. {% endcomment %}
+          <span class="rolerow__lock">
+            <select class="select" disabled
+                    aria-label="Role for {{ p.user.get_full_name|default:p.user.nisit_id }} (locked)">
+              <option selected>{{ p.role_label }}</option>
+            </select>
+            <span class="role-info role-info--lock" tabindex="0"
+                  aria-label="Cannot change role while this lecturer owns a class"
+                  data-tooltip="Cannot change role while this lecturer owns a class">
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </span>
+          </span>
         {% endif %}
 
         {% if p.role == "lecturer" %}

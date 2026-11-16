@@ -5,6 +5,10 @@
    ================================================================ */
 .panel__foot strong{color:var(--ink-soft)}
 
+/* Wider than the default 760 panel: a row holds the name, the role chip, the
+   role and programme pickers and the advisor button side by side. */
+.panel--roles{width:min(calc(1120 * var(--u)), 100%)}
+
 .rolelist{border-top:1px solid var(--hairline)}
 .rolerow{
   display:flex;align-items:center;gap:calc(16 * var(--u));
@@ -73,6 +77,16 @@
 .role-info:hover::after,.role-info:focus-visible::after{transform:translate(-50%, 0)}
 .role-info:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
 
+/* Locked role picker: the same dropdown as other rows, greyed, with a
+   padlock beside it that explains why on hover or focus. */
+.rolerow__lock{display:flex;align-items:center;gap:8px;flex:none}
+.rolerow__lock .select{flex:1;min-width:0;cursor:not-allowed;opacity:.7}
+.role-info--lock{flex:none;width:20px;height:20px;border:0;border-radius:4px}
+.role-info--lock svg{
+  width:18px;height:18px;fill:none;stroke:currentColor;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+}
+
 .rolerow__advisor{display:flex;align-items:center;gap:calc(8 * var(--u));margin:0;flex:none}
 .rolerow__advisor .rolerow__self{white-space:nowrap}
 .rolerow__programme{display:flex;align-items:center;gap:8px;font-size:calc(12.5 * var(--u));color:var(--ink-soft)}
@@ -124,6 +138,32 @@
   background:var(--ku-green-800);color:#fff;
 }
 .rolelist__empty{padding:calc(24 * var(--u)) calc(28 * var(--u));color:var(--ink-muted)}
+
+/* Wide screens: every row uses the same four columns, so the chips, the role
+   pickers and the last control line up down the page instead of each row
+   ending wherever its content happens to stop.
+
+     who (flexible) | role chip | role picker | programme or advisor */
+@media (min-width:1001px){
+  .rolerow{
+    display:grid;align-items:center;
+    grid-template-columns:minmax(0,1fr) 124px 150px 330px;
+  }
+  .rolerow__who{grid-column:1;min-width:0}
+  .rolerow__role{grid-column:2}
+  .rolerow > .select,
+  .rolerow__lock{grid-column:3;width:100%}
+  .rolerow > .rolerow__self{grid-column:3 / span 2}     /* "This is you" */
+  .rolerow__programme,
+  .rolerow__advisor{grid-column:4}
+  .rolerow__programme .select{width:190px}
+  .rolerow__restriction{grid-column:1 / -1}
+}
+
+/* Tablet widths: the controls drop under the name instead of being cut off. */
+@media (max-width:1000px){
+  .rolerow{flex-wrap:wrap}
+}
 
 @media (max-width:720px){
   .panel__head,.rolerow,.panel__foot,.rolelist__empty{padding-left:18px;padding-right:18px}

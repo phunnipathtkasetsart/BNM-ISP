@@ -436,3 +436,40 @@ def refresh_time_sensitive_notifications(
     _create_course_deadline_reminders(user, current_time)
     _create_announcement_deadline_reminders(user, current_time)
     _repair_pending_invitation_notifications(user)
+
+
+def notify_role_changes(
+    actor: User,
+    changes: list[tuple[User, str]],
+) -> list[Notification]:
+    """Tell every other Department admin that roles were changed.
+
+    changes is a list of (account, new role label). The admin who made the
+    change is left out: they already see the result on their own page.
+    """
+    if not changes:
+        return []
+    described = ", ".join(
+        f"{account.get_full_name() or account.nisit_id} to {label}"
+        for account, label in changes
+    )
+    count = len(changes)
+    title = "Role changed" if count == 1 else f"{count} roles changed"
+    message = f"{actor.get_full_name() or actor.nisit_id} changed {described}."
+    event_key = f"role-change:{actor.pk}:{timezone.now().timestamp()}"
+    admins = get_user_model().objects.filter(
+        is_superuser=True, is_active=True,
+    ).exclude(pk=actor.pk)
+    created = []
+    for admin in admins:
+        notice, was_created = create_notification(
+            recipient=admin,
+            kind="role_change",
+            event_key=event_key,
+            title=title,
+            message=message,
+            url=reverse("accounts:roles"),
+        )
+        if was_created:
+            created.append(notice)
+    return created
