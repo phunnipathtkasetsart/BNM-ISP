@@ -193,6 +193,8 @@ def roles_view(request):
         }
         for student in student_users
     ]
+    # One query for everyone who owns a class, rather than one per account.
+    class_owner_ids = set(Course.objects.values_list("owner_id", flat=True))
     people = []
     for u in User.objects.all().order_by("nisit_id"):
         key = role_of(u)
@@ -205,7 +207,7 @@ def roles_view(request):
                 programme_fields.get(u.nisit_id, u.department) if error else u.department
             ).strip().lower(),
             "is_me": u.nisit_id == request.user.nisit_id,
-            "has_owned_classes": u.is_staff and Course.objects.filter(owner=u).exists(),
+            "has_owned_classes": u.is_staff and u.pk in class_owner_ids,
             "advisor": assignments_by_student.get(u.nisit_id),
             "advisee_count": advisee_counts.get(u.nisit_id, 0),
         })

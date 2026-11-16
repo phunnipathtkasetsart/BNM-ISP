@@ -9,11 +9,27 @@
 
 {% block content %}
 <section class="panel panel--roles">
-  <div class="panel__head">
+  <div class="panel__head roles-head">
+    <div class="roles-head__text">
       <a class="backlink" href="{% url 'announcements:public_board' %}">&larr; Back to Home</a>
-    <h1>Manage roles</h1>
-    <p class="panel__sub">{{ people|length }} account{{ people|length|pluralize }} in the
-    department. Assign students to their academic advisor from each Lecturer's account.</p>
+      <h1>Manage roles</h1>
+      <p class="panel__sub">{{ people|length }} account{{ people|length|pluralize }} in the
+      department. Assign students to their academic advisor from each Lecturer's account.</p>
+    </div>
+
+    {# Filters the rows below as you type; roles.js does the work. #}
+    <div class="roles-search">
+      <label class="roles-search__box" for="role-search">
+        <svg class="roles-search__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+          <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+          <line x1="13.5" y1="13.5" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="sr-only">Search accounts by name or ID</span>
+        <input type="search" id="role-search" placeholder="Search name or ID"
+               autocomplete="off" data-role-search>
+      </label>
+      <p class="roles-search__count" data-role-count aria-live="polite"></p>
+    </div>
   </div>
 
   {% if notice %}<div class="banner banner--ok" role="status">{{ notice }}</div>{% endif %}
@@ -22,9 +38,10 @@
   <form method="post" class="role-management-form" id="role-management-form">
     {% csrf_token %}
     <input type="hidden" name="action" value="roles">
-    <div class="rolelist">
+    <div class="rolelist" data-role-list tabindex="0" aria-label="Accounts">
     {% for p in people %}
-      <div class="rolerow{% if p.is_me %} rolerow--me{% endif %}">
+      <div class="rolerow{% if p.is_me %} rolerow--me{% endif %}"
+           data-search="{{ p.user.get_full_name|lower }} {{ p.user.nisit_id|lower }} {{ p.user.email|lower }}">
         <div class="rolerow__who">
           <span class="rolerow__name">{{ p.user.get_full_name|default:p.user.nisit_id }}</span>
           <span class="rolerow__id">{{ p.user.nisit_id }}</span>
@@ -98,6 +115,7 @@
     {% empty %}
       <p class="rolelist__empty">No accounts yet.</p>
     {% endfor %}
+      <p class="rolelist__empty" data-role-none hidden>No accounts match your search.</p>
     </div>
   </form>
 
@@ -157,19 +175,5 @@
     <button type="submit" class="btn btn--small" form="role-management-form">Save changes</button>
   </div>
 </section>
-<script>
-  document.querySelectorAll("[data-current-role]").forEach(function (role) {
-    var field = role.closest(".rolerow").querySelector(".rolerow__programme");
-    var programme = field.querySelector("select");
-    function updateProgramme() {
-      var isStudent = role.value === "student";
-      field.hidden = !isStudent;
-      programme.disabled = !isStudent;
-      // Unchanged legacy accounts may have no programme; never assign one implicitly.
-      programme.required = isStudent && (role.dataset.currentRole !== "student" || programme.dataset.currentProgramme !== "");
-    }
-    role.addEventListener("change", updateProgramme);
-    updateProgramme();
-  });
-</script>
+<script src="{% static 'accounts/js/roles.js' %}" defer></script>
 {% endblock %}
