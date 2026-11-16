@@ -19,18 +19,31 @@ class NotificationTests(TestCase):
     def setUpTestData(cls):
         User = get_user_model()
         cls.lecturer = User.objects.create_user(
-            nisit_id="6610502001", email="notice-teacher@ku.th", password="test-pass-123",
-            first_name="Notice", last_name="Teacher", department="ske", is_staff=True,
+            nisit_id="6610502001",
+            email="notice-teacher@ku.th",
+            password="test-pass-123",
+            first_name="Notice",
+            last_name="Teacher",
+            department="ske",
+            is_staff=True,
         )
         cls.student = User.objects.create_user(
-            nisit_id="6610502002", email="notice-student@ku.th", password="test-pass-123",
+            nisit_id="6610502002",
+            email="notice-student@ku.th",
+            password="test-pass-123",
             first_name="Notice", last_name="Student", department="ske",
         )
         cls.other_student = User.objects.create_user(
-            nisit_id="6610502003", email="notice-other@ku.th", password="test-pass-123",
+            nisit_id="6610502003",
+            email="notice-other@ku.th",
+            password="test-pass-123",
             first_name="Other", last_name="Student", department="cpe",
         )
-        cls.course = create_course(owner=cls.lecturer, name="Notice Course", section="001")
+        cls.course = create_course(
+            owner=cls.lecturer,
+            name="Notice Course",
+            section="001",
+        )
         Enrollment.objects.create(course=cls.course, student=cls.student)
 
     def test_api_lists_and_marks_only_the_recipient_notifications_read(self):
@@ -45,9 +58,20 @@ class NotificationTests(TestCase):
         self.client.force_login(self.student)
         response = self.client.get(reverse("notifications:list"))
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["unread_count"], 1)
+        payload = response.json()
+        self.assertEqual(payload["unread_count"], 1)
+        listed_notice = payload["notifications"][0]
+        self.assertEqual(listed_notice["id"], notice.pk)
+        self.assertEqual(listed_notice["kind"], "test")
+        self.assertEqual(listed_notice["title"], "A notice")
+        self.assertEqual(listed_notice["message"], "Details")
+        self.assertEqual(listed_notice["url"], "/course/")
+        self.assertFalse(listed_notice["is_read"])
+        self.assertIsInstance(listed_notice["created_at"], str)
 
-        response = self.client.post(reverse("notifications:read", args=[notice.pk]))
+        response = self.client.post(
+            reverse("notifications:read", args=[notice.pk])
+        )
         self.assertEqual(response.status_code, 200)
         notice.refresh_from_db()
         self.assertIsNotNone(notice.read_at)
@@ -59,10 +83,10 @@ class NotificationTests(TestCase):
             url="/",
             event_key="test:private",
         )
-        self.assertEqual(
-            self.client.post(reverse("notifications:read", args=[private_notice.pk])).status_code,
-            404,
+        response = self.client.post(
+            reverse("notifications:read", args=[private_notice.pk])
         )
+        self.assertEqual(response.status_code, 404)
 
     def test_personal_calendar_reminder_is_private_and_created_once(self):
         note = DayNote.objects.create(
@@ -91,7 +115,10 @@ class NotificationTests(TestCase):
 
     def test_roster_addition_and_course_post_create_notifications(self):
         self.assertEqual(add_students(self.course, [self.other_student]), 1)
-        enrollment = Enrollment.objects.get(course=self.course, student=self.other_student)
+        enrollment = Enrollment.objects.get(
+            course=self.course,
+            student=self.other_student,
+        )
         self.assertTrue(Notification.objects.filter(
             recipient=self.other_student,
             event_key=f"course-enrollment:{enrollment.pk}",
@@ -149,7 +176,10 @@ class NotificationTests(TestCase):
         notify_announcement(announcement)
         self.assertTrue(Notification.objects.filter(
             recipient=self.student,
-            event_key=f"announcement-deadline:{announcement.pk}:{deadline.isoformat()}",
+            event_key=(
+                f"announcement-deadline:{announcement.pk}:"
+                f"{deadline.isoformat()}"
+            ),
         ).exists())
 
         updated_at = timezone.now() - timedelta(days=2)
@@ -161,7 +191,10 @@ class NotificationTests(TestCase):
         self.client.get(reverse("notifications:list"))
         self.assertTrue(Notification.objects.filter(
             recipient=self.student,
-            event_key=f"announcement-deadline-24h:{announcement.pk}:{upcoming.isoformat()}",
+            event_key=(
+                f"announcement-deadline-24h:{announcement.pk}:"
+                f"{upcoming.isoformat()}"
+            ),
         ).exists())
 
     def test_deadline_reminder_is_created_once_when_within_24_hours(self):
@@ -180,7 +213,9 @@ class NotificationTests(TestCase):
             self.client.get(reverse("notifications:list"))
         self.assertEqual(Notification.objects.filter(
             recipient=self.student,
-            event_key=f"course-deadline-24h:{post.pk}:{post.deadline.isoformat()}",
+            event_key=(
+                f"course-deadline-24h:{post.pk}:{post.deadline.isoformat()}"
+            ),
         ).count(), 1)
 
     def test_deadline_is_announced_when_created_or_changed(self):

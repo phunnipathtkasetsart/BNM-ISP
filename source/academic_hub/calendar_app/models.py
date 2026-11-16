@@ -14,8 +14,13 @@ from django.db import models
 
 
 class DayNote(models.Model):
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-                             related_name="day_notes")
+    """One user's note on one day."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="day_notes",
+    )
     date = models.DateField()
     title = models.CharField(max_length=120)
     description = models.TextField(blank=True, default="", max_length=2000)
@@ -25,7 +30,9 @@ class DayNote(models.Model):
 
     class Meta:
         ordering = ["date", "created_at", "pk"]
-        indexes = [models.Index(fields=["user", "date"], name="daynote_user_date")]
+        indexes = [
+            models.Index(fields=["user", "date"], name="daynote_user_date")
+        ]
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.date}: {self.title}"

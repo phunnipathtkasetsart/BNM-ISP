@@ -1,4 +1,4 @@
-from django.http import JsonResponse
+from django.http import HttpRequest, JsonResponse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
@@ -7,17 +7,32 @@ from .models import Notification
 from .services import refresh_time_sensitive_notifications
 
 
-def _denied(request):
+def _notification_access_denial(request: HttpRequest) -> JsonResponse | None:
     if not request.user.is_authenticated:
         return JsonResponse({"error": "Authentication required."}, status=401)
     if not request.user.is_active or is_guest_request(request):
-        return JsonResponse({"error": "You do not have access to notifications."}, status=403)
+        return JsonResponse(
+            {"error": "You do not have access to notifications."},
+            status=403,
+        )
     return None
 
 
+def _serialize_notification(item: Notification) -> dict[str, int | str | bool]:
+    return {
+        "id": item.pk,
+        "kind": item.kind,
+        "title": item.title,
+        "message": item.message,
+        "url": item.url,
+        "created_at": item.created_at.isoformat(),
+        "is_read": item.read_at is not None,
+    }
+
+
 @require_GET
-def notification_list(request):
-    denied = _denied(request)
+def notification_list(request: HttpRequest) -> JsonResponse:
+    denied = _notification_access_denial(request)
     if denied:
         return denied
 
@@ -26,23 +41,14 @@ def notification_list(request):
     return JsonResponse({
         "unread_count": notifications.filter(read_at__isnull=True).count(),
         "notifications": [
-            {
-                "id": item.pk,
-                "kind": item.kind,
-                "title": item.title,
-                "message": item.message,
-                "url": item.url,
-                "created_at": item.created_at.isoformat(),
-                "is_read": item.read_at is not None,
-            }
-            for item in notifications[:10]
+            _serialize_notification(item) for item in notifications[:10]
         ],
     })
 
 
 @require_POST
-def notification_read(request, pk):
-    denied = _denied(request)
+def notification_read(request: HttpRequest, pk: int) -> JsonResponse:
+    denied = _notification_access_denial(request)
     if denied:
         return denied
     updated = Notification.objects.filter(
@@ -56,8 +62,8 @@ def notification_read(request, pk):
 
 
 @require_POST
-def notification_read_all(request):
-    denied = _denied(request)
+def notification_read_all(request: HttpRequest) -> JsonResponse:
+    denied = _notification_access_denial(request)
     if denied:
         return denied
     Notification.objects.filter(
