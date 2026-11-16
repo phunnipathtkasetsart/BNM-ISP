@@ -75,6 +75,8 @@
 
 .rolerow__advisor{display:flex;align-items:center;gap:calc(8 * var(--u));margin:0;flex:none}
 .rolerow__advisor .rolerow__self{white-space:nowrap}
+.rolerow__programme{display:flex;align-items:center;gap:8px;font-size:calc(12.5 * var(--u));color:var(--ink-soft)}
+.rolerow__programme[hidden]{display:none}
 .role-management-form{margin:0}
 .role-management-actions{display:flex;justify-content:flex-end;padding:calc(16 * var(--u)) calc(28 * var(--u))}
 .advisor-sheet{width:min(620px, calc(100vw - 32px));max-height:calc(100vh - 40px);overflow:auto;background:#fff}
