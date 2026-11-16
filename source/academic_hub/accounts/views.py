@@ -564,16 +564,29 @@ def roles_view(request):
     if not is_department_admin(request.user):
         return render(request, "accounts/no_access.html", status=403)
 
-    notice = error = None
+    notice = error = None
+    role_fields = {}
+    programme_fields = {}
 
     if request.method == "POST":
         action = request.POST.get("action", "role")
-        if action == "roles":
-            role_fields = {
-                key.removeprefix("role_for_"): value
-                for key, value in request.POST.items()
-                if key.startswith("role_for_")
-            }
+        if action in {"roles", "role"}:
+            if action == "roles":
+                role_fields = {
+                    key.removeprefix("role_for_"): value
+                    for key, value in request.POST.items()
+                    if key.startswith("role_for_")
+                }
+                programme_fields = {
+                    key.removeprefix("programme_for_"): value
+                    for key, value in request.POST.items()
+                    if key.startswith("programme_for_")
+                }
+            else:
+                target_id = request.POST.get("nisit_id", "")
+                role_fields = {target_id: request.POST.get("role", "")}
+                if "department" in request.POST:
+                    programme_fields[target_id] = request.POST["department"]
             changes = []
             for target_id, new_role in role_fields.items():
                 target = User.objects.filter(nisit_id=target_id).first()
@@ -586,16 +599,24 @@ def roles_view(request):
                 if new_role not in ROLES:
                     error = f"That is not a role we recognise for {target.get_full_name()}."
                     break
-                if role_of(target) == new_role:
+                programme = target.department
+                if new_role == "student":
+                    programme = programme_fields.get(target_id, programme).strip().lower()
+                if role_of(target) == new_role and (
+                    new_role != "student" or target.department.strip().lower() == programme
+                ):
                     continue
+                if new_role == "student" and programme not in User.Department.values:
+                    error = f"Choose CPE or SKE for {target.get_full_name()}."
+                    break
                 if target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
                     error = "This lecturer cannot change roles while they still own a class."
                     break
-                changes.append((target, new_role))
+                changes.append((target, new_role, programme))
 
             if not error and changes:
                 with transaction.atomic():
-                    for target, new_role in changes:
+                    for target, new_role, programme in changes:
                         flags = ROLES[new_role]
                         if new_role != "student":
                             AdvisorAssignment.objects.filter(student=target).delete()
@@ -603,7 +624,8 @@ def roles_view(request):
                             AdvisorAssignment.objects.filter(advisor=target).delete()
                         target.is_staff = flags["is_staff"]
                         target.is_superuser = flags["is_superuser"]
-                        target.save(update_fields=["is_staff", "is_superuser"])
+                        target.department = programme
+                        target.save(update_fields=["is_staff", "is_superuser", "department"])
                 notice = f"Role changes saved for {len(changes)} account{'s' if len(changes) != 1 else ''}."
             elif not error:
                 notice = "There are no role changes to save."
@@ -648,30 +670,6 @@ def roles_view(request):
                             f"{count} advised student{'s' if count != 1 else ''} saved for "
                             f"{target.get_full_name()}."
                         )
-        elif action == "role":
-            target_id = request.POST.get("nisit_id", "")
-            target = User.objects.filter(nisit_id=target_id).first()
-            if target is None:
-                error = "That account no longer exists."
-            else:
-                new_role = request.POST.get("role", "")
-                if new_role not in ROLES:
-                    error = "That is not a role we recognise."
-                elif target_id == request.user.nisit_id:
-                    error = "You cannot change your own role. Ask another Department admin."
-                elif target.is_staff and new_role != "lecturer" and Course.objects.filter(owner=target).exists():
-                    error = "This lecturer cannot change roles while they still own a class."
-                else:
-                    flags = ROLES[new_role]
-                    with transaction.atomic():
-                        if new_role != "student":
-                            AdvisorAssignment.objects.filter(student=target).delete()
-                        if new_role != "lecturer":
-                            AdvisorAssignment.objects.filter(advisor=target).delete()
-                        target.is_staff = flags["is_staff"]
-                        target.is_superuser = flags["is_superuser"]
-                        target.save(update_fields=["is_staff", "is_superuser"])
-                    notice = f"{target.get_full_name()} is now {flags['label']}."
         else:
             error = "That action is not recognised."
 
@@ -703,6 +701,10 @@ def roles_view(request):
             "user": u,
             "role": key,
             "role_label": ROLES[key]["label"],
+            "selected_role": role_fields.get(u.nisit_id, key) if error else key,
+            "programme": (
+                programme_fields.get(u.nisit_id, u.department) if error else u.department
+            ).strip().lower(),
             "is_me": u.nisit_id == request.user.nisit_id,
             "has_owned_classes": u.is_staff and Course.objects.filter(owner=u).exists(),
             "advisor": assignments_by_student.get(u.nisit_id),
@@ -713,6 +715,7 @@ def roles_view(request):
         "people": people,
         "roles": [{"key": k, "label": v["label"]} for k, v in ROLES.items()],
         "students": students,
+        "programmes": User.Department.values,
         "notice": notice,
         "error": error,
     })
