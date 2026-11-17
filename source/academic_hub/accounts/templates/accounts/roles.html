@@ -74,7 +74,7 @@
               <select name="programme_for_{{ p.user.nisit_id }}" class="select"
                       aria-label="Programme for {{ p.user.get_full_name|default:p.user.nisit_id }}"
                       data-current-programme="{{ p.user.department|lower|cut:' ' }}">
-                <option value="">Choose programme</option>
+                <option value="" disabled hidden {% if not p.programme %}selected{% endif %}>Choose programme</option>
                 {% for programme in programmes %}
                   <option value="{{ programme }}" {% if programme == p.programme %}selected{% endif %}>{{ programme|upper }}</option>
                 {% endfor %}
