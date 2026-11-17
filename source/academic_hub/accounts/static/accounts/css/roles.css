@@ -5,7 +5,58 @@
    ================================================================ */
 .panel__foot strong{color:var(--ink-soft)}
 
-.rolelist{border-top:1px solid var(--hairline)}
+/* Wider than the default 760 panel: a row holds the name, the role chip, the
+   role and programme pickers and the advisor button side by side. */
+.panel--roles{width:min(calc(1120 * var(--u)), 100%)}
+
+/* --- header: title on the left, search on the right, on one baseline --- */
+.roles-head{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:calc(16 * var(--u)) calc(24 * var(--u));flex-wrap:wrap;
+}
+.roles-head__text{flex:1 1 calc(360 * var(--u));min-width:0}
+.roles-search{flex:0 1 calc(320 * var(--u));min-width:calc(220 * var(--u));position:relative}
+.roles-search__box{
+  display:flex;align-items:center;gap:calc(10 * var(--u));
+  background:#fff;border:1px solid var(--field-line);border-radius:999px;
+  padding:calc(9 * var(--u)) calc(16 * var(--u));cursor:text;
+  transition:border-color .16s var(--ease),box-shadow .16s var(--ease);
+}
+.roles-search__box:focus-within{border-color:var(--ku-sage);box-shadow:0 0 0 3px rgba(111,168,144,.20)}
+.roles-search__icon{flex:none;width:calc(17 * var(--u));height:calc(17 * var(--u));color:var(--ink-muted)}
+.roles-search input{
+  flex:1;min-width:0;border:0;outline:0;background:none;
+  font-family:var(--font-ui);font-size:calc(14 * var(--u));color:var(--ink);
+}
+.roles-search input::placeholder{color:var(--ink-muted)}
+/* Sits under the box without pushing the header taller. */
+.roles-search__count{
+  position:absolute;right:calc(16 * var(--u));top:calc(100% + 2px);margin:0;
+  font-size:calc(11.5 * var(--u));color:var(--ink-muted);white-space:nowrap;
+}
+
+/* --- the list scrolls inside the panel ---
+   The title, the search box and Save changes stay where they are while the
+   rows move, so a long department never pushes the button off the screen.
+   The four background layers draw a soft shadow at the top or bottom edge
+   only while there are more rows in that direction. */
+.rolelist{
+  border-top:1px solid var(--hairline);
+  border-bottom:1px solid var(--hairline);
+  max-height:max(calc(100svh - 430 * var(--u)), calc(280 * var(--u)));
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scroll-behavior:smooth;
+  scrollbar-width:thin;scrollbar-color:#B9CEC3 transparent;
+  background:
+    linear-gradient(var(--card) 30%, transparent) top / 100% 24px no-repeat local,
+    linear-gradient(transparent, var(--card) 70%) bottom / 100% 24px no-repeat local,
+    linear-gradient(rgba(28,60,50,.13), transparent) top / 100% 10px no-repeat scroll,
+    linear-gradient(transparent, rgba(28,60,50,.13)) bottom / 100% 10px no-repeat scroll;
+}
+.rolelist:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:-2px}
+.rolelist .rolerow:last-of-type{border-bottom:0}
+.rolerow[hidden]{display:none}
 .rolerow{
   display:flex;align-items:center;gap:calc(16 * var(--u));
   padding:calc(14 * var(--u)) calc(28 * var(--u));
@@ -73,6 +124,16 @@
 .role-info:hover::after,.role-info:focus-visible::after{transform:translate(-50%, 0)}
 .role-info:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
 
+/* Locked role picker: the same dropdown as other rows, greyed, with a
+   padlock beside it that explains why on hover or focus. */
+.rolerow__lock{display:flex;align-items:center;gap:8px;flex:none}
+.rolerow__lock .select{flex:1;min-width:0;cursor:not-allowed;opacity:.7}
+.role-info--lock{flex:none;width:20px;height:20px;border:0;border-radius:4px}
+.role-info--lock svg{
+  width:18px;height:18px;fill:none;stroke:currentColor;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+}
+
 .rolerow__advisor{display:flex;align-items:center;gap:calc(8 * var(--u));margin:0;flex:none}
 .rolerow__advisor .rolerow__self{white-space:nowrap}
 .rolerow__programme{display:flex;align-items:center;gap:8px;font-size:calc(12.5 * var(--u));color:var(--ink-soft)}
@@ -125,6 +186,32 @@
 }
 .rolelist__empty{padding:calc(24 * var(--u)) calc(28 * var(--u));color:var(--ink-muted)}
 
+/* Wide screens: every row uses the same four columns, so the chips, the role
+   pickers and the last control line up down the page instead of each row
+   ending wherever its content happens to stop.
+
+     who (flexible) | role chip | role picker | programme or advisor */
+@media (min-width:1001px){
+  .rolerow{
+    display:grid;align-items:center;
+    grid-template-columns:minmax(0,1fr) 124px 150px 330px;
+  }
+  .rolerow__who{grid-column:1;min-width:0}
+  .rolerow__role{grid-column:2}
+  .rolerow > .select,
+  .rolerow__lock{grid-column:3;width:100%}
+  .rolerow > .rolerow__self{grid-column:3 / span 2}     /* "This is you" */
+  .rolerow__programme,
+  .rolerow__advisor{grid-column:4}
+  .rolerow__programme .select{width:190px}
+  .rolerow__restriction{grid-column:1 / -1}
+}
+
+/* Tablet widths: the controls drop under the name instead of being cut off. */
+@media (max-width:1000px){
+  .rolerow{flex-wrap:wrap}
+}
+
 @media (max-width:720px){
   .panel__head,.rolerow,.panel__foot,.rolelist__empty{padding-left:18px;padding-right:18px}
   .banner{margin-left:18px;margin-right:18px}
@@ -134,6 +221,11 @@
   .rolerow__who{flex:1 1 100%;min-width:0}
   .rolerow__advisor{flex:1 1 100%;min-width:0;justify-content:flex-start;flex-wrap:wrap}
   .role-management-actions{padding:14px 18px}
+  /* Phones scroll the whole page, which is easier with a thumb than a box
+     inside a box; the search box takes the full width under the title. */
+  .rolelist{max-height:none;overflow:visible;background:none}
+  .roles-search{flex:1 1 100%}
+  .roles-search__count{position:static;margin-top:4px;text-align:right}
   .select{flex:1}
   .stage{align-items:start}
 }

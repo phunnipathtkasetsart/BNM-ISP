@@ -1,0 +1,225 @@
+/* ====================================================================
+   POLISH LAYER
+   Loaded after every other stylesheet. Flat and quiet: no new colours,
+   no gradients, no decoration. It only adds
+
+     - beveled corners on surfaces (buttons and fields stay round), and
+     - short, soft transitions so the app feels smooth to use.
+
+   Contents
+     1. Tokens
+     2. Page transitions
+     3. Top bar and account menu
+     4. Tabs
+     5. Surfaces (bevels)
+     6. Buttons and controls
+     7. Cards and rows (hover)
+     8. FAQ accordion
+     9. Entrances
+    10. Board title bars, FAQ first on phones
+    11. Small screens and reduced motion
+   ==================================================================== */
+
+
+/* 1. Tokens ---------------------------------------------------------- */
+:root{
+  --cut-lg:26px;                    /* bevel on panels and cards */
+  --cut-md:14px;                    /* bevel on posts and tools  */
+  --out:cubic-bezier(.16,1,.3,1);   /* fast start, soft landing  */
+  --fast:.16s;                      /* colour changes            */
+  --move:.24s;                      /* things that move          */
+
+  interpolate-size:allow-keywords;  /* lets <details> animate to auto */
+}
+
+
+/* 2. Page transitions ------------------------------------------------
+   The top bar and tabs stay still; the page below cross-fades.
+   Browsers without view transitions just navigate as before. */
+@view-transition{navigation:auto}
+.topbar{view-transition-name:polish-topbar}
+.subnav{view-transition-name:polish-subnav}
+::view-transition-old(root){animation:polish-fade-out .12s ease-in both}
+::view-transition-new(root){animation:polish-fade-in .22s ease-out both}
+@keyframes polish-fade-out{to{opacity:0}}
+@keyframes polish-fade-in{from{opacity:0}}
+
+
+/* 3. Top bar and account menu ---------------------------------------- */
+.topbar{position:sticky;top:0;z-index:40}
+
+.acctmenu__panel{
+  border-radius:calc(6 * var(--u)) var(--cut-md);corner-shape:round bevel;
+  transform-origin:top right;
+  animation:polish-pop .18s var(--out) both;
+}
+@keyframes polish-pop{from{opacity:0;transform:translateY(-4px) scale(.97)}}
+.acctmenu__item{transition:background var(--fast) var(--ease)}
+
+
+/* 4. Tabs ------------------------------------------------------------
+   Slanted on both sides, with a soft white hover. */
+.subnav{gap:0}
+.subnav__tab{
+  clip-path:polygon(14px 0,100% 0,calc(100% - 14px) 100%,0 100%);
+  padding-left:calc(30 * var(--u));
+  margin-right:calc(-8 * var(--u));
+  transition:background var(--fast) var(--ease),color var(--fast) var(--ease);
+}
+.subnav__tab:first-child{
+  clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%);
+  padding-left:calc(22 * var(--u));
+}
+.subnav__tab:not(.subnav__tab--on):not(.subnav__tab--off):hover{background:rgba(255,255,255,.16);color:#fff}
+
+
+/* 5. Surfaces (bevels) -----------------------------------------------
+   Top-right and bottom-left are cut, following the ribbons' fall.
+   corner-shape needs Chrome 139+; other browsers show the same
+   asymmetric rounded corners instead. */
+.panel,
+.card{
+  border-radius:calc(8 * var(--u)) var(--cut-lg);
+  corner-shape:round bevel;
+}
+.post,
+.course-tool,
+.deadline-item,
+.sheet{
+  border-radius:calc(5 * var(--u)) var(--cut-md);
+  corner-shape:round bevel;
+}
+.course-card{border-radius:6px 24px;corner-shape:round bevel}
+.course-shell{border-radius:10px 30px;corner-shape:round bevel}
+
+
+/* 6. Buttons and controls --------------------------------------------
+   Shapes and colours come from the existing stylesheets. This only
+   makes them respond: a small lift on hover, a small press on click. */
+.btn,
+.course-btn,
+.subnav__action,
+.daterow__go,
+.cal__btn,
+.chip,
+.qa__open,
+.course-tool__button,
+.oauth__btn,
+.acctmenu__btn,
+.switcher{
+  transition:background var(--fast) var(--ease),color var(--fast) var(--ease),
+             border-color var(--fast) var(--ease),box-shadow var(--fast) var(--ease),
+             transform var(--fast) var(--ease);
+}
+.btn:hover,
+.course-btn:hover,
+.subnav__action:hover,
+.daterow__go:hover,
+.cal__btn:hover,
+.chip:hover{transform:translateY(-1px)}
+.btn:active,
+.course-btn:active,
+.subnav__action:active,
+.daterow__go:active,
+.cal__btn:active,
+.chip:active,
+.switcher:active{transform:scale(.97)}
+
+.searchbar,
+.control input{transition:border-color var(--fast) var(--ease),box-shadow var(--fast) var(--ease),background var(--fast) var(--ease)}
+
+
+/* 7. Cards and rows (hover) ------------------------------------------ */
+.post,
+.course-card,
+.course-tool,
+.deadline-item{
+  transition:transform var(--move) var(--out),box-shadow var(--move) var(--ease),
+             border-color var(--fast) var(--ease);
+}
+.post:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(28,60,50,.10);border-color:#CFDCD4}
+.course-card:hover{transform:translateY(-3px)}
+.deadline-item:hover{transform:translateX(3px)}
+
+.post__title{transition:color var(--fast) var(--ease)}
+.post:hover .post__title{color:var(--ku-green-800)}
+
+.cal__day{transition:background var(--fast) var(--ease)}
+.cal__day:hover{background:#F3F8F5}
+.cal__day--today:hover{background:var(--ku-mint)}
+
+
+/* 8. FAQ accordion ----------------------------------------------------
+   Opens and closes smoothly instead of jumping. */
+.qa::details-content{
+  block-size:0;overflow:hidden;
+  transition:block-size var(--move) var(--out),content-visibility var(--move) allow-discrete;
+}
+.qa[open]::details-content{block-size:auto}
+.qa__q{transition:color var(--fast) var(--ease)}
+.qa__q:hover{color:var(--ku-green-800)}
+
+
+/* 9. Entrances --------------------------------------------------------
+   Lists fade up a few pixels, each item just after the one before. */
+@keyframes polish-rise{from{opacity:0;transform:translateY(8px)}}
+
+.feed .post,
+.course-grid .course-card,
+.deadline-item{animation:polish-rise .3s var(--out) both}
+
+.feed .post:nth-child(2),
+.course-grid .course-card:nth-child(2),
+.deadline-item:nth-child(2){animation-delay:.04s}
+
+.feed .post:nth-child(3),
+.course-grid .course-card:nth-child(3),
+.deadline-item:nth-child(3){animation-delay:.08s}
+
+.feed .post:nth-child(n+4),
+.course-grid .course-card:nth-child(n+4),
+.deadline-item:nth-child(n+4){animation-delay:.12s}
+
+
+/* 10. Board title bars, and FAQ first on phones ------------------------
+   On every board page (Home, FAQ forum, Shorts) the box title sits on a
+   filled green bar, a step brighter than the top bar, with white text. */
+.board__main > .panel__head,
+.panel--faq .faq__head{background:#3F7263}
+
+.board__main > .panel__head h1,
+.panel--faq .faq__head h2,
+.board__main > .panel__head .forum-back-link{color:#fff}
+.board__main > .panel__head .panel__sub{color:#DCEAE3}
+.board__main > .panel__head .panel__sub strong{color:#fff}
+
+.board__main > .panel__head{
+  padding-top:calc(18 * var(--u));
+  margin-bottom:calc(16 * var(--u));
+}
+/* A dark green button would sink into the bar, so it turns white there. */
+.board__main > .panel__head .subnav__action{background:#fff;color:var(--ku-green-900)}
+.board__main > .panel__head .subnav__action:hover{background:var(--ku-mint)}
+
+/* One column: the FAQ box sits above the announcements, the way Upcoming
+   deadlines sits above the classes. It no longer reserves empty height,
+   so the announcements start right after the last question. */
+@media (max-width:900px){
+  .board__side{order:-1}
+  .faq__list{min-height:0}
+}
+
+
+/* 11. Small screens and reduced motion --------------------------------
+   base.css already switches every animation off for reduced motion. */
+@media (max-width:720px){
+  :root{--cut-lg:18px;--cut-md:12px}
+  .subnav__tab{padding-left:18px;margin-right:-6px}
+  .subnav__tab:first-child{padding-left:12px}
+}
+@media (max-width:400px){
+  .subnav__tab{clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%);padding-left:13px}
+}
+@media (prefers-reduced-motion:reduce){
+  ::view-transition-old(root),::view-transition-new(root){animation:none}
+}

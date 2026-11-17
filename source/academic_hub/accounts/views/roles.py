@@ -5,6 +5,7 @@ from django.db import transaction
 from django.shortcuts import render
 
 from course.models import Course
+from notifications.services import notify_role_changes
 
 from ..models import AdvisorAssignment, User
 
@@ -85,6 +86,17 @@ def roles_view(request):
                 programme = target.department
                 if new_role == "student":
                     programme = programme_fields.get(target_id, programme).strip().lower()
+                # The page sends every row, with what each one showed when it
+                # was loaded. A row this admin did not touch is skipped, so a
+                # page left open cannot undo a change another admin made since.
+                shown_role = request.POST.get(f"was_role_for_{target_id}")
+                shown_programme = request.POST.get(f"was_programme_for_{target_id}", "")
+                if shown_role == new_role and (
+                    new_role != "student"
+                    or programme_fields.get(target_id, shown_programme).strip().lower()
+                    == shown_programme.strip().lower()
+                ):
+                    continue
                 if role_of(target) == new_role and (
                     new_role != "student" or target.department.strip().lower() == programme
                 ):
@@ -109,6 +121,10 @@ def roles_view(request):
                         target.is_superuser = flags["is_superuser"]
                         target.department = programme
                         target.save(update_fields=["is_staff", "is_superuser", "department"])
+                notify_role_changes(
+                    request.user,
+                    [(target, ROLES[new_role]["label"]) for target, new_role, _ in changes],
+                )
                 notice = f"Role changes saved for {len(changes)} account{'s' if len(changes) != 1 else ''}."
             elif not error:
                 notice = "There are no role changes to save."
@@ -177,6 +193,8 @@ def roles_view(request):
         }
         for student in student_users
     ]
+    # One query for everyone who owns a class, rather than one per account.
+    class_owner_ids = set(Course.objects.values_list("owner_id", flat=True))
     people = []
     for u in User.objects.all().order_by("nisit_id"):
         key = role_of(u)
@@ -189,10 +207,18 @@ def roles_view(request):
                 programme_fields.get(u.nisit_id, u.department) if error else u.department
             ).strip().lower(),
             "is_me": u.nisit_id == request.user.nisit_id,
-            "has_owned_classes": u.is_staff and Course.objects.filter(owner=u).exists(),
+            "has_owned_classes": u.is_staff and u.pk in class_owner_ids,
             "advisor": assignments_by_student.get(u.nisit_id),
             "advisee_count": advisee_counts.get(u.nisit_id, 0),
         })
+
+    # Department first, then lecturers, then students; A to Z inside each role.
+    role_rank = {"department": 0, "lecturer": 1, "student": 2}
+    people.sort(key=lambda p: (
+        role_rank[p["role"]],
+        p["user"].get_full_name().casefold(),
+        p["user"].nisit_id,
+    ))
 
     return render(request, "accounts/roles.html", {
         "people": people,

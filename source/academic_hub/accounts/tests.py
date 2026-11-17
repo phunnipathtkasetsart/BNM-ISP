@@ -183,7 +183,9 @@ class PasswordResetTests(TestCase):
 
     def test_invalid_email_is_rejected(self):
         response = self.request_reset("not-an-email")
-        self.assertContains(response, "Use your KU address")
+        # The server's own message. "Use your KU address" only ever matched the
+        # page's inline script, which now lives in accounts/js/base.js.
+        self.assertContains(response, "Enter a valid email address")
         self.assertEqual(len(mail.outbox), 0)
 
     def test_token_is_hashed_and_expires(self):
@@ -451,6 +453,55 @@ class AdvisorAssignmentTests(TestCase):
         self.other_student.refresh_from_db()
         self.assertTrue(self.student.is_staff)
         self.assertTrue(self.other_student.is_superuser)
+
+    def test_untouched_row_on_a_stale_page_does_not_undo_another_admins_change(self):
+        # Another admin made the student a lecturer after this page was loaded.
+        User.objects.filter(pk=self.student.pk).update(is_staff=True)
+        response = self.client.post(self.roles_url, {
+            "action": "roles",
+            # Still shows "student", exactly as it did when the page loaded.
+            f"role_for_{self.student.nisit_id}": "student",
+            f"was_role_for_{self.student.nisit_id}": "student",
+            f"programme_for_{self.student.nisit_id}": "ske",
+            f"was_programme_for_{self.student.nisit_id}": "ske",
+            # The one row this admin really changed.
+            f"role_for_{self.other_student.nisit_id}": "lecturer",
+            f"was_role_for_{self.other_student.nisit_id}": "student",
+        })
+        self.assertContains(response, "Role changes saved for 1 account.")
+        self.student.refresh_from_db()
+        self.other_student.refresh_from_db()
+        self.assertTrue(self.student.is_staff)
+        self.assertTrue(self.other_student.is_staff)
+
+    def test_role_change_notifies_the_other_department_admins_only(self):
+        from notifications.models import Notification
+
+        other_admin = User.objects.create_user(
+            nisit_id="7700000009", email="advisor-department2@ku.th",
+            password="test-password", first_name="Second", last_name="Admin",
+            department="ske", is_superuser=True,
+        )
+        self.client.post(self.roles_url, {
+            "action": "roles",
+            f"role_for_{self.student.nisit_id}": "lecturer",
+            f"was_role_for_{self.student.nisit_id}": "student",
+        })
+        notice = Notification.objects.get(kind="role_change")
+        self.assertEqual(notice.recipient, other_admin)
+        self.assertEqual(notice.title, "Role changed")
+        self.assertIn("Department Admin changed Test Student to Lecturer", notice.message)
+        self.assertEqual(notice.url, self.roles_url)
+
+    def test_saving_with_no_changes_notifies_nobody(self):
+        from notifications.models import Notification
+
+        self.client.post(self.roles_url, {
+            "action": "roles",
+            f"role_for_{self.student.nisit_id}": "student",
+            f"was_role_for_{self.student.nisit_id}": "student",
+        })
+        self.assertFalse(Notification.objects.filter(kind="role_change").exists())
 
     def test_bulk_role_changes_reject_invalid_submissions_without_partial_updates(self):
         response = self.client.post(self.roles_url, {

@@ -1,22 +1,11 @@
-{% extends "accounts/base.html" %}
+{% extends "accounts/base_app.html" %}
 {% load static %}
 {% block title %}{% if is_edit %}Edit announcement{% else %}New announcement{% endif %} — KU Student Portal{% endblock %}
 {% block page_css %}<link rel="stylesheet" href="{% static 'accounts/css/annform.css' %}">{% endblock %}
 
-{% block topbar_mod %}topbar--signed-in{% endblock %}
-
-{% block topbar_left %}
-  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
-  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
-{% endblock %}
-
-{% block topbar_right %}
-  {% include "accounts/_account_menu.html" %}
-{% endblock %}
-
 {% block content %}
 <div class="board board--single">
-  <section class="panel" style="max-width: 680px; margin: 0 auto;">
+  <section class="panel annform-panel">
     <div class="panel__head">
       <h1>{% if is_edit %}Edit announcement{% else %}New announcement{% endif %}</h1>
       <p class="panel__sub">
@@ -48,30 +37,30 @@
         </div>
       {% endfor %}
 
-      <div class="annform__actions" style="margin-top: 1.5rem; display: flex; gap: 0.75rem; align-items: center;">
-        <button type="submit" class="btn btn--primary" style="background: #2c5449; color: #fff; padding: 0.6rem 1.4rem; border-radius: 8px; font-weight: 700; border: none; cursor: pointer;">
+      <div class="annform__actions annform__actions--main">
+        <button type="submit" class="btn btn--primary annform__save">
           {% if is_edit %}Save changes{% else %}Publish{% endif %}
         </button>
-        <a class="btn" href="{% url 'announcements:public_board' %}" style="background: #e5e7eb; color: #374151; padding: 0.6rem 1.2rem; border-radius: 8px; text-decoration: none; font-weight: 600;">Cancel</a>
+        <a class="btn annform__cancel" href="{% url 'announcements:public_board' %}">Cancel</a>
       </div>
     </form>
 
     {% if is_edit %}
-      <div style="margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 1.5rem;">
+      <div class="annform-manage">
         
         {% if instance.archived_at %}
           <!-- PHASE 2: ARCHIVED POST ACTIONS -->
-          <div style="background-color: #f9fafb; border: 1px solid #d1d5db; border-radius: 10px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem;">
+          <div class="annform-box annform-box--archived">
             <div>
-              <span style="background: #e5e7eb; color: #4b5563; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;">Status: Archived</span>
-              <p style="margin: 0.5rem 0 0; font-size: 0.875rem; color: #4b5563;">This announcement is archived and hidden from public view. You can restore it to the board or permanently remove it.</p>
+              <span class="annform-box__status">Status: Archived</span>
+              <p class="annform-box__text">This announcement is archived and hidden from public view. You can restore it to the board or permanently remove it.</p>
             </div>
             
-            <div style="display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+            <div class="annform-box__actions">
               <!-- RESTORE ANNOUNCEMENT -->
               <form method="post" action="{% url 'announcements:announcement_restore' instance.pk %}">
                 {% csrf_token %}
-                <button type="submit" style="background: #2c5449; color: #fafafa; border: 1px solid #2c5449; padding: 0.55rem 1.1rem; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.2s;">
+                <button type="submit" class="annform-btn annform-btn--restore">
                   Restore to Board
                 </button>
               </form>
@@ -80,7 +69,7 @@
               <form method="post" action="{% url 'announcements:announcement_delete' instance.pk %}"
                     onsubmit="return confirm('Permanently delete this announcement? This cannot be undone.');">
                 {% csrf_token %}
-                <button type="submit" style="background: transparent; color: #dc2626; border: 1px solid #fca5a5; padding: 0.55rem 1.1rem; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                <button type="submit" class="annform-btn annform-btn--delete">
                   Withdraw permanently
                 </button>
               </form>
@@ -89,15 +78,15 @@
 
         {% else %}
           <!-- PHASE 1: ACTIVE POST ACTIONS -->
-          <div style="background-color: #fff8f6; border: 1px solid #fecaca; border-radius: 10px; padding: 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+          <div class="annform-box annform-box--archive">
             <div>
-              <h4 style="margin: 0; color: #991b1b; font-size: 0.95rem;">Archive announcement</h4>
-              <p style="margin: 0.25rem 0 0; font-size: 0.85rem; color: #7f1d1d;">Hides this post from the main board without permanently deleting it.</p>
+              <h4 class="annform-box__title">Archive announcement</h4>
+              <p class="annform-box__text annform-box__text--warn">Hides this post from the main board without permanently deleting it.</p>
             </div>
             <form method="post" action="{% url 'announcements:announcement_archive' instance.pk %}"
                   onsubmit="return confirm('Archive this announcement?');">
               {% csrf_token %}
-              <button type="submit" style="background: #ffffff; color: #991b1b; border: 1px solid #fca5a5; padding: 0.5rem 1rem; border-radius: 8px; font-weight: 600; cursor: pointer; white-space: nowrap;">
+              <button type="submit" class="annform-btn annform-btn--archive">
                 Archive post
               </button>
             </form>

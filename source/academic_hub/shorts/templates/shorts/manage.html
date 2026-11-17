@@ -1,20 +1,9 @@
-{% extends "accounts/base.html" %}
+{% extends "accounts/base_app.html" %}
 {% load static %}
 {% block title %}Edit Short — KU Student Portal{% endblock %}
 {% block page_css %}
   <link rel="stylesheet" href="{% static 'accounts/css/board.css' %}">
   <link rel="stylesheet" href="{% static 'shorts/shorts.css' %}">
-{% endblock %}
-
-{% block topbar_mod %}topbar--signed-in{% endblock %}
-
-{% block topbar_left %}
-  <span class="topbar__me topbar__me--name">{{ request.user.get_full_name }}</span>
-  <span class="topbar__me topbar__me--id">{{ request.user.nisit_id }}</span>
-{% endblock %}
-
-{% block topbar_right %}
-  {% include "accounts/_account_menu.html" %}
 {% endblock %}
 
 {% block content %}

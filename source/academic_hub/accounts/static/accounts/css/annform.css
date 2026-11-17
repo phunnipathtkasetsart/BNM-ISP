@@ -55,3 +55,44 @@
 .annform input[type="datetime-local"]{cursor:pointer}
 .annform input[type="datetime-local"]::-webkit-calendar-picker-indicator{cursor:pointer}
 
+/* ================================================================
+   Form actions and the archive / restore / delete box under the form.
+   These were inline style="" attributes in announcement_form.html;
+   the values are unchanged.
+   ================================================================ */
+.annform-panel{max-width:680px;margin:0 auto}
+
+.annform__actions--main{margin-top:1.5rem;display:flex;gap:.75rem;align-items:center}
+.btn.annform__save{
+  background:#2c5449;color:#fff;border:none;border-radius:8px;
+  padding:.6rem 1.4rem;font-weight:700;cursor:pointer;
+}
+.btn.annform__cancel{
+  background:#e5e7eb;color:#374151;border-radius:8px;
+  padding:.6rem 1.2rem;font-weight:600;text-decoration:none;
+}
+
+.annform-manage{margin-top:2rem;border-top:1px solid #e5e7eb;padding-top:1.5rem}
+
+.annform-box{border-radius:10px;padding:1.25rem;display:flex;gap:1rem}
+/* Already archived: restore it or delete it for good. */
+.annform-box--archived{background-color:#f9fafb;border:1px solid #d1d5db;flex-direction:column}
+/* Still on the board: offer to archive it. */
+.annform-box--archive{background-color:#fff8f6;border:1px solid #fecaca;align-items:center;justify-content:space-between}
+
+.annform-box__status{
+  background:#e5e7eb;color:#4b5563;border-radius:9999px;padding:2px 8px;
+  font-size:.75rem;font-weight:700;text-transform:uppercase;
+}
+.annform-box__title{margin:0;color:#991b1b;font-size:.95rem}
+.annform-box__text{margin:.5rem 0 0;font-size:.875rem;color:#4b5563}
+.annform-box__text--warn{margin:.25rem 0 0;font-size:.85rem;color:#7f1d1d}
+.annform-box__actions{display:flex;gap:.75rem;align-items:center;justify-content:space-between;flex-wrap:wrap}
+
+.annform-btn{border-radius:8px;font-weight:600;cursor:pointer}
+.annform-btn--restore{
+  background:#2c5449;color:#fafafa;border:1px solid #2c5449;
+  padding:.55rem 1.1rem;font-weight:700;transition:all .2s;
+}
+.annform-btn--delete{background:transparent;color:#dc2626;border:1px solid #fca5a5;padding:.55rem 1.1rem}
+.annform-btn--archive{background:#fff;color:#991b1b;border:1px solid #fca5a5;padding:.5rem 1rem;white-space:nowrap}
