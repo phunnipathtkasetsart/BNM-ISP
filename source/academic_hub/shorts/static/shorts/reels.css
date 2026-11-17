@@ -372,6 +372,70 @@ body:has(.reels) .topbar{display:none}
   .shorts-search__drawer{width:calc(100% - 16px)}
   .shorts-search__panel{padding-bottom:10px}
 }
+
+/* --- search results: over the feed, five to a row, scrolling --- */
+.shorts-results{
+  position:absolute;inset:0;z-index:6;
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:16px 24px 32px;
+}
+.shorts-results[hidden]{display:none}
+/* The paused feed stays where it was, just out of sight, so a short list
+   of results never has a clip showing below it. */
+.reels.is-searching .reels__nav{display:none}
+.reels.is-searching .reels__viewport{visibility:hidden}
+.shorts-results__panel{
+  max-width:1120px;margin:0 auto;
+  background:var(--card);border-radius:14px;
+  padding:16px 18px 20px;
+  box-shadow:0 10px 30px rgba(28,60,50,.18);
+}
+.shorts-results__summary{
+  margin:0 0 14px;font-family:var(--font-ui);font-size:14px;color:var(--ink-soft);
+}
+.shorts-results__summary strong{color:var(--ink)}
+.shorts-results__summary:empty{display:none}
+.shorts-results__grid{
+  list-style:none;margin:0;padding:0;
+  display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:16px 14px;
+}
+.result__link{display:block;color:inherit;text-decoration:none;border-radius:10px}
+.result__link:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:3px}
+.result__thumb{
+  position:relative;display:block;aspect-ratio:9/16;
+  background:#000;border-radius:10px;overflow:hidden;
+  transition:transform var(--move, .24s) var(--out, ease), box-shadow var(--move, .24s) var(--ease, ease);
+}
+.result__link:hover .result__thumb{transform:translateY(-2px);box-shadow:0 8px 18px rgba(28,60,50,.22)}
+.result__video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.result__length{
+  position:absolute;right:6px;bottom:6px;
+  padding:1px 6px;border-radius:6px;
+  background:rgba(0,0,0,.6);color:#fff;
+  font-family:var(--font-ui);font-size:11.5px;font-weight:600;
+}
+.result__length:empty{display:none}
+.result__title{
+  margin-top:8px;
+  font-family:var(--font-display);font-weight:700;font-size:13.5px;line-height:1.3;color:var(--ink);
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+  overflow-wrap:anywhere;
+}
+.result__link:hover .result__title{color:var(--ku-green-800)}
+.result__tags{
+  display:block;margin-top:2px;
+  font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.result__tags:empty{display:none}
+/* Five across is too small to read on a phone: three there. */
+@media (max-width:640px){
+  .shorts-results{padding:10px 8px 24px}
+  .shorts-results__panel{padding:12px 10px 16px;border-radius:12px}
+  .shorts-results__grid{grid-template-columns:repeat(3, minmax(0, 1fr));gap:12px 8px}
+}
+
 @media (prefers-reduced-motion:reduce){
   .shorts-search__drawer,.shorts-search__toggle svg{transition:none}
+  .result__thumb{transition:none}
 }

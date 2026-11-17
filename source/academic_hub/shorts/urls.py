@@ -14,6 +14,7 @@ urlpatterns = [
     path("<int:pk>/delete/", views.delete, name="delete"),
     path("<int:pk>/clip/", views.clip, name="clip"),
     path("api/feed/", views.feed_api, name="api_feed"),
+    path("api/search/", views.search_api, name="api_search"),
     path("api/<int:pk>/like/", interactions.like, name="api_like"),
     path(
         "api/<int:pk>/comments/",

@@ -31,6 +31,7 @@ from .access import (
 from .forms import ShortForm
 from .models import Short, ShortLike
 from .recommend import feed_order
+from .search import MAX_RESULTS, parse, search
 from .services import create_short, update_short
 from .storage import signed_clip_url
 from .streaming import ranged_clip_response
@@ -171,6 +172,35 @@ def feed_api(request: HttpRequest) -> JsonResponse:
     start = int(offset)
     page = feed_page(start, _account(request), _round_from(request, start))
     return JsonResponse(page)
+
+
+def search_item(short: Short) -> dict[str, Any]:
+    """One search result as search.js reads it."""
+    return {
+        "id": short.pk,
+        "title": short.title,
+        "tags": [tag.label for tag in short.tags.all()],
+        "length": format_duration(short.duration_seconds),
+        "src": reverse("shorts:clip", args=[short.pk]),
+        # Opens the feed on this short.
+        "url": f"{reverse('shorts:feed')}?start={short.pk}",
+    }
+
+
+@signed_in_page
+@require_GET
+def search_api(request: HttpRequest) -> JsonResponse:
+    """Search results for ?q=: ``#tag`` exactly, or titles, closest first."""
+    query = parse(request.GET.get("q", ""))
+    found = search(query)
+    return JsonResponse(
+        {
+            "kind": query.kind,
+            "tags": list(query.tags),
+            "items": [search_item(short) for short in found[:MAX_RESULTS]],
+            "total": len(found),
+        }
+    )
 
 
 @signed_in_page

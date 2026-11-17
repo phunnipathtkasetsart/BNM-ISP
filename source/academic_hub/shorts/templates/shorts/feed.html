@@ -13,20 +13,22 @@
 {% if has_shorts %}
 {# Search, popped down from under the tab bar by the little tab below it; #}
 {# the open bar pushes the reel down and the clip shrinks to fit.         #}
-{# Only the bar for now: search.js opens and closes it, and searching    #}
-{# itself is not wired up yet, so submitting does nothing.              #}
+{# search.js runs the search as you type and shows the results over the  #}
+{# feed: "#tag" finds that exact tag, anything else searches titles.      #}
 <div class="shorts-search" data-shorts-search>
   <div class="shorts-search__drawer" id="shorts-search" data-shorts-search-drawer inert>
     <div class="shorts-search__clip">
       <div class="shorts-search__panel">
-        <form class="searchbar shorts-search__bar" method="get" role="search" data-shorts-search-form>
+        <form class="searchbar shorts-search__bar" method="get" role="search" data-shorts-search-form
+              action="{% url 'shorts:api_search' %}">
           <svg class="searchbar__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
             <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
             <line x1="13.5" y1="13.5" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
           <label class="sr-only" for="shorts-q">Search shorts</label>
           <input id="shorts-q" name="q" type="search" autocomplete="off"
-                 placeholder="Search shorts…" data-shorts-search-input>
+                 placeholder="Search titles, or #tag" maxlength="100"
+                 data-shorts-search-input>
         </form>
       </div>
     </div>
@@ -55,6 +57,14 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </button>
   </div>
+
+  {# Search results, five to a row, scrolling; covers the feed while shown. #}
+  <section class="shorts-results" aria-label="Search results" data-shorts-results hidden>
+    <div class="shorts-results__panel">
+      <p class="shorts-results__summary" role="status" aria-live="polite" data-shorts-results-summary></p>
+      <ol class="shorts-results__grid" data-shorts-results-grid></ol>
+    </div>
+  </section>
 
   <noscript><p class="reels__noscript">Turn on JavaScript to watch shorts.</p></noscript>
 
@@ -114,6 +124,20 @@
         <span class="comment__toggle-line" aria-hidden="true"></span><span>View more replies</span>
       </button>
     </div>
+  </li>
+</template>
+
+<template id="result-template">
+  <li class="result">
+    <a class="result__link" data-result-link>
+      <span class="result__thumb">
+        <video class="result__video" muted playsinline preload="none" disablepictureinpicture
+               tabindex="-1" aria-hidden="true" data-result-video></video>
+        <span class="result__length" data-result-length></span>
+      </span>
+      <span class="result__title" data-result-title></span>
+      <span class="result__tags" data-result-tags></span>
+    </a>
   </li>
 </template>
 
