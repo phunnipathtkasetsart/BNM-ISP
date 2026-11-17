@@ -11,6 +11,32 @@
 {% include "shorts/_subnav.html" %}
 
 {% if has_shorts %}
+{# Search, popped down from under the tab bar by the little tab below it; #}
+{# the open bar pushes the reel down and the clip shrinks to fit.         #}
+{# Only the bar for now: search.js opens and closes it, and searching    #}
+{# itself is not wired up yet, so submitting does nothing.              #}
+<div class="shorts-search" data-shorts-search>
+  <div class="shorts-search__drawer" id="shorts-search" data-shorts-search-drawer inert>
+    <div class="shorts-search__clip">
+      <div class="shorts-search__panel">
+        <form class="searchbar shorts-search__bar" method="get" role="search" data-shorts-search-form>
+          <svg class="searchbar__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            <line x1="13.5" y1="13.5" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <label class="sr-only" for="shorts-q">Search shorts</label>
+          <input id="shorts-q" name="q" type="search" autocomplete="off"
+                 placeholder="Search shorts…" data-shorts-search-input>
+        </form>
+      </div>
+    </div>
+  </div>
+  <button type="button" class="shorts-search__toggle" data-shorts-search-toggle
+          aria-expanded="false" aria-controls="shorts-search" aria-label="Show search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+</div>
+
 {# The reel player (US-14, SRS-8). reels.js builds one slide per clip from #}
 {# the template below and keeps loading more, starting over at the end.   #}
 <section class="reels" data-reels data-api="{% url 'shorts:api_feed' %}" aria-label="Shorts">
@@ -138,6 +164,7 @@
 
 {{ feed|json_script:"reels-data" }}
 <script src="{% static 'shorts/reels.js' %}" defer></script>
+<script src="{% static 'shorts/search.js' %}" defer></script>
 
 {% else %}
 <div class="board shorts-board">

@@ -17,6 +17,21 @@ class FeedTests(ShortsTestCase):
         self.assertContains(response, "No shorts yet.")
         self.assertNotContains(response, "reels-data")
 
+    def test_feed_has_the_pop_down_search_bar(self) -> None:
+        self.make_short("Clip")
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("shorts:feed"))
+        self.assertContains(response, "data-shorts-search-toggle")
+        self.assertContains(response, 'aria-controls="shorts-search"')
+        self.assertContains(response, 'id="shorts-q"')
+        self.assertContains(response, "shorts/search.js")
+
+    def test_empty_feed_has_no_search_bar(self) -> None:
+        self.client.force_login(self.student)
+        response = self.client.get(reverse("shorts:feed"))
+        self.assertNotContains(response, "data-shorts-search")
+        self.assertNotContains(response, "shorts/search.js")
+
     def test_feed_hands_the_player_titles_descriptions_and_tags(self) -> None:
         old = self.make_short("Older", tags=["recursion"])
         new = self.make_short("Newer", tags=["big-o", "ske"])

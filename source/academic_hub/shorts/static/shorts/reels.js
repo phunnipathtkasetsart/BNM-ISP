@@ -54,9 +54,21 @@
   function fit() {
     var top = root.getBoundingClientRect().top + window.scrollY;
     root.style.setProperty("--reels-top", Math.max(0, Math.round(top)) + "px");
+    // The slides just changed height: keep the clip on screen lined up
+    // instead of leaving the feed part-way between two clips.
+    var slide = slides[active];
+    if (slide) viewport.scrollTop = slide.el.offsetTop - viewport.offsetTop;
   }
   fit();
   window.addEventListener("resize", fit);
+  // Anything above the reel that grows or shrinks (the pop-down search
+  // bar) moves where the reel starts, so measure again as it does.
+  if (window.ResizeObserver) {
+    var above = new ResizeObserver(fit);
+    for (var el = root.previousElementSibling; el; el = el.previousElementSibling) {
+      above.observe(el);
+    }
+  }
 
   /* ---------- building slides ---------- */
   function build(item) {
