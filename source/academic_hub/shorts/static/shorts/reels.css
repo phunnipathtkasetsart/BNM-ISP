@@ -373,6 +373,31 @@ body:has(.reels) .topbar{display:none}
   .shorts-search__panel{padding-bottom:10px}
 }
 
+/* --- a feed opened from a search: which search, and the way out --- */
+.reels__scope{
+  position:absolute;top:12px;left:16px;z-index:5;margin:0;
+  max-width:calc(100% - 32px);
+  display:flex;align-items:center;gap:10px;
+  padding:6px 6px 6px 14px;border-radius:999px;
+  background:var(--card);color:var(--ink-soft);
+  box-shadow:0 4px 14px rgba(28,60,50,.18);
+  font-family:var(--font-ui);font-size:13px;
+}
+.reels__scope-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reels__scope strong{color:var(--ink)}
+.reels__scope-clear{
+  flex:none;padding:4px 12px;border-radius:999px;
+  background:var(--ku-green-800);color:#fff;text-decoration:none;font-weight:600;
+}
+.reels__scope-clear:hover{background:#24463C}
+.reels__scope-clear:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+.reels.is-searching .reels__scope{visibility:hidden}
+/* Phones: the clip fills the width, so sit over it, below the search tab
+   (which hangs over the middle of the clip's top edge), clear of sound. */
+@media (max-width:640px){
+  .reels__scope{top:30px;left:10px;max-width:calc(100% - 72px);font-size:12.5px}
+}
+
 /* --- search results: over the feed, five to a row, scrolling --- */
 .shorts-results{
   position:absolute;inset:0;z-index:6;

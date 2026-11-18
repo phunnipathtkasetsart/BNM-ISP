@@ -705,9 +705,13 @@
     viewport.setAttribute("aria-busy", "true");
     // After the last batch (next is null), offset 0 asks for a new round.
     var offset = nextOffset === null ? 0 : nextOffset;
-    var query = "?offset=" + offset + (offset ? "&round=" + round : "");
+    // The API address may already carry ?q=&start= (a feed opened from a
+    // search, whose batches must stay inside its results).
+    var api = root.dataset.api;
+    var query = (api.indexOf("?") === -1 ? "?" : "&") +
+      "offset=" + offset + (offset ? "&round=" + round : "");
     var grew = false;
-    fetch(root.dataset.api + query, {
+    fetch(api + query, {
       credentials: "same-origin",
       headers: { "Accept": "application/json" }
     })

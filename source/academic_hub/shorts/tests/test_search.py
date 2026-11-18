@@ -2,6 +2,7 @@
 
 from typing import Any
 from unittest.mock import patch
+from urllib.parse import urlencode
 
 from django.urls import reverse
 
@@ -180,7 +181,9 @@ class SearchApiTests(ShortsTestCase):
                     "tags": ["recursion"],
                     "length": "0:30",
                     "src": reverse("shorts:clip", args=[short.pk]),
-                    "url": reverse("shorts:feed") + f"?start={short.pk}",
+                    "url": reverse("shorts:feed")
+                    + "?"
+                    + urlencode({"q": "recur", "start": short.pk}),
                 }
             ],
         )
@@ -214,3 +217,116 @@ class SearchApiTests(ShortsTestCase):
         self.assertContains(response, "data-shorts-results")
         self.assertContains(response, 'id="result-template"')
         self.assertContains(response, reverse("shorts:api_search"))
+
+
+class SearchFeedTests(ShortsTestCase):
+    """A result opens a feed made of that search's results only."""
+
+    def setUp(self) -> None:
+        super().setUp()
+        # Closest first for "recursion": exact, then starts-with, then
+        # a word starting with it; "Big-O" is not a result at all.
+        self.other = self.make_short("Big-O notation")
+        self.word = self.make_short("Intro to recursion")
+        self.starts = self.make_short("Recursion basics")
+        self.exact = self.make_short("Recursion")
+        self.client.force_login(self.student)
+
+    def open(self, q: str, start: int | str) -> Any:
+        """The feed page opened from result `start` of search `q`."""
+        return self.client.get(
+            reverse("shorts:feed"), {"q": q, "start": start}
+        )
+
+    def batch(self, q: str, start: int, offset: int = 0) -> dict[str, Any]:
+        """A later batch, asked for as reels.js does from that feed."""
+        params: dict[str, Any] = {"q": q, "start": start, "offset": offset}
+        if offset:
+            params["round"] = 1
+        data: dict[str, Any] = self.client.get(
+            reverse("shorts:api_feed"), params
+        ).json()
+        return data
+
+    @staticmethod
+    def titles(items: list[dict[str, Any]]) -> list[str]:
+        """The titles of feed items, in order."""
+        return [item["title"] for item in items]
+
+    def test_feed_is_only_the_results_from_the_opened_one(self) -> None:
+        response = self.open("recursion", self.starts.pk)
+        self.assertEqual(
+            self.titles(response.context["feed"]["items"]),
+            ["Recursion basics", "Intro to recursion", "Recursion"],
+        )
+        self.assertIsNone(response.context["feed"]["next"])
+        self.assertEqual(response.context["search_query"], "recursion")
+        self.assertContains(response, "Results for")
+        self.assertContains(response, 'value="recursion"')
+
+    def test_later_batches_stay_in_the_results(self) -> None:
+        response = self.open("recursion", self.starts.pk)
+        api = response.context["feed_api"]
+        self.assertEqual(
+            api,
+            reverse("shorts:api_feed")
+            + "?"
+            + urlencode({"q": "recursion", "start": self.starts.pk}),
+        )
+        # A new round (offset 0) starts the same list again.
+        self.assertEqual(
+            self.titles(self.batch("recursion", self.starts.pk)["items"]),
+            ["Recursion basics", "Intro to recursion", "Recursion"],
+        )
+
+    def test_paging_through_a_long_result_list(self) -> None:
+        with patch("shorts.views.FEED_BATCH", 2):
+            first = self.batch("recursion", self.exact.pk)
+            second = self.batch("recursion", self.exact.pk, offset=2)
+        self.assertEqual(
+            self.titles(first["items"]), ["Recursion", "Recursion basics"]
+        )
+        self.assertEqual(first["next"], 2)
+        self.assertEqual(self.titles(second["items"]), ["Intro to recursion"])
+        self.assertIsNone(second["next"])
+
+    def test_tag_search_feed(self) -> None:
+        tagged = self.make_short("Tagged", tags=["recursion"])
+        response = self.open("#recursion", tagged.pk)
+        self.assertEqual(
+            self.titles(response.context["feed"]["items"]), ["Tagged"]
+        )
+
+    def test_a_start_outside_the_results_keeps_the_list_order(self) -> None:
+        response = self.open("recursion", self.other.pk)
+        self.assertEqual(
+            self.titles(response.context["feed"]["items"]),
+            ["Recursion", "Recursion basics", "Intro to recursion"],
+        )
+
+    def test_a_search_without_a_start_is_the_whole_list(self) -> None:
+        response = self.client.get(reverse("shorts:feed"), {"q": "recursion"})
+        self.assertEqual(
+            self.titles(response.context["feed"]["items"]),
+            ["Recursion", "Recursion basics", "Intro to recursion"],
+        )
+        self.assertEqual(
+            response.context["feed_api"],
+            reverse("shorts:api_feed") + "?q=recursion",
+        )
+
+    def test_a_search_with_no_results_gives_the_usual_feed(self) -> None:
+        response = self.open("zzzz", self.exact.pk)
+        items = self.titles(response.context["feed"]["items"])
+        self.assertEqual(items[0], "Recursion")  # ?start= still honoured
+        self.assertIn("Big-O notation", items)
+        self.assertEqual(response.context["search_query"], "")
+        self.assertEqual(
+            response.context["feed_api"], reverse("shorts:api_feed")
+        )
+        self.assertNotContains(response, "Results for")
+
+    def test_the_usual_feed_has_no_search(self) -> None:
+        response = self.client.get(reverse("shorts:feed"))
+        self.assertEqual(len(response.context["feed"]["items"]), 4)
+        self.assertNotContains(response, "Results for")

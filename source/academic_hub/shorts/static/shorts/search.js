@@ -11,7 +11,8 @@
    "#recursion" finds shorts with exactly that tag, anything else searches
    titles, closest first. The server decides both (shorts/search.py).
    Results cover the feed, five to a row, scrolling; a result opens the
-   feed on that short. Emptying the box or closing the bar brings the feed
+   feed on that short, and that feed is only this search's results
+   (views.search_order), looping. Emptying the box or closing the bar brings the feed
    back, and it carries on playing. */
 (function () {
   "use strict";

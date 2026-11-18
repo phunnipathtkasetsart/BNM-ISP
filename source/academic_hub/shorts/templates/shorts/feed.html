@@ -26,7 +26,7 @@
             <line x1="13.5" y1="13.5" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
           </svg>
           <label class="sr-only" for="shorts-q">Search shorts</label>
-          <input id="shorts-q" name="q" type="search" autocomplete="off"
+          <input id="shorts-q" name="q" type="search" autocomplete="off" value="{{ search_query }}"
                  placeholder="Search titles, or #tag" maxlength="100"
                  data-shorts-search-input>
         </form>
@@ -41,9 +41,18 @@
 
 {# The reel player (US-14, SRS-8). reels.js builds one slide per clip from #}
 {# the template below and keeps loading more, starting over at the end.   #}
-<section class="reels" data-reels data-api="{% url 'shorts:api_feed' %}" aria-label="Shorts">
+{# feed_api carries ?q=&start= when the feed was opened from a search, #}
+{# so every later batch also comes from that search's results only.   #}
+<section class="reels" data-reels data-api="{{ feed_api }}" aria-label="Shorts">
   {# Likes and comments are POSTs from reels.js; it sends this token with them. #}
   {% csrf_token %}
+  {% if search_query %}
+  {# Opened from a search: the feed is that search's results, looping. #}
+  <p class="reels__scope">
+    <span class="reels__scope-text">Results for <strong>{{ search_query }}</strong></span>
+    <a class="reels__scope-clear" href="{% url 'shorts:feed' %}">All shorts</a>
+  </p>
+  {% endif %}
   {% for message in messages %}<p class="reels__toast" role="status" data-reels-toast>{{ message }}</p>{% endfor %}
 
   <div class="reels__viewport" role="feed" aria-busy="false" tabindex="0" data-reels-viewport

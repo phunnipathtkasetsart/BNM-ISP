@@ -8,6 +8,7 @@ session through to the views it lists, and these are not among them.
 
 import secrets
 from typing import Any
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib import messages
@@ -98,13 +99,20 @@ def new_round() -> int:
     return secrets.randbelow(MAX_ROUND)
 
 
-def feed_page(offset: int, user: Account, round_seed: int) -> FeedPage:
+def feed_page(
+    offset: int,
+    user: Account,
+    round_seed: int,
+    order: list[int] | None = None,
+) -> FeedPage:
     """FEED_BATCH shorts from `offset` in this round's order.
 
     The round seed goes back to the page, which sends it with the next
     batch's request, so one round is paged through in one fixed order.
+    A given `order` (a search's results) is used instead of the usual one.
     """
-    order = feed_order(user, round_seed)
+    if order is None:
+        order = feed_order(user, round_seed)
     ids = order[offset : offset + FEED_BATCH]
     rows = visible_shorts(user).in_bulk(ids)
     return {
@@ -137,17 +145,57 @@ def _start_with(page: FeedPage, first: Short) -> None:
     ]
 
 
+def search_order(request: HttpRequest) -> list[int] | None:
+    """The feed's order when it was opened from a search, else None.
+
+    ?q= is the search, ?start=<id> the result that was opened. The feed is
+    that search's results only, from the opened one to the end of the
+    list, then round from the top again. A search that finds nothing
+    (any more) gives the usual feed.
+    """
+    q = request.GET.get("q", "").strip()
+    if not q:
+        return None
+    ids = [short.pk for short in search(parse(q))]
+    start = request.GET.get("start", "")
+    if start.isdigit() and int(start) in ids:
+        at = ids.index(int(start))
+        ids = ids[at:] + ids[:at]
+    return ids or None
+
+
+def search_scope(request: HttpRequest) -> dict[str, str]:
+    """The ?q= and ?start= a feed was opened with, to pass on to the API."""
+    q = request.GET.get("q", "").strip()
+    start = request.GET.get("start", "")
+    scope = {"q": q}
+    if start.isdigit():
+        scope["start"] = start
+    return scope
+
+
 @signed_in_page
 @require_GET
 def feed(request: HttpRequest) -> HttpResponse:
-    """The reels page; ?start=<id> opens it on that short."""
+    """The reels page; ?start=<id> opens it on that short.
+
+    With ?q= as well (a search result was opened) the feed is only that
+    search's results; see search_order.
+    """
     user = _account(request)
-    page = feed_page(0, user, new_round())
-    start = request.GET.get("start", "")
-    if start.isdigit():
-        first = visible_shorts(user).filter(pk=int(start)).first()
-        if first is not None:
-            _start_with(page, first)
+    order = search_order(request)
+    page = feed_page(0, user, new_round(), order)
+    api = reverse("shorts:api_feed")
+    query = ""
+    if order is not None:
+        query = request.GET.get("q", "").strip()
+        api += "?" + urlencode(search_scope(request))
+    else:
+        start = request.GET.get("start", "")
+        if start.isdigit():
+            first = visible_shorts(user).filter(pk=int(start)).first()
+            if first is not None:
+                _start_with(page, first)
     return render(
         request,
         "shorts/feed.html",
@@ -155,6 +203,8 @@ def feed(request: HttpRequest) -> HttpResponse:
             "can_create": can_create_shorts(user),
             "feed": page,
             "has_shorts": bool(page["items"]),
+            "feed_api": api,
+            "search_query": query,
         },
     )
 
@@ -162,7 +212,11 @@ def feed(request: HttpRequest) -> HttpResponse:
 @signed_in_page
 @require_GET
 def feed_api(request: HttpRequest) -> JsonResponse:
-    """The next batch of the feed, for ?offset=<n>&round=<seed>."""
+    """The next batch of the feed, for ?offset=<n>&round=<seed>.
+
+    ?q= and ?start= (passed on by a feed opened from a search) keep the
+    batches to that search's results.
+    """
     offset = request.GET.get("offset", "0")
     if not offset.isdigit():
         return JsonResponse(
@@ -170,11 +224,16 @@ def feed_api(request: HttpRequest) -> JsonResponse:
             status=400,
         )
     start = int(offset)
-    page = feed_page(start, _account(request), _round_from(request, start))
+    page = feed_page(
+        start,
+        _account(request),
+        _round_from(request, start),
+        search_order(request),
+    )
     return JsonResponse(page)
 
 
-def search_item(short: Short) -> dict[str, Any]:
+def search_item(short: Short, q: str) -> dict[str, Any]:
     """One search result as search.js reads it."""
     return {
         "id": short.pk,
@@ -182,8 +241,10 @@ def search_item(short: Short) -> dict[str, Any]:
         "tags": [tag.label for tag in short.tags.all()],
         "length": format_duration(short.duration_seconds),
         "src": reverse("shorts:clip", args=[short.pk]),
-        # Opens the feed on this short.
-        "url": f"{reverse('shorts:feed')}?start={short.pk}",
+        # Opens the feed on this short, with only this search's results.
+        "url": reverse("shorts:feed")
+        + "?"
+        + urlencode({"q": q, "start": short.pk}),
     }
 
 
@@ -191,13 +252,14 @@ def search_item(short: Short) -> dict[str, Any]:
 @require_GET
 def search_api(request: HttpRequest) -> JsonResponse:
     """Search results for ?q=: ``#tag`` exactly, or titles, closest first."""
-    query = parse(request.GET.get("q", ""))
+    q = request.GET.get("q", "").strip()
+    query = parse(q)
     found = search(query)
     return JsonResponse(
         {
             "kind": query.kind,
             "tags": list(query.tags),
-            "items": [search_item(short) for short in found[:MAX_RESULTS]],
+            "items": [search_item(short, q) for short in found[:MAX_RESULTS]],
             "total": len(found),
         }
     )
