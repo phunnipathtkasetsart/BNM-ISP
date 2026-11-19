@@ -13,10 +13,8 @@
    --reels-top is set by reels.js to where the reel starts. */
 .stage:has(.reels){display:block;padding:0;max-width:none}
 body:has(.reels){overflow:hidden}
-/* The site's top bar (name, notifications, account menu) steps aside here
-   so the clip gets that height as well. The tab bar stays: it is the way
-   back to Home, Course and Calendar, and holds Create Short for staff. */
-body:has(.reels) .topbar{display:none}
+/* The top bar and the tab bar both stay, as on every other page; reels.js
+   measures where the reel starts (--reels-top), so the clip fills the rest. */
 
 .reels{
   position:relative;z-index:4;width:100%;

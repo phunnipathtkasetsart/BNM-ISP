@@ -4,18 +4,20 @@
    no gradients, no decoration. It only adds
 
      - beveled corners on surfaces (buttons and fields stay round), and
-     - short, soft transitions so the app feels smooth to use.
+     - short, soft hover and press transitions.
+
+   Animations (entrances, menus, dialogs, page changes) are in motion.css.
 
    Contents
      1. Tokens
-     2. Page transitions
+     2. (moved to motion.css)
      3. Top bar and account menu
      4. Tabs
      5. Surfaces (bevels)
      6. Buttons and controls
      7. Cards and rows (hover)
      8. FAQ accordion
-     9. Entrances
+     9. (moved to motion.css)
     10. Board title bars, FAQ first on phones
     11. Small screens and reduced motion
    ==================================================================== */
@@ -33,27 +35,12 @@
 }
 
 
-/* 2. Page transitions ------------------------------------------------
-   The top bar and tabs stay still; the page below cross-fades.
-   Browsers without view transitions just navigate as before. */
-@view-transition{navigation:auto}
-.topbar{view-transition-name:polish-topbar}
-.subnav{view-transition-name:polish-subnav}
-::view-transition-old(root){animation:polish-fade-out .12s ease-in both}
-::view-transition-new(root){animation:polish-fade-in .22s ease-out both}
-@keyframes polish-fade-out{to{opacity:0}}
-@keyframes polish-fade-in{from{opacity:0}}
-
-
 /* 3. Top bar and account menu ---------------------------------------- */
 .topbar{position:sticky;top:0;z-index:40}
 
 .acctmenu__panel{
   border-radius:calc(6 * var(--u)) var(--cut-md);corner-shape:round bevel;
-  transform-origin:top right;
-  animation:polish-pop .18s var(--out) both;
 }
-@keyframes polish-pop{from{opacity:0;transform:translateY(-4px) scale(.97)}}
 .acctmenu__item{transition:background var(--fast) var(--ease)}
 
 
@@ -160,27 +147,6 @@
 .qa__q:hover{color:var(--ku-green-800)}
 
 
-/* 9. Entrances --------------------------------------------------------
-   Lists fade up a few pixels, each item just after the one before. */
-@keyframes polish-rise{from{opacity:0;transform:translateY(8px)}}
-
-.feed .post,
-.course-grid .course-card,
-.deadline-item{animation:polish-rise .3s var(--out) both}
-
-.feed .post:nth-child(2),
-.course-grid .course-card:nth-child(2),
-.deadline-item:nth-child(2){animation-delay:.04s}
-
-.feed .post:nth-child(3),
-.course-grid .course-card:nth-child(3),
-.deadline-item:nth-child(3){animation-delay:.08s}
-
-.feed .post:nth-child(n+4),
-.course-grid .course-card:nth-child(n+4),
-.deadline-item:nth-child(n+4){animation-delay:.12s}
-
-
 /* 10. Board title bars, and FAQ first on phones ------------------------
    On every board page (Home, FAQ forum, Shorts) the box title sits on a
    filled green bar, a step brighter than the top bar, with white text. */
@@ -221,5 +187,5 @@
   .subnav__tab{clip-path:polygon(9px 0,100% 0,calc(100% - 9px) 100%,0 100%);padding-left:13px}
 }
 @media (prefers-reduced-motion:reduce){
-  ::view-transition-old(root),::view-transition-new(root){animation:none}
+  ::view-transition-old(root),::view-transition-new(root){animation:none!important}
 }

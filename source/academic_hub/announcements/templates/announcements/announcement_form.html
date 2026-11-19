@@ -67,7 +67,7 @@
 
               <!-- PERMANENT DELETE ANNOUNCEMENT -->
               <form method="post" action="{% url 'announcements:announcement_delete' instance.pk %}"
-                    onsubmit="return confirm('Permanently delete this announcement? This cannot be undone.');">
+                    data-confirm="Permanently delete this announcement? This cannot be undone.">
                 {% csrf_token %}
                 <button type="submit" class="annform-btn annform-btn--delete">
                   Withdraw permanently
@@ -84,7 +84,7 @@
               <p class="annform-box__text annform-box__text--warn">Hides this post from the main board without permanently deleting it.</p>
             </div>
             <form method="post" action="{% url 'announcements:announcement_archive' instance.pk %}"
-                  onsubmit="return confirm('Archive this announcement?');">
+                  data-confirm="Archive this announcement?">
               {% csrf_token %}
               <button type="submit" class="annform-btn annform-btn--archive">
                 Archive post

@@ -409,7 +409,7 @@
       return;
     }
     if (action.startsWith('archive-')
-      && !window.confirm('Archive this item? An authorized moderator can restore it.')) return;
+      && !(await window.askConfirm('Archive this item? An authorized moderator can restore it.'))) return;
     const actionsByName = {
       pin: [`${base}${questionId}/pin/`, { is_pinned: actionButton.textContent.trim() !== 'Unpin' }],
       'archive-question': [`${base}${questionId}/archive/`, {}],
