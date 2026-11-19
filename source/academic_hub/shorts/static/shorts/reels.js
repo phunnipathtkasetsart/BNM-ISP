@@ -36,6 +36,7 @@
 
   var slides = [];      // {el, video, userPaused}
   var active = -1;
+  var searching = false;  // search results cover the feed (search.js)
   var nextOffset = page.next;
   var round = page.round;   // seed of the order the server is paging through
   var loading = false;
@@ -54,9 +55,21 @@
   function fit() {
     var top = root.getBoundingClientRect().top + window.scrollY;
     root.style.setProperty("--reels-top", Math.max(0, Math.round(top)) + "px");
+    // The slides just changed height: keep the clip on screen lined up
+    // instead of leaving the feed part-way between two clips.
+    var slide = slides[active];
+    if (slide) viewport.scrollTop = slide.el.offsetTop - viewport.offsetTop;
   }
   fit();
   window.addEventListener("resize", fit);
+  // Anything above the reel that grows or shrinks (the pop-down search
+  // bar) moves where the reel starts, so measure again as it does.
+  if (window.ResizeObserver) {
+    var above = new ResizeObserver(fit);
+    for (var el = root.previousElementSibling; el; el = el.previousElementSibling) {
+      above.observe(el);
+    }
+  }
 
   /* ---------- building slides ---------- */
   function build(item) {
@@ -168,7 +181,7 @@
       viewport.focus({ preventScroll: true });
     }
     try { current.video.currentTime = 0; } catch (e) { /* not loaded yet */ }
-    play(current);
+    if (!searching) play(current);
     prevButton.disabled = index === 0;
     loadMore();
   }
@@ -643,6 +656,7 @@
 
   document.addEventListener("keydown", function (e) {
     if (e.altKey || e.ctrlKey || e.metaKey) return;
+    if (searching) return; // the feed is behind the search results
     var t = e.target;
     if (commentsFor && e.key === "Escape") { closeComments(true); e.preventDefault(); return; }
     if (t && t.closest && t.closest("[data-comments]")) return; // typing or reading comments
@@ -667,7 +681,21 @@
     var slide = slides[active];
     if (!slide) return;
     if (document.hidden) slide.video.pause();
-    else if (!slide.userPaused) play(slide);
+    else if (!slide.userPaused && !searching) play(slide);
+  });
+
+  // search.js covers the feed with search results and uncovers it again.
+  // The clip waits, paused, and carries on when the results go away.
+  document.addEventListener("shorts:search", function (e) {
+    searching = !!(e.detail && e.detail.active);
+    root.classList.toggle("is-searching", searching);
+    var slide = slides[active];
+    if (searching) {
+      if (commentsFor) closeComments(false);
+      if (slide) slide.video.pause();
+    } else if (slide && !slide.userPaused && !document.hidden) {
+      play(slide);
+    }
   });
 
   /* ---------- the endless feed ---------- */
@@ -677,9 +705,13 @@
     viewport.setAttribute("aria-busy", "true");
     // After the last batch (next is null), offset 0 asks for a new round.
     var offset = nextOffset === null ? 0 : nextOffset;
-    var query = "?offset=" + offset + (offset ? "&round=" + round : "");
+    // The API address may already carry ?q=&start= (a feed opened from a
+    // search, whose batches must stay inside its results).
+    var api = root.dataset.api;
+    var query = (api.indexOf("?") === -1 ? "?" : "&") +
+      "offset=" + offset + (offset ? "&round=" + round : "");
     var grew = false;
-    fetch(root.dataset.api + query, {
+    fetch(api + query, {
       credentials: "same-origin",
       headers: { "Accept": "application/json" }
     })

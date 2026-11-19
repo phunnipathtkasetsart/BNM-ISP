@@ -11,11 +11,48 @@
 {% include "shorts/_subnav.html" %}
 
 {% if has_shorts %}
+{# Search, popped down from under the tab bar by the little tab below it; #}
+{# the open bar pushes the reel down and the clip shrinks to fit.         #}
+{# search.js runs the search as you type and shows the results over the  #}
+{# feed: "#tag" finds that exact tag, anything else searches titles.      #}
+<div class="shorts-search" data-shorts-search>
+  <div class="shorts-search__drawer" id="shorts-search" data-shorts-search-drawer inert>
+    <div class="shorts-search__clip">
+      <div class="shorts-search__panel">
+        <form class="searchbar shorts-search__bar" method="get" role="search" data-shorts-search-form
+              action="{% url 'shorts:api_search' %}">
+          <svg class="searchbar__icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            <line x1="13.5" y1="13.5" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <label class="sr-only" for="shorts-q">Search shorts</label>
+          <input id="shorts-q" name="q" type="search" autocomplete="off" value="{{ search_query }}"
+                 placeholder="Search titles, or #tag" maxlength="100"
+                 data-shorts-search-input>
+        </form>
+      </div>
+    </div>
+  </div>
+  <button type="button" class="shorts-search__toggle" data-shorts-search-toggle
+          aria-expanded="false" aria-controls="shorts-search" aria-label="Show search">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+  </button>
+</div>
+
 {# The reel player (US-14, SRS-8). reels.js builds one slide per clip from #}
 {# the template below and keeps loading more, starting over at the end.   #}
-<section class="reels" data-reels data-api="{% url 'shorts:api_feed' %}" aria-label="Shorts">
+{# feed_api carries ?q=&start= when the feed was opened from a search, #}
+{# so every later batch also comes from that search's results only.   #}
+<section class="reels" data-reels data-api="{{ feed_api }}" aria-label="Shorts">
   {# Likes and comments are POSTs from reels.js; it sends this token with them. #}
   {% csrf_token %}
+  {% if search_query %}
+  {# Opened from a search: the feed is that search's results, looping. #}
+  <p class="reels__scope">
+    <span class="reels__scope-text">Results for <strong>{{ search_query }}</strong></span>
+    <a class="reels__scope-clear" href="{% url 'shorts:feed' %}">All shorts</a>
+  </p>
+  {% endif %}
   {% for message in messages %}<p class="reels__toast" role="status" data-reels-toast>{{ message }}</p>{% endfor %}
 
   <div class="reels__viewport" role="feed" aria-busy="false" tabindex="0" data-reels-viewport
@@ -29,6 +66,14 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
     </button>
   </div>
+
+  {# Search results, five to a row, scrolling; covers the feed while shown. #}
+  <section class="shorts-results" aria-label="Search results" data-shorts-results hidden>
+    <div class="shorts-results__panel">
+      <p class="shorts-results__summary" role="status" aria-live="polite" data-shorts-results-summary></p>
+      <ol class="shorts-results__grid" data-shorts-results-grid></ol>
+    </div>
+  </section>
 
   <noscript><p class="reels__noscript">Turn on JavaScript to watch shorts.</p></noscript>
 
@@ -91,6 +136,20 @@
   </li>
 </template>
 
+<template id="result-template">
+  <li class="result">
+    <a class="result__link" data-result-link>
+      <span class="result__thumb">
+        <video class="result__video" muted playsinline preload="none" disablepictureinpicture
+               tabindex="-1" aria-hidden="true" data-result-video></video>
+        <span class="result__length" data-result-length></span>
+      </span>
+      <span class="result__title" data-result-title></span>
+      <span class="result__tags" data-result-tags></span>
+    </a>
+  </li>
+</template>
+
 <template id="reel-template">
   <article class="reel" aria-roledescription="short">
     <div class="reel__stage">
@@ -138,6 +197,7 @@
 
 {{ feed|json_script:"reels-data" }}
 <script src="{% static 'shorts/reels.js' %}" defer></script>
+<script src="{% static 'shorts/search.js' %}" defer></script>
 
 {% else %}
 <div class="board shorts-board">

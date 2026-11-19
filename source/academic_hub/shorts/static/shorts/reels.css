@@ -316,3 +316,151 @@ body:has(.reels) .topbar{display:none}
   .reel__action--like.is-popping svg{animation:none}
   .comment.is-new{animation:none}
 }
+
+/* ================================================================
+   SEARCH, POPPED DOWN FROM UNDER THE TAB BAR
+   A small sage tab hangs from the tab bar. Pressing it drops the search
+   bar in below it, with no panel behind the bar. The bar takes real
+   space in the page, so the reel below gets shorter and the clip scales
+   down to fit (reels.js re-measures --reels-top as the bar opens).
+   ================================================================ */
+.shorts-search{
+  position:relative;z-index:6;width:100%;
+  display:flex;flex-direction:column;align-items:center;
+}
+
+/* Rows 0fr -> 1fr animates the bar open to its natural height. */
+.shorts-search__drawer{
+  display:grid;grid-template-rows:0fr;
+  width:min(560px, calc(100% - 32px));
+  transition:grid-template-rows var(--move, .24s) var(--out, ease);
+}
+.shorts-search.is-open .shorts-search__drawer{grid-template-rows:1fr}
+.shorts-search__clip{min-height:0;overflow:hidden}
+/* Room above for the tab, and a few px around so the focus ring shows. */
+.shorts-search__panel{padding:28px 4px 4px}
+/* board.css gives .searchbar side margins for the board; not here. */
+.shorts-search .shorts-search__bar{margin:0;box-shadow:0 4px 14px rgba(28,60,50,.14)}
+
+/* The tab stays put under the tab bar, open or closed, over the reel. */
+.shorts-search__toggle{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:64px;height:20px;padding:0;border:0;cursor:pointer;
+  display:grid;place-items:center;
+  background:var(--ku-sage);color:#fff;
+  border-radius:0 0 12px 12px;
+  box-shadow:0 4px 10px rgba(28,60,50,.18);
+  -webkit-tap-highlight-color:transparent;
+  transition:background var(--fast, .16s) var(--ease, ease);
+}
+.shorts-search__toggle:hover{background:#5F9A81}
+.shorts-search__toggle:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.shorts-search__toggle svg{
+  width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;
+  stroke-linecap:round;stroke-linejoin:round;
+  transition:transform var(--move, .24s) var(--out, ease);
+}
+.shorts-search.is-open .shorts-search__toggle svg{transform:rotate(180deg)}
+/* Comments take over the screen on a phone; the tab steps aside. */
+.shorts-search:has(~ .reels.has-comments) .shorts-search__toggle{visibility:hidden}
+/* A bigger invisible target for fingers, without a bigger tab. */
+@media (pointer:coarse){
+  .shorts-search__toggle::after{content:"";position:absolute;inset:-6px -10px -14px}
+}
+/* Phones: the clip has no top padding, so leave a gap under the bar. */
+@media (max-width:640px){
+  .shorts-search__drawer{width:calc(100% - 16px)}
+  .shorts-search__panel{padding-bottom:10px}
+}
+
+/* --- a feed opened from a search: which search, and the way out --- */
+.reels__scope{
+  position:absolute;top:12px;left:16px;z-index:5;margin:0;
+  max-width:calc(100% - 32px);
+  display:flex;align-items:center;gap:10px;
+  padding:6px 6px 6px 14px;border-radius:999px;
+  background:var(--card);color:var(--ink-soft);
+  box-shadow:0 4px 14px rgba(28,60,50,.18);
+  font-family:var(--font-ui);font-size:13px;
+}
+.reels__scope-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.reels__scope strong{color:var(--ink)}
+.reels__scope-clear{
+  flex:none;padding:4px 12px;border-radius:999px;
+  background:var(--ku-green-800);color:#fff;text-decoration:none;font-weight:600;
+}
+.reels__scope-clear:hover{background:#24463C}
+.reels__scope-clear:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+.reels.is-searching .reels__scope{visibility:hidden}
+/* Phones: the clip fills the width, so sit over it, below the search tab
+   (which hangs over the middle of the clip's top edge), clear of sound. */
+@media (max-width:640px){
+  .reels__scope{top:30px;left:10px;max-width:calc(100% - 72px);font-size:12.5px}
+}
+
+/* --- search results: over the feed, five to a row, scrolling --- */
+.shorts-results{
+  position:absolute;inset:0;z-index:6;
+  overflow-y:auto;overscroll-behavior:contain;
+  padding:16px 24px 32px;
+}
+.shorts-results[hidden]{display:none}
+/* The paused feed stays where it was, just out of sight, so a short list
+   of results never has a clip showing below it. */
+.reels.is-searching .reels__nav{display:none}
+.reels.is-searching .reels__viewport{visibility:hidden}
+.shorts-results__panel{
+  max-width:1120px;margin:0 auto;
+  background:var(--card);border-radius:14px;
+  padding:16px 18px 20px;
+  box-shadow:0 10px 30px rgba(28,60,50,.18);
+}
+.shorts-results__summary{
+  margin:0 0 14px;font-family:var(--font-ui);font-size:14px;color:var(--ink-soft);
+}
+.shorts-results__summary strong{color:var(--ink)}
+.shorts-results__summary:empty{display:none}
+.shorts-results__grid{
+  list-style:none;margin:0;padding:0;
+  display:grid;grid-template-columns:repeat(5, minmax(0, 1fr));gap:16px 14px;
+}
+.result__link{display:block;color:inherit;text-decoration:none;border-radius:10px}
+.result__link:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:3px}
+.result__thumb{
+  position:relative;display:block;aspect-ratio:9/16;
+  background:#000;border-radius:10px;overflow:hidden;
+  transition:transform var(--move, .24s) var(--out, ease), box-shadow var(--move, .24s) var(--ease, ease);
+}
+.result__link:hover .result__thumb{transform:translateY(-2px);box-shadow:0 8px 18px rgba(28,60,50,.22)}
+.result__video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.result__length{
+  position:absolute;right:6px;bottom:6px;
+  padding:1px 6px;border-radius:6px;
+  background:rgba(0,0,0,.6);color:#fff;
+  font-family:var(--font-ui);font-size:11.5px;font-weight:600;
+}
+.result__length:empty{display:none}
+.result__title{
+  margin-top:8px;
+  font-family:var(--font-display);font-weight:700;font-size:13.5px;line-height:1.3;color:var(--ink);
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;
+  overflow-wrap:anywhere;
+}
+.result__link:hover .result__title{color:var(--ku-green-800)}
+.result__tags{
+  display:block;margin-top:2px;
+  font-family:var(--font-ui);font-size:12px;color:var(--ink-muted);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.result__tags:empty{display:none}
+/* Five across is too small to read on a phone: three there. */
+@media (max-width:640px){
+  .shorts-results{padding:10px 8px 24px}
+  .shorts-results__panel{padding:12px 10px 16px;border-radius:12px}
+  .shorts-results__grid{grid-template-columns:repeat(3, minmax(0, 1fr));gap:12px 8px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .shorts-search__drawer,.shorts-search__toggle svg{transition:none}
+  .result__thumb{transition:none}
+}
