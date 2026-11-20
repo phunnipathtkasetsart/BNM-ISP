@@ -15,8 +15,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{% static 'accounts/css/base.css' %}">
 {% block page_css %}{% endblock %}
-{# Last, so it can refine shapes and motion on every page. #}
+{# Last, so they apply on top of every page's own stylesheet. #}
 <link rel="stylesheet" href="{% static 'accounts/css/polish.css' %}">
+<link rel="stylesheet" href="{% static 'accounts/css/confirm.css' %}">
+<link rel="stylesheet" href="{% static 'accounts/css/motion.css' %}">
 </head>
 <body>
 
@@ -43,5 +45,6 @@
 </main>
 
 <script src="{% static 'accounts/js/base.js' %}"></script>
+<script src="{% static 'accounts/js/confirm.js' %}"></script>
 </body>
 </html>

@@ -187,9 +187,7 @@ body{
   display:flex;flex-direction:column;
   background:#fff;border-radius:var(--r-field);
   box-shadow:0 calc(10 * var(--u)) calc(30 * var(--u)) rgba(20,40,34,.24);
-  animation:acctmenu-in .16s var(--ease);
 }
-@keyframes acctmenu-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .acctmenu__item{
   display:block;width:100%;text-align:left;cursor:pointer;
   padding:calc(10 * var(--u)) calc(12 * var(--u));border-radius:calc(6 * var(--u));
@@ -352,15 +350,8 @@ body{
   body:has(.switcher) .board{padding-bottom:96px}
 }
 
-/* The page-turn: the incoming board lifts in from the corner the button sits
-   in, so pressing it reads as the old page folding away into it. */
-@keyframes board-in{
-  from{opacity:0;transform:translate3d(calc(18 * var(--u)),calc(22 * var(--u)),0) scale(.985)}
-  to{opacity:1;transform:none}
-}
-.board{animation:board-in .34s var(--ease) both;transform-origin:100% 100%}
+/* The board's entrance is the shared one in motion.css. */
 @media (prefers-reduced-motion:reduce){
-  .board{animation:none}
   .switcher{transition:none}
 }
 

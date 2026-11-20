@@ -1,30 +1,4 @@
-/* ---- Animations & Keyframes ---- */
-@keyframes shellFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes dialogScaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-@keyframes backdropFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
+/* Page and dialog animations: accounts/css/motion.css. */
 
 .course-shell {
   max-width:1180px;
@@ -35,7 +9,6 @@
   border-radius:18px;
   min-height:70vh;
   color:#183e35;
-  animation: shellFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .course-heading {
   display:flex;
@@ -193,13 +166,9 @@
   color:#183e35;
   box-shadow:0 24px 80px rgba(18, 47, 53, 0.25);
 }
-.course-dialog[open] {
-  animation: dialogScaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
 .course-dialog::backdrop {
   background:rgba(12, 41, 43, 0.5);
   backdrop-filter:blur(4px);
-  animation: backdropFadeIn 0.25s ease forwards;
 }
 .dialog-heading {
   display:flex;

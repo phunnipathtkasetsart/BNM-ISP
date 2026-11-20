@@ -11,11 +11,7 @@
   document.querySelectorAll('[data-close-dialog]').forEach(button => {
     button.addEventListener('click', () => button.closest('dialog').close());
   });
-  document.querySelectorAll('[data-confirm]').forEach(form => {
-    form.addEventListener('submit', event => {
-      if (!window.confirm(form.dataset.confirm)) event.preventDefault();
-    });
-  });
+  // Forms with data-confirm are handled for every page by accounts/js/confirm.js.
   document.querySelectorAll('[data-copy-code]').forEach(button => {
     button.addEventListener('click', async () => {
       const status = document.getElementById('copy-status');

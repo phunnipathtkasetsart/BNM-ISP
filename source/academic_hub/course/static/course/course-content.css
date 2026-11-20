@@ -2,17 +2,7 @@
    page. Colours reuse the palette already in course.css. Selectors start from
    .course-detail-content so they win over the generic .course-shell rules. */
 
-/* ---- keyframes ---- */
-@keyframes ccFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* Tab and form reveals animate with the shared motion in accounts/css/motion.css. */
 
 /* ---- tabs ---- */
 .course-detail-content .cc-tabs {
@@ -55,7 +45,6 @@
   display: grid;
   gap: 32px;
   margin-top: 28px;
-  animation: ccFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .course-detail-content .cc-tabs + .cc-panel { margin-top: 0; }
 
@@ -410,7 +399,6 @@
 .course-detail-content .cc-edit {
   flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: flex-end;
   gap: 12px; padding: 14px; border-radius: 10px; background: #f4f8f6;
-  animation: ccFadeIn 0.2s ease forwards;
 }
 .course-detail-content .cc-edit[hidden] { display: none; }
 .course-detail-content .cc-edit > div { flex: 1 1 200px; }
@@ -601,9 +589,6 @@
 .manage-tab-content[hidden] {
   display: none;
 }
-.manage-tab-content {
-  animation: ccFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
 
 /* Accordion Creation Cards */
 .creation-card {
@@ -645,7 +630,6 @@
 .creation-card-body {
   padding: 20px;
   border-top: 1px solid #d8e5df;
-  animation: ccFadeIn 0.2s ease-out;
 }
 /* Override duplicate form padding inside accordion */
 .creation-card-body .cc-form {

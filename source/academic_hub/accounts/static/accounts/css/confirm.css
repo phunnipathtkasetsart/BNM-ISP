@@ -1,0 +1,74 @@
+/* ====================================================================
+   CONFIRM BOX (accounts/js/confirm.js)
+   Replaces the browser's confirm() everywhere. One centred card over a
+   dimmed page: an icon, the question, an optional line of explanation,
+   then Cancel and the action. Red when the action cannot be undone.
+   Its entrance animation is the shared dialog one in motion.css.
+   ==================================================================== */
+.confirm{
+  border:0;padding:0;background:transparent;
+  width:min(420px, calc(100vw - 32px));
+  color:var(--ink);
+  overflow:visible;
+}
+.confirm::backdrop{background:rgba(24,40,36,.45);backdrop-filter:blur(2px)}
+
+.confirm__panel{
+  background:#fff;
+  border-radius:8px 22px;corner-shape:round bevel;   /* same cut as the panels */
+  box-shadow:0 20px 60px rgba(20,40,34,.30);
+  padding:24px 24px 20px;
+  display:grid;grid-template-columns:auto 1fr;column-gap:14px;
+}
+
+.confirm__icon{
+  grid-row:1 / span 2;
+  width:40px;height:40px;border-radius:50%;
+  display:grid;place-items:center;
+  background:#E4F0EA;color:var(--ku-green-800);
+}
+.confirm__icon svg{
+  width:22px;height:22px;fill:none;stroke:currentColor;
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+}
+
+.confirm__title{
+  margin:2px 0 0;align-self:center;
+  font-family:var(--font-display);font-weight:700;font-size:17px;line-height:1.35;
+  overflow-wrap:anywhere;
+}
+.confirm__text{
+  margin:6px 0 0;
+  font-size:14px;line-height:1.55;color:var(--ink-soft);
+  overflow-wrap:anywhere;
+}
+.confirm__text[hidden]{display:none}
+
+.confirm__actions{
+  grid-column:1 / -1;
+  display:flex;justify-content:flex-end;gap:10px;
+  margin-top:22px;
+}
+.confirm__btn{
+  min-width:96px;padding:10px 18px;border:0;border-radius:999px;
+  font-family:var(--font-ui);font-size:14px;font-weight:700;cursor:pointer;
+  transition:background .16s var(--ease),transform .16s var(--ease);
+}
+.confirm__btn:active{transform:scale(.97)}
+.confirm__btn:focus-visible{outline:2px solid var(--ku-green-800);outline-offset:2px}
+.confirm__btn--cancel{background:#E7EDE9;color:var(--ink-soft)}
+.confirm__btn--cancel:hover{background:#D8E4DC}
+.confirm__btn--ok{background:var(--ku-green-800);color:#fff}
+.confirm__btn--ok:hover{background:#24463C}
+
+/* Cannot be undone: red icon and red action. */
+.confirm--danger .confirm__icon{background:var(--danger-bg);color:var(--danger)}
+.confirm--danger .confirm__btn--ok{background:var(--danger)}
+.confirm--danger .confirm__btn--ok:hover{background:#7F2626}
+.confirm--danger .confirm__btn--ok:focus-visible{outline-color:var(--danger)}
+
+/* Phones: the two buttons share the width, thumb-sized. */
+@media (max-width:420px){
+  .confirm__actions{gap:8px}
+  .confirm__btn{flex:1;min-height:44px}
+}
