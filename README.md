@@ -131,7 +131,7 @@ Open `.env` in a text editor. These are the settings it contains:
 
 The database and MinIO settings in `docker-compose.yml` override the values in `.env`, so you normally only edit the Google values and `SECRET_KEY`.
 
-#### 4a. (Recommended) Generate a Django `SECRET_KEY`
+#### 4a. Generate a Django `SECRET_KEY`
 
 Run this once, copy the output into `SECRET_KEY=` in `.env`:
 
