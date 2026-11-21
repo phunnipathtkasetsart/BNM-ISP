@@ -124,7 +124,7 @@ Open `.env` in a text editor. These are the settings it contains:
 | `GOOGLE_OAUTH_REDIRECT_URI` | Redirect URL for **Sign in with Google** | `http://localhost:8000/accounts/oauth/google/callback/` |
 | `GOOGLE_GMAIL_OAUTH_REDIRECT_URI` | Redirect URL for the **Contact advisor** Gmail feature | `http://localhost:8000/accounts/oauth/google/gmail/callback/` |
 | `GMAIL_TOKEN_ENCRYPTION_KEY` | Key used to encrypt students' stored Gmail refresh tokens | Generated in step 6 |
-| `EMAIL_BACKEND` and `EMAIL_*` | Password-reset emails | Leave as the console backend for local use. Reset links are then printed in the `web` container log. |
+| `EMAIL_BACKEND`, `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USE_TLS`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `DEFAULT_FROM_EMAIL` | Password-reset emails | Leave as the console backend for local use. See step 4b to send real email. |
 | `PASSWORD_RESET_BASE_URL` | Base URL used in reset links | `http://localhost:8000` |
 | `MAX_UPLOAD_MB`, `SHORTS_MAX_UPLOAD_MB` | Upload limits for course files and Shorts clips | Defaults are fine |
 | `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | MinIO credentials (commented out in the template) | Leave commented for local use. Defaults are `bnm-minio` / `bnm-minio-dev-password`. |
@@ -140,6 +140,51 @@ docker compose run --rm --no-deps web python -c "from django.core.management.uti
 ```
 
 The first run builds the image, which takes a few minutes. If you would rather not do this yet, any long random string works for local development.
+
+#### 4b. Email settings (password reset)
+
+These settings control the emails the app sends itself, which is the **Forgot password** link. They are separate from the Gmail draft feature in step 5, which uses the student's own Google account and needs no SMTP server.
+
+| Variable | What it does | Default / example |
+|----------|--------------|-------------------|
+| `EMAIL_BACKEND` | How Django sends mail | `django.core.mail.backends.console.EmailBackend` prints emails to the `web` log. Use `django.core.mail.backends.smtp.EmailBackend` to send real email. |
+| `EMAIL_HOST` | SMTP server address | `smtp.gmail.com` |
+| `EMAIL_PORT` | SMTP port | `587` (with `EMAIL_USE_TLS=True`) |
+| `EMAIL_USE_TLS` | Encrypt the connection with STARTTLS | `True` |
+| `EMAIL_HOST_USER` | Account used to log in to the SMTP server | `your.address@gmail.com` |
+| `EMAIL_HOST_PASSWORD` | Password for that account | For Gmail, an **App Password**, not your normal password |
+| `DEFAULT_FROM_EMAIL` | The "From" address on outgoing mail | Usually the same as `EMAIL_HOST_USER` |
+| `PASSWORD_RESET_BASE_URL` | Start of the link inside the reset email | `http://localhost:8000` locally, your public `https://` domain when deployed |
+| `PASSWORD_RESET_TIMEOUT_MINUTES` | How long a reset link stays valid | `30` |
+| `PASSWORD_RESET_REQUEST_LIMIT` | Reset requests allowed per window | `5` |
+| `PASSWORD_RESET_REQUEST_WINDOW` | Length of that window in seconds | `3600` |
+
+**Local development (no setup needed).** Leave `EMAIL_BACKEND` as the console backend and keep `EMAIL_HOST`, `EMAIL_HOST_USER` and `EMAIL_HOST_PASSWORD` empty. Reset links are then printed in the app log:
+
+```bash
+docker compose logs -f web
+```
+
+**Sending real email through Gmail SMTP.**
+
+1. Use a Google account with **2-Step Verification** turned on (<https://myaccount.google.com/security>).
+2. Create an App Password at <https://myaccount.google.com/apppasswords>. Google shows a 16-character password once, so copy it. Some accounts, including many school and Workspace accounts, do not allow App Passwords. Use another account or another SMTP provider in that case.
+3. Edit `.env`:
+
+   ```env
+   EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
+   EMAIL_HOST=smtp.gmail.com
+   EMAIL_PORT=587
+   EMAIL_USE_TLS=True
+   EMAIL_HOST_USER=your.address@gmail.com
+   EMAIL_HOST_PASSWORD=abcdefghijklmnop
+   DEFAULT_FROM_EMAIL=your.address@gmail.com
+   PASSWORD_RESET_BASE_URL=http://localhost:8000
+   ```
+
+4. Apply the change with `docker compose up -d --force-recreate web`.
+
+Any other SMTP provider works the same way. Copy the host, port and credentials from the provider's documentation. Never commit real credentials. `.env` is already ignored by Git.
 
 ### 5. Set up Google Cloud Console (OAuth and Gmail API)
 
